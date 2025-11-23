@@ -1,0 +1,938 @@
+openapi: 3.0.3
+info:
+  title: Generalized Exam Item Bank & Paper Generation API
+  version: 1.0.0
+  description: >-
+    REST contract for RBAC-secured question management, paper assembly, online examination,
+    and analytics services powering the Universal Question Bank Paper System.
+servers:
+  - url: https://api.universalexam.local/v1
+    description: Development
+  - url: https://api.universalexam.edu/v1
+    description: Production
+security:
+  - bearerAuth: []
+paths:
+  /auth/login:
+    post:
+      summary: Authenticate user via username/password.
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /auth/token/refresh:
+    post:
+      summary: Refresh JWT access token.
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Refreshed token pair.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+  /users:
+    get:
+      summary: List users with filtering options (admin only).
+      tags: [Admin]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - in: query
+          name: role
+          schema:
+            type: string
+            enum: [ADMIN, TEACHER, STUDENT]
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [ACTIVE, LOCKED, INVITED]
+      responses:
+        '200':
+          description: Paged users.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPage'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+    post:
+      summary: Create user with role assignments.
+      tags: [Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: Created user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '409':
+          description: Duplicate username/email.
+  /questions:
+    get:
+      summary: Search questions in bank with multi-criteria filters.
+      tags: [QuestionBank]
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - in: query
+          name: subjectId
+          schema:
+            type: string
+        - in: query
+          name: knowledgePointIds
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [SINGLE_CHOICE, MULTI_CHOICE, TRUE_FALSE, FILL_BLANK, SHORT_ANSWER]
+        - in: query
+          name: difficulty
+          schema:
+            type: string
+            enum: [EASY, MEDIUM, HARD]
+        - in: query
+          name: keywords
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [DRAFT, PENDING_REVIEW, APPROVED, ARCHIVED]
+      responses:
+        '200':
+          description: Paged questions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionPage'
+    post:
+      summary: Create new question (teacher or admin).
+      tags: [QuestionBank]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionCreateRequest'
+      responses:
+        '201':
+          description: Question created, pending review.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionResponse'
+        '400':
+          description: Validation error.
+  /questions/import/docx:
+    post:
+      summary: Batch import questions via Word DOCX upload.
+      tags: [QuestionBank]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '202':
+          description: Import accepted; processing asynchronously.
+        '400':
+          description: Failed validation.
+  /questions/{questionId}:
+    get:
+      summary: Fetch question by ID with revision history.
+      tags: [QuestionBank]
+      parameters:
+        - $ref: '#/components/parameters/QuestionIdParam'
+      responses:
+        '200':
+          description: Question details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionResponse'
+        '404':
+          description: Question not found.
+    put:
+      summary: Update question content (allowed for drafts or with admin override).
+      tags: [QuestionBank]
+      parameters:
+        - $ref: '#/components/parameters/QuestionIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionUpdateRequest'
+      responses:
+        '200':
+          description: Question updated.
+        '409':
+          description: Conflict due to status or version mismatch.
+    delete:
+      summary: Soft-delete question (admin only, two-step confirmation).
+      tags: [QuestionBank]
+      parameters:
+        - $ref: '#/components/parameters/QuestionIdParam'
+      responses:
+        '204':
+          description: Question marked deleted and audit logged.
+  /questions/{questionId}/review:
+    post:
+      summary: Approve or reject question during audit workflow.
+      tags: [QuestionBank]
+      parameters:
+        - $ref: '#/components/parameters/QuestionIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionReviewRequest'
+      responses:
+        '200':
+          description: Review state updated.
+        '409':
+          description: Invalid state transition.
+  /papers/manual:
+    post:
+      summary: Create manual paper draft and attach selected questions.
+      tags: [Paper]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualPaperCreateRequest'
+      responses:
+        '201':
+          description: Manual paper version created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaperVersionResponse'
+  /papers/auto:
+    post:
+      summary: Generate paper via MT19937-driven auto assembly.
+      tags: [Paper]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutoPaperCreateRequest'
+      responses:
+        '201':
+          description: Paper version created with deterministic seed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaperVersionResponse'
+        '422':
+          description: Constraints unsatisfied.
+  /papers/{paperId}/versions:
+    get:
+      summary: List versions for a paper with filters.
+      tags: [Paper]
+      parameters:
+        - $ref: '#/components/parameters/PaperIdParam'
+      responses:
+        '200':
+          description: Paper versions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaperVersionPage'
+  /papers/{paperId}/publish:
+    post:
+      summary: Publish paper version with activation window.
+      tags: [Paper]
+      parameters:
+        - $ref: '#/components/parameters/PaperIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaperPublishRequest'
+      responses:
+        '200':
+          description: Paper published.
+  /exams/{accessCode}/start:
+    post:
+      summary: Validate access code and start exam session.
+      tags: [Exam]
+      parameters:
+        - name: accessCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session created with initial state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamSessionResponse'
+        '404':
+          description: Unknown or inactive access code.
+        '423':
+          description: Exam locked or future-dated.
+  /exams/{sessionId}/heartbeat:
+    post:
+      summary: Maintain active session and sync time remaining.
+      tags: [Exam]
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+      responses:
+        '200':
+          description: Heartbeat acknowledged.
+  /exams/{sessionId}/autosave:
+    post:
+      summary: Persist autosave snapshot (≤30s cadence).
+      tags: [Exam]
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutosaveRequest'
+      responses:
+        '202':
+          description: Snapshot enqueued.
+        '409':
+          description: Sequence conflict.
+  /exams/{sessionId}/submit:
+    post:
+      summary: Submit exam (voluntary or timeout).
+      tags: [Exam]
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+      responses:
+        '200':
+          description: Submission accepted and objective grading complete.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponse'
+        '409':
+          description: Session already closed.
+  /exams/{sessionId}/grade:
+    post:
+      summary: Record manual grades for subjective questions.
+      tags: [Exam]
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ManualGradeRequest'
+      responses:
+        '200':
+          description: Manual grades saved and totals recomputed.
+  /analytics/exams/{paperVersionId}/summary:
+    get:
+      summary: Fetch score distribution, pass rate, and knowledge mastery metrics.
+      tags: [Analytics]
+      parameters:
+        - name: paperVersionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Aggregated analytics data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamAnalyticsResponse'
+  /analytics/questions/error-rate:
+    get:
+      summary: Compute top N questions by error rate across selected timeframe.
+      tags: [Analytics]
+      parameters:
+        - in: query
+          name: subjectId
+          schema:
+            type: string
+        - in: query
+          name: knowledgePointId
+          schema:
+            type: string
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Error rate ranking.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QuestionErrorRate'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+      description: Zero-based page index.
+    SizeParam:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+      description: Page size.
+    QuestionIdParam:
+      name: questionId
+      in: path
+      required: true
+      schema:
+        type: string
+    PaperIdParam:
+      name: paperId
+      in: path
+      required: true
+      schema:
+        type: string
+    SessionIdParam:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    UnauthorizedError:
+      description: Authentication failed.
+    ForbiddenError:
+      description: Not authorized to perform this action.
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+    AuthTokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+    UserPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserResponse'
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    UserCreateRequest:
+      type: object
+      required: [username, email, roles]
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        roles:
+          type: array
+          items:
+            type: string
+        password:
+          type: string
+          format: password
+    QuestionPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionSummary'
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+    QuestionSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        subjectId:
+          type: string
+        type:
+          type: string
+        difficulty:
+          type: string
+        status:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+    QuestionCreateRequest:
+      type: object
+      required: [subjectId, type, stem, answerSchema, score, difficulty]
+      properties:
+        subjectId:
+          type: string
+        type:
+          type: string
+          enum: [SINGLE_CHOICE, MULTI_CHOICE, TRUE_FALSE, FILL_BLANK, SHORT_ANSWER]
+        stem:
+          type: string
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionOption'
+        answerSchema:
+          type: object
+          description: Machine-readable answer definition.
+        analysis:
+          type: string
+        difficulty:
+          type: string
+          enum: [EASY, MEDIUM, HARD]
+        knowledgePointIds:
+          type: array
+          items:
+            type: string
+        score:
+          type: number
+          format: float
+        mediaBundleId:
+          type: string
+    QuestionOption:
+      type: object
+      properties:
+        key:
+          type: string
+        text:
+          type: string
+        isCorrect:
+          type: boolean
+    QuestionResponse:
+      allOf:
+        - $ref: '#/components/schemas/QuestionSummary'
+        - type: object
+          properties:
+            stem:
+              type: string
+            options:
+              type: array
+              items:
+                $ref: '#/components/schemas/QuestionOption'
+            answerSchema:
+              type: object
+            analysis:
+              type: string
+            reviewer:
+              type: string
+            versionNumber:
+              type: integer
+            history:
+              type: array
+              items:
+                $ref: '#/components/schemas/QuestionRevision'
+    QuestionRevision:
+      type: object
+      properties:
+        versionNumber:
+          type: integer
+        changedAt:
+          type: string
+          format: date-time
+        changedBy:
+          type: string
+        diffSummary:
+          type: string
+    QuestionUpdateRequest:
+      type: object
+      properties:
+        stem:
+          type: string
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionOption'
+        answerSchema:
+          type: object
+        analysis:
+          type: string
+        difficulty:
+          type: string
+        knowledgePointIds:
+          type: array
+          items:
+            type: string
+        score:
+          type: number
+          format: float
+        versionNumber:
+          type: integer
+    QuestionReviewRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [APPROVE, REJECT]
+        notes:
+          type: string
+    ManualPaperCreateRequest:
+      type: object
+      required: [subjectId, title, durationMinutes, questions]
+      properties:
+        subjectId:
+          type: string
+        title:
+          type: string
+        durationMinutes:
+          type: integer
+        totalScore:
+          type: number
+          format: float
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ManualPaperQuestion'
+    ManualPaperQuestion:
+      type: object
+      required: [questionId, score]
+      properties:
+        questionId:
+          type: string
+        score:
+          type: number
+          format: float
+        position:
+          type: integer
+    AutoPaperCreateRequest:
+      type: object
+      required: [subjectId, title, durationMinutes, totalScore, typeRatio, difficultyDistribution]
+      properties:
+        subjectId:
+          type: string
+        title:
+          type: string
+        durationMinutes:
+          type: integer
+        totalScore:
+          type: number
+        knowledgePointIds:
+          type: array
+          items:
+            type: string
+        typeRatio:
+          type: object
+          additionalProperties:
+            type: number
+        difficultyDistribution:
+          type: object
+          properties:
+            EASY:
+              type: number
+            MEDIUM:
+              type: number
+            HARD:
+              type: number
+        exclusions:
+          type: array
+          items:
+            type: string
+    PaperVersionResponse:
+      type: object
+      properties:
+        paperId:
+          type: string
+        versionId:
+          type: string
+        versionNumber:
+          type: integer
+        assemblyMode:
+          type: string
+        mtSeed:
+          type: integer
+        totalScore:
+          type: number
+        durationMinutes:
+          type: integer
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaperQuestionDetail'
+    PaperQuestionDetail:
+      type: object
+      properties:
+        questionId:
+          type: string
+        questionVersionNumber:
+          type: integer
+        position:
+          type: integer
+        score:
+          type: number
+        difficulty:
+          type: string
+        type:
+          type: string
+    PaperVersionPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaperVersionResponse'
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+    PaperPublishRequest:
+      type: object
+      required: [versionId, activationStart, activationEnd]
+      properties:
+        versionId:
+          type: string
+        activationStart:
+          type: string
+          format: date-time
+        activationEnd:
+          type: string
+          format: date-time
+        maxAttempts:
+          type: integer
+        autoSubmitGraceSeconds:
+          type: integer
+    ExamSessionResponse:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        paperVersionId:
+          type: string
+        startAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+        timeRemainingSeconds:
+          type: integer
+        autosaveIntervalSeconds:
+          type: integer
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamQuestion'
+    ExamQuestion:
+      type: object
+      properties:
+        questionId:
+          type: string
+        position:
+          type: integer
+        type:
+          type: string
+        stem:
+          type: string
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionOption'
+        score:
+          type: number
+    AutosaveRequest:
+      type: object
+      required: [sequence, payload]
+      properties:
+        sequence:
+          type: integer
+        payload:
+          type: object
+          description: Snapshot of answers keyed by questionId.
+        clientTimestamp:
+          type: string
+          format: date-time
+    SubmissionResponse:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        objectiveScore:
+          type: number
+        totalScore:
+          type: number
+        status:
+          type: string
+          enum: [SUBMITTED, TIMEOUT]
+    ManualGradeRequest:
+      type: object
+      required: [grades]
+      properties:
+        grades:
+          type: array
+          items:
+            type: object
+            required: [questionId, score]
+            properties:
+              questionId:
+                type: string
+              score:
+                type: number
+                format: float
+              notes:
+                type: string
+    ExamAnalyticsResponse:
+      type: object
+      properties:
+        paperVersionId:
+          type: string
+        averageScore:
+          type: number
+        highestScore:
+          type: number
+        passRate:
+          type: number
+        scoreDistribution:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoreBucket'
+        knowledgeMastery:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeMetric'
+        errorRates:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionErrorRate'
+    ScoreBucket:
+      type: object
+      properties:
+        range:
+          type: string
+        percentage:
+          type: number
+    KnowledgeMetric:
+      type: object
+      properties:
+        knowledgePointId:
+          type: string
+        masteryPercent:
+          type: number
+    QuestionErrorRate:
+      type: object
+      properties:
+        questionId:
+          type: string
+        attempts:
+          type: integer
+        incorrect:
+          type: integer
+        errorRate:
+          type: number
