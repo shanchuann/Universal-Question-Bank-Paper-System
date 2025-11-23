@@ -8,6 +8,7 @@
 - Priority: P0
 - Phase: P0 – Foundations
 - Sprint Recommendation: Sprint 1
+- Status: in-progress
 - Description: Initialize Gradle multi-module Spring Boot backend and Vite-based Vue frontend with shared OpenAPI client generation, linting, and formatting standards to satisfy constitution readiness.
 - Acceptance Criteria:
   1. `backend/build.gradle.kts` defines Spring Boot 3.2 project with Java 17 toolchain, shared conventions, and OpenAPI generator plugin producing client artifacts consumed by frontend.

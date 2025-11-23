@@ -15,7 +15,7 @@ const fetchQuestions = async () => {
   error.value = ''
   try {
     const response = await questionApi.questionsGet(page.value, size.value)
-    questions.value = response.data.items || []
+    questions.value = response.data.content || []
     totalElements.value = response.data.totalElements || 0
   } catch (err) {
     error.value = 'Failed to load questions.'

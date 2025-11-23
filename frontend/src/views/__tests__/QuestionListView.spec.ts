@@ -22,7 +22,7 @@ describe('QuestionListView', () => {
     const mockGet = questionApi.questionsGet as unknown as ReturnType<typeof vi.fn>
     mockGet.mockResolvedValue({
       data: {
-        items: mockQuestions,
+        content: mockQuestions,
         totalElements: 2,
         totalPages: 1
       }
@@ -46,8 +46,8 @@ describe('QuestionListView', () => {
     // Check data rows
     const rows = wrapper.findAll('tbody tr')
     expect(rows).toHaveLength(2)
-    expect(rows[0].text()).toContain('SINGLE_CHOICE')
-    expect(rows[1].text()).toContain('MULTI_CHOICE')
+    expect(rows[0]!.text()).toContain('SINGLE_CHOICE')
+    expect(rows[1]!.text()).toContain('MULTI_CHOICE')
   })
 
   it('handles error state', async () => {

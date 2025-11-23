@@ -65,7 +65,7 @@ const handleSubmit = async () => {
       
       <fieldset>
         <legend>Type Ratio (must sum to 1.0)</legend>
-        <div v-for="(ratio, type) in form.typeRatio" :key="type" class="form-group">
+        <div v-for="(_, type) in form.typeRatio" :key="type" class="form-group">
           <label>{{ type }}</label>
           <input v-model.number="form.typeRatio[type]" type="number" step="0.1" min="0" max="1" />
         </div>
