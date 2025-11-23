@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import QuestionListView from '../views/QuestionListView.vue'
+import PaperGenerationView from '../views/PaperGenerationView.vue'
 import HelloWorld from '../components/HelloWorld.vue'
 
 const router = createRouter({
@@ -21,6 +22,11 @@ const router = createRouter({
       path: '/questions',
       name: 'questions',
       component: QuestionListView
+    },
+    {
+      path: '/paper-generation',
+      name: 'paper-generation',
+      component: PaperGenerationView
     }
   ]
 })
