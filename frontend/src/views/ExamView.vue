@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onUpdated, nextTick, computed, onMounted, onUnmounted } from 'vue'
+import { ref, onUpdated, nextTick, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import 'katex/dist/katex.min.css';
@@ -48,7 +48,15 @@ type DisplayItem =
 const route = useRoute()
 const router = useRouter()
 const paperId = ref(route.query.paperId?.toString() || '')
-const userId = ref(authState.isAuthenticated ? authState.user.username : 'user-' + Math.floor(Math.random() * 1000))
+const userId = ref(authState.isAuthenticated && authState.user.id ? authState.user.id : 'guest-' + Math.floor(Math.random() * 10000))
+
+// Update userId when profile is loaded
+watch(() => authState.user.id, (newId) => {
+  if (authState.isAuthenticated && newId) {
+    userId.value = newId
+  }
+})
+
 const exam = ref<Exam | null>(null)
 const answers = ref<Record<string, string | string[]>>({})
 const loading = ref(false)
@@ -331,8 +339,21 @@ const isSelected = (qId: string, option: string) => {
           <input v-model="paperId" type="text" required placeholder="Enter Paper ID" class="google-input" />
         </div>
         <div class="form-group">
-          <label class="field-label">User ID</label>
-          <input v-model="userId" type="text" required class="google-input" :disabled="authState.isAuthenticated" />
+          <label class="field-label">User</label>
+          <input 
+            v-if="authState.isAuthenticated"
+            :value="authState.user.nickname || authState.user.username"
+            type="text" 
+            class="google-input" 
+            disabled 
+          />
+          <input 
+            v-else
+            v-model="userId" 
+            type="text" 
+            required 
+            class="google-input" 
+          />
         </div>
         
         <div class="form-actions">

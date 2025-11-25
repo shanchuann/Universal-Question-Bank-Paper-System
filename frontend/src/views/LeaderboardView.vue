@@ -5,6 +5,7 @@ import axios from 'axios'
 interface StudentStats {
   id: number
   userId: string
+  nickname?: string
   totalQuestionsAnswered: number
   correctAnswers: number
   currentStreak: number
@@ -57,7 +58,11 @@ onMounted(fetchLeaderboard)
               <td class="text-center">
                 <span class="rank-badge" :class="'rank-' + (index + 1)">{{ index + 1 }}</span>
               </td>
-              <td>{{ user.userId }}</td>
+              <td>
+                <div class="d-flex align-items-center">
+                  <span class="fw-bold">{{ user.nickname || user.userId }}</span>
+                </div>
+              </td>
               <td class="text-center fw-bold text-success">{{ user.correctAnswers }}</td>
               <td class="text-center">{{ user.totalQuestionsAnswered }}</td>
               <td class="text-center">{{ (user.accuracy * 100).toFixed(1) }}%</td>

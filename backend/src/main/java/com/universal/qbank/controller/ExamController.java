@@ -29,6 +29,9 @@ public class ExamController {
   @Autowired private PaperRepository paperRepository;
 
   @Autowired private QuestionRepository questionRepository;
+
+  @Autowired
+  private com.universal.qbank.repository.UserRepository userRepository;
   private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
       new com.fasterxml.jackson.databind.ObjectMapper();
 
@@ -139,6 +142,24 @@ public class ExamController {
     resp.setScore(exam.getScore());
     resp.setStartAt(exam.getStartTime());
     resp.setEndAt(exam.getEndTime());
+
+    // 查找用户信息并直接设置扩展字段
+    if (exam.getUserId() != null) {
+      com.universal.qbank.entity.UserEntity user = null;
+      try {
+        user = userRepository.findById(exam.getUserId()).orElse(null);
+      } catch (Exception e) {
+        // ignore
+      }
+      if (user != null) {
+        // 直接通过Map扩展字段
+        try {
+          java.lang.reflect.Method setAdditionalProperties = resp.getClass().getMethod("setAdditionalProperties", String.class, Object.class);
+          setAdditionalProperties.invoke(resp, "nickname", user.getNickname());
+          setAdditionalProperties.invoke(resp, "username", user.getUsername());
+        } catch (Exception ignore) {}
+      }
+    }
 
     PaperEntity paper = paperRepository.findById(exam.getPaperId()).orElseThrow();
     List<QuestionEntity> questions = questionRepository.findAllById(paper.getQuestionIds());

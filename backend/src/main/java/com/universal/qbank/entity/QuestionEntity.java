@@ -31,19 +31,19 @@ public class QuestionEntity {
   private OffsetDateTime createdAt;
 
   @Lob
-  @Column(columnDefinition = "CLOB")
+  @Column(columnDefinition = "TEXT")
   private String stem;
 
   @Lob
-  @Column(columnDefinition = "CLOB")
+  @Column(columnDefinition = "TEXT")
   private String optionsJson;
 
   @Lob
-  @Column(columnDefinition = "CLOB")
+  @Column(columnDefinition = "TEXT")
   private String answerSchema;
 
   @Lob
-  @Column(columnDefinition = "CLOB")
+  @Column(columnDefinition = "TEXT")
   private String analysis;
 
   @PrePersist

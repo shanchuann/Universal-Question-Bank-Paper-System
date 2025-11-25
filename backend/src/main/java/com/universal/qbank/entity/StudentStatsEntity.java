@@ -14,6 +14,8 @@ public class StudentStatsEntity {
   @Column(unique = true, nullable = false)
   private String userId;
 
+  private String nickname;
+
   private Long totalQuestionsAnswered = 0L;
 
   private Long correctAnswers = 0L;
@@ -73,5 +75,13 @@ public class StudentStatsEntity {
   public Double getAccuracy() {
     if (totalQuestionsAnswered == 0) return 0.0;
     return (double) correctAnswers / totalQuestionsAnswered;
+  }
+
+  public String getNickname() {
+    return nickname;
+  }
+
+  public void setNickname(String nickname) {
+    this.nickname = nickname;
   }
 }
