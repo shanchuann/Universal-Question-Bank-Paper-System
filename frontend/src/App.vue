@@ -41,6 +41,7 @@ const handleLogout = () => {
             <RouterLink to="/papers">Papers</RouterLink>
             <RouterLink to="/paper-generation">Generate</RouterLink>
             <RouterLink to="/grading">Grading</RouterLink>
+            <RouterLink to="/knowledge-point-manage">Knowledge Points</RouterLink>
           </template>
           <template v-if="isAdmin">
             <RouterLink to="/admin/users">Users</RouterLink>
