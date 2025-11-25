@@ -1,11 +1,11 @@
 package com.universal.qbank.service;
 
+import com.universal.qbank.api.generated.model.ManualGradeRequest;
+import com.universal.qbank.api.generated.model.ManualGradeRequestGradesInner;
 import com.universal.qbank.entity.*;
 import com.universal.qbank.repository.ExamRepository;
 import com.universal.qbank.repository.PaperRepository;
 import com.universal.qbank.repository.QuestionRepository;
-import com.universal.qbank.api.generated.model.ManualGradeRequest;
-import com.universal.qbank.api.generated.model.ManualGradeRequestGradesInner;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +45,8 @@ public class ExamService {
     return examRepository.save(exam);
   }
 
-  public ExamEntity submitExam(Long examId, Map<String, String> answers, List<String> flaggedQuestions) {
+  public ExamEntity submitExam(
+      Long examId, Map<String, String> answers, List<String> flaggedQuestions) {
     ExamEntity exam =
         examRepository
             .findById(examId)
@@ -78,7 +79,7 @@ public class ExamService {
       record.setQuestionId(qId);
       record.setUserAnswer(userAnswer);
       if (flaggedQuestions != null && flaggedQuestions.contains(qId)) {
-          record.setIsFlagged(true);
+        record.setIsFlagged(true);
       }
 
       boolean isCorrect = false;
@@ -121,101 +122,111 @@ public class ExamService {
 
     // Update Student Stats
     if (exam.getUserId() != null) {
-        StudentStatsEntity stats = studentStatsRepository.findByUserId(exam.getUserId())
-                .orElse(new StudentStatsEntity());
-        stats.setUserId(exam.getUserId());
-        stats.setTotalQuestionsAnswered(stats.getTotalQuestionsAnswered() + total);
-        stats.setCorrectAnswers(stats.getCorrectAnswers() + correctCount);
+      StudentStatsEntity stats =
+          studentStatsRepository.findByUserId(exam.getUserId()).orElse(new StudentStatsEntity());
+      stats.setUserId(exam.getUserId());
+      stats.setTotalQuestionsAnswered(stats.getTotalQuestionsAnswered() + total);
+      stats.setCorrectAnswers(stats.getCorrectAnswers() + correctCount);
 
-        java.time.LocalDate today = java.time.LocalDate.now();
-        java.time.LocalDate lastDate = stats.getLastPracticeDate();
+      java.time.LocalDate today = java.time.LocalDate.now();
+      java.time.LocalDate lastDate = stats.getLastPracticeDate();
 
-        if (lastDate == null) {
-            stats.setCurrentStreak(1);
-        } else if (!lastDate.isEqual(today)) {
-            if (lastDate.plusDays(1).isEqual(today)) {
-                stats.setCurrentStreak(stats.getCurrentStreak() + 1);
-            } else {
-                stats.setCurrentStreak(1);
-            }
+      if (lastDate == null) {
+        stats.setCurrentStreak(1);
+      } else if (!lastDate.isEqual(today)) {
+        if (lastDate.plusDays(1).isEqual(today)) {
+          stats.setCurrentStreak(stats.getCurrentStreak() + 1);
+        } else {
+          stats.setCurrentStreak(1);
         }
-        stats.setLastPracticeDate(today);
-        studentStatsRepository.save(stats);
+      }
+      stats.setLastPracticeDate(today);
+      studentStatsRepository.save(stats);
     }
 
     return savedExam;
   }
 
-  public org.springframework.data.domain.Page<ExamEntity> listExams(Long paperId, String userId, int page, int size) {
-    org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("startTime").descending());
-    
-    Specification<ExamEntity> spec = (root, query, cb) -> {
-        List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
-        if (paperId != null) {
+  public org.springframework.data.domain.Page<ExamEntity> listExams(
+      Long paperId, String userId, int page, int size) {
+    org.springframework.data.domain.Pageable pageable =
+        org.springframework.data.domain.PageRequest.of(
+            page, size, org.springframework.data.domain.Sort.by("startTime").descending());
+
+    Specification<ExamEntity> spec =
+        (root, query, cb) -> {
+          List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+          if (paperId != null) {
             predicates.add(cb.equal(root.get("paperId"), paperId));
-        }
-        if (userId != null && !userId.isEmpty()) {
+          }
+          if (userId != null && !userId.isEmpty()) {
             predicates.add(cb.equal(root.get("userId"), userId));
-        }
-        return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
-    };
-    
+          }
+          return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
     return examRepository.findAll(spec, pageable);
   }
 
   public ExamEntity gradeExam(Long examId, ManualGradeRequest request) {
-      ExamEntity exam = examRepository.findById(examId).orElseThrow(() -> new IllegalArgumentException("Exam not found"));
-      
-      Map<String, ExamRecordEntity> recordMap = exam.getRecords().stream()
-          .collect(Collectors.toMap(ExamRecordEntity::getQuestionId, r -> r));
-          
-      if (request.getGrades() != null) {
-          for (ManualGradeRequestGradesInner grade : request.getGrades()) {
-              ExamRecordEntity record = recordMap.get(grade.getQuestionId());
-              if (record != null) {
-                  record.setScore(grade.getScore() != null ? grade.getScore().doubleValue() : null);
-                  record.setNotes(grade.getNotes());
-              }
-          }
+    ExamEntity exam =
+        examRepository
+            .findById(examId)
+            .orElseThrow(() -> new IllegalArgumentException("Exam not found"));
+
+    Map<String, ExamRecordEntity> recordMap =
+        exam.getRecords().stream()
+            .collect(Collectors.toMap(ExamRecordEntity::getQuestionId, r -> r));
+
+    if (request.getGrades() != null) {
+      for (ManualGradeRequestGradesInner grade : request.getGrades()) {
+        ExamRecordEntity record = recordMap.get(grade.getQuestionId());
+        if (record != null) {
+          record.setScore(grade.getScore() != null ? grade.getScore().doubleValue() : null);
+          record.setNotes(grade.getNotes());
+        }
       }
-      
-      PaperEntity paper = paperRepository.findById(exam.getPaperId()).orElseThrow();
-      
-      double totalMaxScore = 0;
-      double totalUserScore = 0;
-      
-      Map<String, Double> maxScoreMap = new java.util.HashMap<>();
-      if (paper.getItems() != null && !paper.getItems().isEmpty()) {
-          for (PaperItemEntity item : paper.getItems()) {
-              if ("QUESTION".equals(item.getItemType())) {
-                  maxScoreMap.put(item.getQuestionId(), item.getScore());
-                  totalMaxScore += item.getScore();
-              }
-          }
-      } else {
-          for (String qId : paper.getQuestionIds()) {
-              maxScoreMap.put(qId, 1.0);
-              totalMaxScore += 1.0;
-          }
+    }
+
+    PaperEntity paper = paperRepository.findById(exam.getPaperId()).orElseThrow();
+
+    double totalMaxScore = 0;
+    double totalUserScore = 0;
+
+    Map<String, Double> maxScoreMap = new java.util.HashMap<>();
+    if (paper.getItems() != null && !paper.getItems().isEmpty()) {
+      for (PaperItemEntity item : paper.getItems()) {
+        if ("QUESTION".equals(item.getItemType())) {
+          maxScoreMap.put(item.getQuestionId(), item.getScore());
+          totalMaxScore += item.getScore();
+        }
       }
-      
-      for (ExamRecordEntity record : exam.getRecords()) {
-          if (record.getScore() != null) {
-              totalUserScore += record.getScore();
-          } else if (Boolean.TRUE.equals(record.getIsCorrect())) {
-              Double max = maxScoreMap.getOrDefault(record.getQuestionId(), 1.0);
-              totalUserScore += max;
-              record.setScore(max);
-          }
+    } else {
+      for (String qId : paper.getQuestionIds()) {
+        maxScoreMap.put(qId, 1.0);
+        totalMaxScore += 1.0;
       }
-      
-      int percentage = totalMaxScore == 0 ? 0 : (int) ((totalUserScore / totalMaxScore) * 100);
-      exam.setScore(percentage);
-      
-      return examRepository.save(exam);
+    }
+
+    for (ExamRecordEntity record : exam.getRecords()) {
+      if (record.getScore() != null) {
+        totalUserScore += record.getScore();
+      } else if (Boolean.TRUE.equals(record.getIsCorrect())) {
+        Double max = maxScoreMap.getOrDefault(record.getQuestionId(), 1.0);
+        totalUserScore += max;
+        record.setScore(max);
+      }
+    }
+
+    int percentage = totalMaxScore == 0 ? 0 : (int) ((totalUserScore / totalMaxScore) * 100);
+    exam.setScore(percentage);
+
+    return examRepository.save(exam);
   }
 
   public ExamEntity getExam(Long examId) {
-      return examRepository.findById(examId).orElseThrow(() -> new IllegalArgumentException("Exam not found"));
+    return examRepository
+        .findById(examId)
+        .orElseThrow(() -> new IllegalArgumentException("Exam not found"));
   }
 }

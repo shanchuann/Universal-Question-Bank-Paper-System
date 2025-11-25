@@ -8,5 +8,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface KnowledgePointRepository extends JpaRepository<KnowledgePointEntity, String> {
   List<KnowledgePointEntity> findBySubjectIdOrderBySortOrderAsc(String subjectId);
+
   List<KnowledgePointEntity> findByParentIdOrderBySortOrderAsc(String parentId);
 }
