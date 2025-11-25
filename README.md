@@ -1,12 +1,88 @@
-# Universal Question Bank & Paper System
+<p align="center">
+   <img src="https://s2.loli.net/2025/11/25/vAmlECjbOaMWdif.png" alt="System Screenshot" width="600" />
+</p>
 
 A comprehensive system for managing exam questions, generating papers, and conducting online exams.
 
 ## Project Structure
 
-- `backend/`: Spring Boot application (Java 17+)
-- `frontend/`: Vue 3 + TypeScript + Vite application
-- `specs/`: OpenAPI specifications
+- `backend/` &mdash; Spring Boot application (Java 17+)
+- `frontend/` &mdash; Vue 3 + TypeScript + Vite application
+- `specs/` &mdash; OpenAPI specifications
+
+## Tech Stack
+
+- **Backend**: Java 17+, Spring Boot, Gradle
+- **Frontend**: Vue 3, TypeScript, Vite
+- **API**: OpenAPI 3.0 (auto-generates frontend API client)
+- **Testing**: JUnit (backend), Vitest (frontend)
+- **Code Style**: ESLint (frontend), Spotless (backend)
+
+## Main Features
+
+- **User Authentication**: JWT login and permission management
+- **Question Bank Management**: CRUD for questions, supports multiple types
+- **Paper Generation**: Auto-generate papers by knowledge point, difficulty, and type
+- **Online Exam**: Answering, auto-save, submission, and grading
+- **Statistics & Analytics**: Score statistics, knowledge mastery analysis
+- **Admin Panel**: Manage users, questions, papers, exams, etc.
+
+## Getting Started
+
+### Prerequisites
+
+- Java 17 or higher
+- Node.js 18 or higher
+- npm 9 or higher
+
+### Backend
+
+```bash
+cd backend
+./gradlew bootRun
+# The backend server will start at http://localhost:8080
+./gradlew test
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run generate-api # If OpenAPI spec changed
+# OpenAPI spec: specs/001-specify-exam-platform/contracts/openapi.yaml
+# Generated code: frontend/src/api/generated/
+npm run dev
+# The frontend will be available at http://localhost:5173
+npm run test:unit
+npm run build
+```
+
+## API Documentation
+
+- **OpenAPI specification:** [`specs/001-specify-exam-platform/contracts/openapi.yaml`](specs/001-specify-exam-platform/contracts/openapi.yaml)
+- **Frontend API client** is auto-generated to ensure consistency between backend and frontend interfaces.
+
+## Code Quality & Conventions
+
+- Frontend uses **ESLint** and **Prettier** for code style.
+- Backend uses **Spotless** for Java code formatting.
+- Please run tests and formatting before submitting code.
+
+## File Structure
+
+- `backend/src/main/java/` &mdash; Backend core business logic
+- `backend/src/main/resources/` &mdash; Backend configuration and templates
+- `frontend/src/` &mdash; Frontend pages, components, state management, API client
+- `specs/` &mdash; API specs, requirements docs, prototypes
+
+---
+
+## Contribution
+
+Contributions are welcome via **Issues** or **Pull Requests**. Please follow the code style and include necessary explanations and tests.
+
+---
 
 ## Prerequisites
 
@@ -84,7 +160,3 @@ A comprehensive system for managing exam questions, generating papers, and condu
 - **Question Bank**: Browse and manage questions.
 - **Paper Generation**: Automatically generate exam papers based on criteria.
 - **Online Exam**: Take exams with auto-save and submission.
-
-## API Documentation
-
-The OpenAPI specification is located in `specs/001-specify-exam-platform/contracts/openapi.yaml`.
