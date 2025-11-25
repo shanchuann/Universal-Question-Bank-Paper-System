@@ -15,8 +15,12 @@
     "generate-api": "openapi-generator-cli generate -i ../specs/001-specify-exam-platform/contracts/openapi.yaml -g typescript-axios -o src/api/generated --additional-properties=supportsES6=true,npmVersion=10.9.0,typescriptThreePlus=true"
   },
   "dependencies": {
+    "@vueup/vue-quill": "^1.2.0",
     "axios": "^1.13.2",
+    "chart.js": "^4.5.1",
+    "katex": "^0.16.25",
     "vue": "^3.5.24",
+    "vue-chartjs": "^5.3.3",
     "vue-router": "^4.6.3"
   },
   "devDependencies": {

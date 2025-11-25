@@ -46,10 +46,14 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	runtimeOnly("com.h2database:h2")
 	testRuntimeOnly("com.h2database:h2")
 
 	implementation("org.openapitools:jackson-databind-nullable:0.2.6")
 	implementation("io.swagger.core.v3:swagger-annotations:2.2.20")
+	
+	// Apache POI for Word/Excel processing
+	implementation("org.apache.poi:poi-ooxml:5.2.5")
 }
 
 spotless {

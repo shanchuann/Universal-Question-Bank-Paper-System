@@ -242,6 +242,55 @@ export interface ExamQuestion {
      * @memberof ExamQuestion
      */
     'score'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof ExamQuestion
+     */
+    'userAnswer'?: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof ExamQuestion
+     */
+    'awardedScore'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof ExamQuestion
+     */
+    'graderNotes'?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof ExamQuestion
+     */
+    'isCorrect'?: boolean;
+}
+/**
+ * 
+ * @export
+ * @interface ExamSessionPage
+ */
+export interface ExamSessionPage {
+    /**
+     * 
+     * @type {Array<ExamSessionResponse>}
+     * @memberof ExamSessionPage
+     */
+    'content'?: Array<ExamSessionResponse>;
+    /**
+     * 
+     * @type {number}
+     * @memberof ExamSessionPage
+     */
+    'totalElements'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof ExamSessionPage
+     */
+    'totalPages'?: number;
 }
 /**
  * 
@@ -261,6 +310,18 @@ export interface ExamSessionResponse {
      * @memberof ExamSessionResponse
      */
     'paperVersionId'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ExamSessionResponse
+     */
+    'userId'?: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof ExamSessionResponse
+     */
+    'score'?: number;
     /**
      * 
      * @type {string}
@@ -310,6 +371,49 @@ export interface KnowledgeMetric {
      * @memberof KnowledgeMetric
      */
     'masteryPercent'?: number;
+}
+/**
+ * 
+ * @export
+ * @interface KnowledgePoint
+ */
+export interface KnowledgePoint {
+    /**
+     * 
+     * @type {string}
+     * @memberof KnowledgePoint
+     */
+    'id'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof KnowledgePoint
+     */
+    'name'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof KnowledgePoint
+     */
+    'description'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof KnowledgePoint
+     */
+    'parentId'?: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof KnowledgePoint
+     */
+    'sortOrder'?: number;
+    /**
+     * 
+     * @type {Array<KnowledgePoint>}
+     * @memberof KnowledgePoint
+     */
+    'children'?: Array<KnowledgePoint>;
 }
 /**
  * 
@@ -779,6 +883,12 @@ export interface QuestionResponse {
      * @type {string}
      * @memberof QuestionResponse
      */
+    'stem'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof QuestionResponse
+     */
     'type'?: string;
     /**
      * 
@@ -800,16 +910,16 @@ export interface QuestionResponse {
     'tags'?: Array<string>;
     /**
      * 
-     * @type {string}
+     * @type {Array<string>}
      * @memberof QuestionResponse
      */
-    'createdAt'?: string;
+    'knowledgePointIds'?: Array<string>;
     /**
      * 
      * @type {string}
      * @memberof QuestionResponse
      */
-    'stem'?: string;
+    'createdAt'?: string;
     /**
      * 
      * @type {Array<QuestionOption>}
@@ -977,6 +1087,12 @@ export interface QuestionSummary {
      * @type {string}
      * @memberof QuestionSummary
      */
+    'stem'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof QuestionSummary
+     */
     'type'?: string;
     /**
      * 
@@ -996,6 +1112,12 @@ export interface QuestionSummary {
      * @memberof QuestionSummary
      */
     'tags'?: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof QuestionSummary
+     */
+    'knowledgePointIds'?: Array<string>;
     /**
      * 
      * @type {string}
@@ -1889,6 +2011,98 @@ export const ExamApiAxiosParamCreator = function (configuration?: Configuration)
         },
         /**
          * 
+         * @summary List exam sessions (for grading).
+         * @param {string} [paperId] 
+         * @param {string} [userId] 
+         * @param {number} [page] Zero-based page index.
+         * @param {number} [size] Page size.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        examsGet: async (paperId?: string, userId?: string, page?: number, size?: number, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/exams`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (paperId !== undefined) {
+                localVarQueryParameter['paperId'] = paperId;
+            }
+
+            if (userId !== undefined) {
+                localVarQueryParameter['userId'] = userId;
+            }
+
+            if (page !== undefined) {
+                localVarQueryParameter['page'] = page;
+            }
+
+            if (size !== undefined) {
+                localVarQueryParameter['size'] = size;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Get exam session details.
+         * @param {string} id 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        examsIdGet: async (id: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('examsIdGet', 'id', id)
+            const localVarPath = `/exams/{id}`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @summary Persist autosave snapshot (≤30s cadence).
          * @param {string} sessionId 
          * @param {AutosaveRequest} autosaveRequest 
@@ -2074,6 +2288,31 @@ export const ExamApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @summary List exam sessions (for grading).
+         * @param {string} [paperId] 
+         * @param {string} [userId] 
+         * @param {number} [page] Zero-based page index.
+         * @param {number} [size] Page size.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async examsGet(paperId?: string, userId?: string, page?: number, size?: number, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ExamSessionPage>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.examsGet(paperId, userId, page, size, options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+        /**
+         * 
+         * @summary Get exam session details.
+         * @param {string} id 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async examsIdGet(id: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ExamSessionResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.examsIdGet(id, options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+        /**
+         * 
          * @summary Persist autosave snapshot (≤30s cadence).
          * @param {string} sessionId 
          * @param {AutosaveRequest} autosaveRequest 
@@ -2137,6 +2376,29 @@ export const ExamApiFactory = function (configuration?: Configuration, basePath?
          */
         examsAccessCodeStartPost(accessCode: string, options?: any): AxiosPromise<ExamSessionResponse> {
             return localVarFp.examsAccessCodeStartPost(accessCode, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary List exam sessions (for grading).
+         * @param {string} [paperId] 
+         * @param {string} [userId] 
+         * @param {number} [page] Zero-based page index.
+         * @param {number} [size] Page size.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        examsGet(paperId?: string, userId?: string, page?: number, size?: number, options?: any): AxiosPromise<ExamSessionPage> {
+            return localVarFp.examsGet(paperId, userId, page, size, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Get exam session details.
+         * @param {string} id 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        examsIdGet(id: string, options?: any): AxiosPromise<ExamSessionResponse> {
+            return localVarFp.examsIdGet(id, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -2204,6 +2466,33 @@ export class ExamApi extends BaseAPI {
 
     /**
      * 
+     * @summary List exam sessions (for grading).
+     * @param {string} [paperId] 
+     * @param {string} [userId] 
+     * @param {number} [page] Zero-based page index.
+     * @param {number} [size] Page size.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ExamApi
+     */
+    public examsGet(paperId?: string, userId?: string, page?: number, size?: number, options?: AxiosRequestConfig) {
+        return ExamApiFp(this.configuration).examsGet(paperId, userId, page, size, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Get exam session details.
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof ExamApi
+     */
+    public examsIdGet(id: string, options?: AxiosRequestConfig) {
+        return ExamApiFp(this.configuration).examsIdGet(id, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
      * @summary Persist autosave snapshot (≤30s cadence).
      * @param {string} sessionId 
      * @param {AutosaveRequest} autosaveRequest 
@@ -2250,6 +2539,332 @@ export class ExamApi extends BaseAPI {
      */
     public examsSessionIdSubmitPost(sessionId: string, options?: AxiosRequestConfig) {
         return ExamApiFp(this.configuration).examsSessionIdSubmitPost(sessionId, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+/**
+ * KnowledgePointApi - axios parameter creator
+ * @export
+ */
+export const KnowledgePointApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * 
+         * @summary Get all knowledge points as a tree structure.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        knowledgePointsGet: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/knowledge-points`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Delete a knowledge point.
+         * @param {string} id 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        knowledgePointsIdDelete: async (id: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('knowledgePointsIdDelete', 'id', id)
+            const localVarPath = `/knowledge-points/{id}`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Update a knowledge point.
+         * @param {string} id 
+         * @param {KnowledgePoint} knowledgePoint 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        knowledgePointsIdPut: async (id: string, knowledgePoint: KnowledgePoint, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'id' is not null or undefined
+            assertParamExists('knowledgePointsIdPut', 'id', id)
+            // verify required parameter 'knowledgePoint' is not null or undefined
+            assertParamExists('knowledgePointsIdPut', 'knowledgePoint', knowledgePoint)
+            const localVarPath = `/knowledge-points/{id}`
+                .replace(`{${"id"}}`, encodeURIComponent(String(id)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PUT', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(knowledgePoint, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Create a new knowledge point.
+         * @param {KnowledgePoint} knowledgePoint 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        knowledgePointsPost: async (knowledgePoint: KnowledgePoint, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'knowledgePoint' is not null or undefined
+            assertParamExists('knowledgePointsPost', 'knowledgePoint', knowledgePoint)
+            const localVarPath = `/knowledge-points`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication bearerAuth required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(knowledgePoint, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * KnowledgePointApi - functional programming interface
+ * @export
+ */
+export const KnowledgePointApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = KnowledgePointApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * 
+         * @summary Get all knowledge points as a tree structure.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async knowledgePointsGet(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<KnowledgePoint>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.knowledgePointsGet(options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+        /**
+         * 
+         * @summary Delete a knowledge point.
+         * @param {string} id 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async knowledgePointsIdDelete(id: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.knowledgePointsIdDelete(id, options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+        /**
+         * 
+         * @summary Update a knowledge point.
+         * @param {string} id 
+         * @param {KnowledgePoint} knowledgePoint 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async knowledgePointsIdPut(id: string, knowledgePoint: KnowledgePoint, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<KnowledgePoint>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.knowledgePointsIdPut(id, knowledgePoint, options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+        /**
+         * 
+         * @summary Create a new knowledge point.
+         * @param {KnowledgePoint} knowledgePoint 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async knowledgePointsPost(knowledgePoint: KnowledgePoint, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<KnowledgePoint>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.knowledgePointsPost(knowledgePoint, options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+    }
+};
+
+/**
+ * KnowledgePointApi - factory interface
+ * @export
+ */
+export const KnowledgePointApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = KnowledgePointApiFp(configuration)
+    return {
+        /**
+         * 
+         * @summary Get all knowledge points as a tree structure.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        knowledgePointsGet(options?: any): AxiosPromise<Array<KnowledgePoint>> {
+            return localVarFp.knowledgePointsGet(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Delete a knowledge point.
+         * @param {string} id 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        knowledgePointsIdDelete(id: string, options?: any): AxiosPromise<void> {
+            return localVarFp.knowledgePointsIdDelete(id, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Update a knowledge point.
+         * @param {string} id 
+         * @param {KnowledgePoint} knowledgePoint 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        knowledgePointsIdPut(id: string, knowledgePoint: KnowledgePoint, options?: any): AxiosPromise<KnowledgePoint> {
+            return localVarFp.knowledgePointsIdPut(id, knowledgePoint, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Create a new knowledge point.
+         * @param {KnowledgePoint} knowledgePoint 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        knowledgePointsPost(knowledgePoint: KnowledgePoint, options?: any): AxiosPromise<KnowledgePoint> {
+            return localVarFp.knowledgePointsPost(knowledgePoint, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * KnowledgePointApi - object-oriented interface
+ * @export
+ * @class KnowledgePointApi
+ * @extends {BaseAPI}
+ */
+export class KnowledgePointApi extends BaseAPI {
+    /**
+     * 
+     * @summary Get all knowledge points as a tree structure.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof KnowledgePointApi
+     */
+    public knowledgePointsGet(options?: AxiosRequestConfig) {
+        return KnowledgePointApiFp(this.configuration).knowledgePointsGet(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Delete a knowledge point.
+     * @param {string} id 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof KnowledgePointApi
+     */
+    public knowledgePointsIdDelete(id: string, options?: AxiosRequestConfig) {
+        return KnowledgePointApiFp(this.configuration).knowledgePointsIdDelete(id, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Update a knowledge point.
+     * @param {string} id 
+     * @param {KnowledgePoint} knowledgePoint 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof KnowledgePointApi
+     */
+    public knowledgePointsIdPut(id: string, knowledgePoint: KnowledgePoint, options?: AxiosRequestConfig) {
+        return KnowledgePointApiFp(this.configuration).knowledgePointsIdPut(id, knowledgePoint, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Create a new knowledge point.
+     * @param {KnowledgePoint} knowledgePoint 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof KnowledgePointApi
+     */
+    public knowledgePointsPost(knowledgePoint: KnowledgePoint, options?: AxiosRequestConfig) {
+        return KnowledgePointApiFp(this.configuration).knowledgePointsPost(knowledgePoint, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
