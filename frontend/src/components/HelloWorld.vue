@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { authState } from '@/states/authState'
 import axios from 'axios'
 
@@ -23,7 +23,7 @@ const stats = ref({
 const leaderboard = ref<any[]>([])
 
 const fetchStats = async () => {
-  if (authState.isAuthenticated && !isTeacher.value && !isAdmin.value) {
+  if (authState.isAuthenticated && !isTeacher.value && !isAdmin.value && authState.user.id) {
     try {
       const res = await axios.get(`/api/stats/me?userId=${authState.user.id}`)
       stats.value = res.data
@@ -45,8 +45,16 @@ const fetchLeaderboard = async () => {
 }
 
 onMounted(() => {
-  fetchStats()
+  if (authState.user.id) {
+    fetchStats()
+  }
   fetchLeaderboard()
+})
+
+watch(() => authState.user.id, (newId) => {
+  if (newId) {
+    fetchStats()
+  }
 })
 </script>
 
@@ -203,6 +211,16 @@ onMounted(() => {
           </div>
         </router-link>
       </template>
+
+      <router-link v-if="authState.isAuthenticated" to="/knowledge-point-manage" class="nav-card google-card">
+        <div class="icon-circle purple-bg">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-.29 0-.58-.03-.86-.08 3.54-.49 6.36-3.31 6.85-6.85.05-.28.08-.57.08-.86h-2c0 .29-.03.58-.08.86-.49 3.54-3.31 6.36-6.85 6.85-.28.05-.57.08-.86.08zm1-15.93c.29 0 .58.03.86.08-3.54.49-6.36 3.31-6.85 6.85-.05.28-.08.57-.08.86h2c0-.29.03-.58.08-.86.49-3.54 3.31-6.36 6.85-6.85.28-.05.57-.08.86-.08zm-1 4.93c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path></svg>
+        </div>
+        <div class="nav-text">
+          <h3>Knowledge Points</h3>
+          <p>Manage knowledge points</p>
+        </div>
+      </router-link>
     </div>
   </div>
 </template>
@@ -300,6 +318,7 @@ onMounted(() => {
 .red-bg { background-color: #fce8e6; color: #c5221f; }
 .yellow-bg { background-color: #fef7e0; color: #ea8600; }
 .green-bg { background-color: #e6f4ea; color: #137333; }
+.purple-bg { background-color: #f3e5ff; color: #6f2c91; }
 
 .nav-card h3 {
   margin: 0 0 8px 0;

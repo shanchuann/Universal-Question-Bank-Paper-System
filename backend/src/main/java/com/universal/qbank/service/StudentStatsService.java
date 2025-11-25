@@ -14,20 +14,26 @@ public class StudentStatsService {
   @Autowired private StudentStatsRepository studentStatsRepository;
 
   public StudentStatsEntity getStatsByUserId(String userId) {
+    if (userId == null || userId.trim().isEmpty()) {
+      return new StudentStatsEntity();
+    }
     return studentStatsRepository
         .findByUserId(userId)
         .orElseGet(
             () -> {
               StudentStatsEntity newStats = new StudentStatsEntity();
               newStats.setUserId(userId);
-              return studentStatsRepository.save(newStats);
+              // Do not save here. Only save when there is actual data update (e.g. exam submission)
+              return newStats;
             });
   }
 
   public List<StudentStatsEntity> getLeaderboard(int limit) {
     // Sort by correct answers descending, then total questions descending
+    // Only include students who have answered at least one question
     return studentStatsRepository
-        .findAll(
+        .findByTotalQuestionsAnsweredGreaterThan(
+            0L,
             PageRequest.of(
                 0,
                 limit,

@@ -298,7 +298,12 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
             </td>
           </tr>
           <tr v-if="questions.length === 0">
-            <td colspan="7" class="empty-state">No questions found.</td>
+            <td colspan="7" class="empty-state">
+              <div class="empty-content">
+                <p>暂无试题</p>
+                <router-link to="/questions/add" class="google-btn text-btn">添加试题</router-link>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>

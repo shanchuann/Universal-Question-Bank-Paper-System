@@ -279,7 +279,7 @@ const handleSubmit = async () => {
                 Remove
               </button>
             </div>
-            <button type="button" @click="addOption" class="secondary-btn small-btn">+ Add Option</button>
+            <button type="button" @click="addOption" class="secondary-btn small-btn">Add Option</button>
           </div>
         </div>
 
@@ -358,108 +358,165 @@ const handleSubmit = async () => {
 </template>
 
 <style scoped>
+/* Google Material 风格美化和细节优化 */
 .form-card {
   max-width: 700px;
-  margin: 0 auto;
+  margin: 32px auto;
   padding: 40px;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 4px 24px rgba(60,64,67,0.12), 0 1.5px 6px rgba(60,64,67,0.08);
 }
-
 .card-header {
   text-align: center;
   margin-bottom: 32px;
 }
-
 .card-header h1 {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 700;
   margin-bottom: 8px;
+  letter-spacing: 0.5px;
 }
-
 .subtitle {
-  color: #86868b;
+  color: #5f6368;
   font-size: 17px;
 }
-
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 20px;
+  gap: 24px;
+  margin-bottom: 12px;
 }
-
 .form-group {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
-
 .form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 500;
-  font-size: 14px;
-  color: #1d1d1f;
+  margin-bottom: 6px;
 }
-
+.form-group input[type="text"],
+.form-group .select-wrapper,
+.form-group select,
+.form-group .google-select {
+  min-height: 44px;
+  box-sizing: border-box;
+}
+.options-container {
+  margin-bottom: 12px;
+}
+.editor-container {
+  min-height: 140px;
+}
+.primary-btn {
+  margin-top: 18px;
+}
 .select-wrapper {
   position: relative;
 }
-
-.options-container {
-  background-color: #f9f9f9;
-  padding: 20px;
-  border-radius: 12px;
+.select-wrapper select {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1.5px solid #d2d2d7;
+  background: #f7f8fa;
+  font-size: 15px;
+  transition: border-color 0.2s;
 }
-
+.select-wrapper select:focus {
+  border-color: #4285f4;
+  outline: none;
+}
+.options-container {
+  background-color: #f1f3f4;
+  padding: 20px;
+  border-radius: 14px;
+  box-shadow: 0 1px 4px rgba(60,64,67,0.08);
+}
 .option-row {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
 }
-
 .option-label {
   font-weight: 600;
-  color: #86868b;
+  color: #5f6368;
   width: 24px;
 }
-
-.icon-btn {
-  background: none;
+.option-row input {
+  flex: 1;
+}
+.remove-btn {
+  align-self: center;
+  min-width: 100px;
+  text-align: center;
+  margin-left: 8px;
+}
+.option-row input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #d2d2d7;
+  background: #fff;
+  font-size: 15px;
+  transition: border-color 0.2s;
+}
+.option-row input:focus {
+  border-color: #4285f4;
+  outline: none;
+}
+.remove-btn {
+  color: #fff;
+  background: #ea4335;
   border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
   cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(60,64,67,0.08);
+  transition: background 0.2s, box-shadow 0.2s;
 }
-
-.delete-btn {
-  color: #ff3b30;
+.remove-btn:hover {
+  background-color: #d93025;
+  box-shadow: 0 2px 8px rgba(234,67,53,0.08);
 }
-
-.delete-btn:hover {
-  background-color: #ffe5e5;
-}
-
 .small-btn {
   font-size: 13px;
-  padding: 6px 12px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #d2d2d7;
+  color: #4285f4;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
 }
-
-.hint {
-  display: block;
-  margin-top: 6px;
-  font-size: 12px;
-  color: #86868b;
+.small-btn:hover {
+  background: #e3f2fd;
+  box-shadow: 0 2px 8px rgba(66,133,244,0.08);
 }
-
-.full-width {
+.primary-btn {
   width: 100%;
   justify-content: center;
-  padding: 12px;
-  font-size: 16px;
+  padding: 14px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(90deg,#4285f4 0%,#1a73e8 100%);
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(66,133,244,0.12);
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s;
 }
-
+.primary-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(66,133,244,0.18);
+}
+.primary-btn:disabled {
+  background: #bcdffb;
+  color: #fff;
+  cursor: not-allowed;
+}
 .message {
   margin-top: 20px;
   padding: 12px;
@@ -467,54 +524,97 @@ const handleSubmit = async () => {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 14px;
+  font-size: 15px;
+  box-shadow: 0 1px 4px rgba(60,64,67,0.08);
 }
-
 .success {
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: #e6f4ea;
+  color: #188038;
 }
-
 .error {
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: #fce8e6;
+  color: #d93025;
 }
-
 .editor-container {
-  border: 1px solid #d2d2d7;
-  border-radius: 8px;
+  border: 1.5px solid #d2d2d7;
+  border-radius: 12px;
   overflow: hidden;
   background: #fff;
+  box-shadow: 0 1px 4px rgba(60,64,67,0.08);
+  min-height: 120px;
 }
-
-.remove-btn {
-  color: #ff3b30;
-  border: 1px solid #ff3b30;
-  background: transparent;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.remove-btn:hover {
-  background-color: #fff0f0;
-}
-
-.editor-toolbar-extra {
-  margin-bottom: 8px;
+.ql-toolbar.ql-snow {
+  border-radius: 8px 8px 0 0;
+  background: #f7f8fa;
+  border: none;
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 0 8px;
+}
+.ql-toolbar.ql-snow > .ql-formats {
+  margin-right: 0;
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.ql-toolbar.ql-snow button,
+.ql-toolbar.ql-snow .ql-picker {
+  margin: 0 2px;
+}
+.ql-toolbar.ql-snow .ql-video,
+.ql-toolbar.ql-snow .ql-code-block,
+.ql-toolbar.ql-snow .ql-color,
+.ql-toolbar.ql-snow .ql-background,
+.ql-toolbar.ql-snow .ql-size,
+.ql-toolbar.ql-snow .ql-font {
+  display: none !important;
+}
+.ql-container.ql-snow {
+  border-radius: 0 0 8px 8px;
+  min-height: 80px;
+  font-size: 16px;
+}
+.google-select {
+  border-radius: 8px;
+  border: 1.5px solid #d2d2d7;
+  background: #f7f8fa;
+  font-size: 15px;
+  padding: 10px 14px;
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  overflow-y: auto;
+}
+.google-select option {
+  padding: 8px 12px;
+}
+
+/* 进一步美化 Subject ID 和 Tags 输入框 */
+.form-group input[type="text"] {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1.5px solid #d2d2d7;
+  background: #f7f8fa;
+  font-size: 16px;
+  margin-bottom: 6px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 4px rgba(60,64,67,0.08);
+}
+.form-group input[type="text"]:focus {
+  border-color: #4285f4;
+  outline: none;
+  box-shadow: 0 2px 8px rgba(66,133,244,0.12);
 }
 
 @media (max-width: 768px) {
   .form-grid {
     grid-template-columns: 1fr;
   }
-  
   .form-card {
-    padding: 24px;
+    padding: 18px;
   }
 }
 </style>

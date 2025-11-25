@@ -24,6 +24,8 @@ public class ExamService {
 
   @Autowired private QuestionRepository questionRepository;
 
+  @Autowired private com.universal.qbank.repository.UserRepository userRepository;
+
   @Autowired private com.universal.qbank.repository.StudentStatsRepository studentStatsRepository;
 
   private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
@@ -125,6 +127,15 @@ public class ExamService {
       StudentStatsEntity stats =
           studentStatsRepository.findByUserId(exam.getUserId()).orElse(new StudentStatsEntity());
       stats.setUserId(exam.getUserId());
+
+      // Try to fetch nickname
+      userRepository
+          .findById(exam.getUserId())
+          .ifPresent(
+              u -> {
+                stats.setNickname(u.getNickname() != null ? u.getNickname() : u.getUsername());
+              });
+
       stats.setTotalQuestionsAnswered(stats.getTotalQuestionsAnswered() + total);
       stats.setCorrectAnswers(stats.getCorrectAnswers() + correctCount);
 
