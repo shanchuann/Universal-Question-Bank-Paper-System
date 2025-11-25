@@ -1,7 +1,11 @@
 <p align="center">
    <img src="https://s2.loli.net/2025/11/25/vAmlECjbOaMWdif.png" alt="System Screenshot" width="600" />
 </p>
-
+<div align="center">
+   <img src="https://img.shields.io/badge/project-exam--system-blue" />
+   <img src="https://img.shields.io/badge/backend-spring--boot-green" />
+   <img src="https://img.shields.io/badge/frontend-vue3-brightgreen" />
+</div>
 A comprehensive system for managing exam questions, generating papers, and conducting online exams.
 
 ## Project Structure
