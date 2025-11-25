@@ -47,6 +47,7 @@ dependencies {
 	testImplementation("org.springframework.security:spring-security-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	runtimeOnly("com.h2database:h2")
+	runtimeOnly("org.postgresql:postgresql")
 	testRuntimeOnly("com.h2database:h2")
 
 	implementation("org.openapitools:jackson-databind-nullable:0.2.6")
@@ -148,4 +149,18 @@ tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
 
 tasks.named("check") {
 	dependsOn("jacocoTestCoverageVerification")
+}
+
+tasks.withType<org.springframework.boot.gradle.tasks.run.BootRun> {
+	val envFile = file("../.env")
+	if (envFile.exists()) {
+		envFile.readLines().forEach { line ->
+			if (line.isNotBlank() && !line.startsWith("#")) {
+				val parts = line.split("=", limit = 2)
+				if (parts.size == 2) {
+					environment(parts[0].trim(), parts[1].trim())
+				}
+			}
+		}
+	}
 }

@@ -15,6 +15,11 @@ const filterUserId = ref('')
 
 const router = useRouter()
 
+const isStudent = (exam: ExamSessionResponse) => {
+  // 假设学生角色为 'USER'，教师为 'ADMIN'，可根据实际后端返回字段调整
+  return (exam as any).role === 'USER' || !(exam as any).role;
+}
+
 const fetchExams = async () => {
   loading.value = true
   error.value = ''
@@ -25,8 +30,9 @@ const fetchExams = async () => {
       page.value,
       size.value
     )
-    exams.value = response.data.content || []
-    totalElements.value = response.data.totalElements || 0
+    // 只显示学生答卷
+    exams.value = (response.data.content || []).filter(isStudent)
+    totalElements.value = exams.value.length
   } catch (err) {
     error.value = 'Failed to load exams.'
     console.error(err)
@@ -90,7 +96,9 @@ onMounted(fetchExams)
           <tr v-for="exam in exams" :key="exam.sessionId">
             <td class="id-col">{{ exam.sessionId }}</td>
             <td>{{ exam.paperVersionId }}</td>
-            <td>{{ (exam as any).userId }}</td>
+            <td>
+              {{ (exam as any).nickname || (exam as any).username || (exam as any).userId }}
+            </td>
             <td>{{ (exam as any).score }}%</td>
             <td>
                 <span class="chip" :class="(exam as any).score !== null ? 'easy' : 'hard'">

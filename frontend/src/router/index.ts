@@ -122,6 +122,11 @@ const router = createRouter({
       path: '/admin/system',
       name: 'admin-system',
       component: () => import('../views/AdminSystemView.vue')
+    },
+    {
+      path: '/knowledge-point-manage',
+      name: 'knowledge-point-manage',
+      component: () => import('../views/KnowledgePointManageView.vue')
     }
   ]
 })
