@@ -52,4 +52,35 @@ public class UserService {
     }
     return userRepository.save(user);
   }
+
+  public org.springframework.data.domain.Page<UserEntity> getAllUsers(
+      org.springframework.data.domain.Pageable pageable) {
+    return userRepository.findAll(pageable);
+  }
+
+  public void deleteUser(String id) {
+    userRepository.deleteById(id);
+  }
+
+  public UserEntity updateUserStatus(String id, String status) {
+    UserEntity user =
+        userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+    user.setStatus(status);
+    return userRepository.save(user);
+  }
+
+  public UserEntity updateUserRole(String id, String role) {
+    UserEntity user =
+        userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+    user.setRole(role);
+    return userRepository.save(user);
+  }
+
+  public org.springframework.data.domain.Page<UserEntity> getUsers(
+      String role, org.springframework.data.domain.Pageable pageable) {
+    if (role != null && !role.isEmpty()) {
+      return userRepository.findByRole(role, pageable);
+    }
+    return userRepository.findAll(pageable);
+  }
 }

@@ -22,7 +22,9 @@ public class QuestionEntity {
   @ElementCollection private List<String> tags;
 
   @ElementCollection(fetch = FetchType.EAGER)
-  @CollectionTable(name = "question_knowledge_points", joinColumns = @JoinColumn(name = "question_id"))
+  @CollectionTable(
+      name = "question_knowledge_points",
+      joinColumns = @JoinColumn(name = "question_id"))
   @Column(name = "knowledge_point_id")
   private List<String> knowledgePointIds;
 

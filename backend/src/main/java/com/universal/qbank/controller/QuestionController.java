@@ -138,18 +138,18 @@ public class QuestionController implements QuestionBankApi {
             predicates.add(cb.like(root.get("stem"), likePattern));
           }
           if (knowledgePointIds != null && !knowledgePointIds.isEmpty()) {
-             // Join or check if list contains any of the IDs
-             // Since knowledgePointIds is ElementCollection, we can use join
-             // predicates.add(root.join("knowledgePointIds").in(knowledgePointIds));
-             // But this might cause duplicates if multiple match. Distinct needed.
-             // Or simpler:
-             // predicates.add(root.join("knowledgePointIds").in(knowledgePointIds));
-             // query.distinct(true);
-             
-             // For now, let's assume exact match or contains logic.
-             // JPA Criteria for ElementCollection 'in'
-             predicates.add(root.join("knowledgePointIds").in(knowledgePointIds));
-             query.distinct(true);
+            // Join or check if list contains any of the IDs
+            // Since knowledgePointIds is ElementCollection, we can use join
+            // predicates.add(root.join("knowledgePointIds").in(knowledgePointIds));
+            // But this might cause duplicates if multiple match. Distinct needed.
+            // Or simpler:
+            // predicates.add(root.join("knowledgePointIds").in(knowledgePointIds));
+            // query.distinct(true);
+
+            // For now, let's assume exact match or contains logic.
+            // JPA Criteria for ElementCollection 'in'
+            predicates.add(root.join("knowledgePointIds").in(knowledgePointIds));
+            query.distinct(true);
           }
 
           return cb.and(predicates.toArray(new Predicate[0]));

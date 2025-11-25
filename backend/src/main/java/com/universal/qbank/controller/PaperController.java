@@ -29,7 +29,8 @@ public class PaperController {
   @GetMapping
   public ResponseEntity<List<PaperResponse>> listPapers() {
     List<PaperEntity> papers = paperRepository.findAll();
-    List<PaperResponse> response = papers.stream().map(this::toPaperResponse).collect(Collectors.toList());
+    List<PaperResponse> response =
+        papers.stream().map(this::toPaperResponse).collect(Collectors.toList());
     response.forEach(p -> System.out.println("DEBUG: Returning paper with ID: " + p.id));
     return ResponseEntity.ok(response);
   }
@@ -52,72 +53,148 @@ public class PaperController {
   public static class PaperResponse {
     @JsonProperty("id")
     public Long id;
+
     @JsonProperty("title")
     public String title;
+
     @JsonProperty("createdAt")
     public OffsetDateTime createdAt;
+
     @JsonProperty("questions")
     public List<QuestionPreview> questions;
+
     @JsonProperty("items")
     public List<PaperItemDTO> items;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
-    
-    public OffsetDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
-    
-    public List<QuestionPreview> getQuestions() { return questions; }
-    public void setQuestions(List<QuestionPreview> questions) { this.questions = questions; }
-    
-    public List<PaperItemDTO> getItems() { return items; }
-    public void setItems(List<PaperItemDTO> items) { this.items = items; }
+    public Long getId() {
+      return id;
+    }
+
+    public void setId(Long id) {
+      this.id = id;
+    }
+
+    public String getTitle() {
+      return title;
+    }
+
+    public void setTitle(String title) {
+      this.title = title;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+      return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+      this.createdAt = createdAt;
+    }
+
+    public List<QuestionPreview> getQuestions() {
+      return questions;
+    }
+
+    public void setQuestions(List<QuestionPreview> questions) {
+      this.questions = questions;
+    }
+
+    public List<PaperItemDTO> getItems() {
+      return items;
+    }
+
+    public void setItems(List<PaperItemDTO> items) {
+      this.items = items;
+    }
   }
 
   public static class QuestionPreview {
     @JsonProperty("id")
     public String id;
+
     @JsonProperty("subjectId")
     public String subjectId;
+
     @JsonProperty("type")
     public String type;
+
     @JsonProperty("difficulty")
     public String difficulty;
+
     @JsonProperty("status")
     public String status;
+
     @JsonProperty("tags")
     public List<String> tags;
+
     @JsonProperty("createdAt")
     public OffsetDateTime createdAt;
+
     @JsonProperty("stem")
     public String stem;
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-    
-    public String getSubjectId() { return subjectId; }
-    public void setSubjectId(String subjectId) { this.subjectId = subjectId; }
-    
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
-    
-    public String getDifficulty() { return difficulty; }
-    public void setDifficulty(String difficulty) { this.difficulty = difficulty; }
-    
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-    
-    public List<String> getTags() { return tags; }
-    public void setTags(List<String> tags) { this.tags = tags; }
-    
-    public OffsetDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
-    
-    public String getStem() { return stem; }
-    public void setStem(String stem) { this.stem = stem; }
+    public String getId() {
+      return id;
+    }
+
+    public void setId(String id) {
+      this.id = id;
+    }
+
+    public String getSubjectId() {
+      return subjectId;
+    }
+
+    public void setSubjectId(String subjectId) {
+      this.subjectId = subjectId;
+    }
+
+    public String getType() {
+      return type;
+    }
+
+    public void setType(String type) {
+      this.type = type;
+    }
+
+    public String getDifficulty() {
+      return difficulty;
+    }
+
+    public void setDifficulty(String difficulty) {
+      this.difficulty = difficulty;
+    }
+
+    public String getStatus() {
+      return status;
+    }
+
+    public void setStatus(String status) {
+      this.status = status;
+    }
+
+    public List<String> getTags() {
+      return tags;
+    }
+
+    public void setTags(List<String> tags) {
+      this.tags = tags;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+      return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+      this.createdAt = createdAt;
+    }
+
+    public String getStem() {
+      return stem;
+    }
+
+    public void setStem(String stem) {
+      this.stem = stem;
+    }
   }
 
   public static class PaperItemDTO {
@@ -126,17 +203,37 @@ public class PaperController {
     public String sectionTitle;
     public Double score;
 
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
-    
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-    
-    public String getSectionTitle() { return sectionTitle; }
-    public void setSectionTitle(String sectionTitle) { this.sectionTitle = sectionTitle; }
-    
-    public Double getScore() { return score; }
-    public void setScore(Double score) { this.score = score; }
+    public String getType() {
+      return type;
+    }
+
+    public void setType(String type) {
+      this.type = type;
+    }
+
+    public String getId() {
+      return id;
+    }
+
+    public void setId(String id) {
+      this.id = id;
+    }
+
+    public String getSectionTitle() {
+      return sectionTitle;
+    }
+
+    public void setSectionTitle(String sectionTitle) {
+      this.sectionTitle = sectionTitle;
+    }
+
+    public Double getScore() {
+      return score;
+    }
+
+    public void setScore(Double score) {
+      this.score = score;
+    }
   }
 
   @GetMapping("/{id}/export/word")
@@ -147,7 +244,10 @@ public class PaperController {
       return ResponseEntity.ok()
           .header(
               org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
-              "attachment; filename=\"paper_" + id + (teacher ? "_teacher" : "_student") + ".docx\"")
+              "attachment; filename=\"paper_"
+                  + id
+                  + (teacher ? "_teacher" : "_student")
+                  + ".docx\"")
           .contentType(
               org.springframework.http.MediaType.parseMediaType(
                   "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))

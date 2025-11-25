@@ -102,16 +102,18 @@ public class ExamController {
       @RequestParam(required = false) String userId,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "10") int size) {
-    
-    org.springframework.data.domain.Page<ExamEntity> pageResult = examService.listExams(paperId, userId, page, size);
-    
+
+    org.springframework.data.domain.Page<ExamEntity> pageResult =
+        examService.listExams(paperId, userId, page, size);
+
     ExamSessionPage resp = new ExamSessionPage();
     resp.setTotalElements((int) pageResult.getTotalElements());
     resp.setTotalPages(pageResult.getTotalPages());
-    resp.setContent(pageResult.getContent().stream()
-        .map(this::toExamSessionResponse)
-        .collect(Collectors.toList()));
-        
+    resp.setContent(
+        pageResult.getContent().stream()
+            .map(this::toExamSessionResponse)
+            .collect(Collectors.toList()));
+
     return ResponseEntity.ok(resp);
   }
 
@@ -130,53 +132,54 @@ public class ExamController {
   }
 
   private ExamSessionResponse toExamSessionResponse(ExamEntity exam) {
-      ExamSessionResponse resp = new ExamSessionResponse();
-      resp.setSessionId(String.valueOf(exam.getId()));
-      resp.setPaperVersionId(String.valueOf(exam.getPaperId()));
-      resp.setUserId(exam.getUserId());
-      resp.setScore(exam.getScore());
-      resp.setStartAt(exam.getStartTime());
-      resp.setEndAt(exam.getEndTime());
-      
-      PaperEntity paper = paperRepository.findById(exam.getPaperId()).orElseThrow();
-      List<QuestionEntity> questions = questionRepository.findAllById(paper.getQuestionIds());
-      
-      Map<String, ExamRecordEntity> recordMap = new java.util.HashMap<>();
-      if (exam.getRecords() != null) {
-          for (ExamRecordEntity r : exam.getRecords()) {
-              recordMap.put(r.getQuestionId(), r);
-          }
+    ExamSessionResponse resp = new ExamSessionResponse();
+    resp.setSessionId(String.valueOf(exam.getId()));
+    resp.setPaperVersionId(String.valueOf(exam.getPaperId()));
+    resp.setUserId(exam.getUserId());
+    resp.setScore(exam.getScore());
+    resp.setStartAt(exam.getStartTime());
+    resp.setEndAt(exam.getEndTime());
+
+    PaperEntity paper = paperRepository.findById(exam.getPaperId()).orElseThrow();
+    List<QuestionEntity> questions = questionRepository.findAllById(paper.getQuestionIds());
+
+    Map<String, ExamRecordEntity> recordMap = new java.util.HashMap<>();
+    if (exam.getRecords() != null) {
+      for (ExamRecordEntity r : exam.getRecords()) {
+        recordMap.put(r.getQuestionId(), r);
       }
-      
-      long seed = exam.getRandomSeed() != null ? exam.getRandomSeed() : 0;
-      java.util.Random rng = new java.util.Random(seed);
-      
-      List<ExamQuestion> examQuestions = new ArrayList<>();
-      
-      for (QuestionEntity q : questions) {
-          ExamQuestion eq = new ExamQuestion();
-          eq.setQuestionId(q.getId());
-          eq.setStem(q.getStem());
-          eq.setType(q.getType());
-          
-          if (q.getOptionsJson() != null) {
-             List<QuestionOption> opts = parseOptions(q.getOptionsJson(), rng);
-             eq.setOptions(opts);
-          }
-          
-          ExamRecordEntity record = recordMap.get(q.getId());
-          if (record != null) {
-              eq.setUserAnswer(record.getUserAnswer());
-              eq.setAwardedScore(record.getScore() != null ? java.math.BigDecimal.valueOf(record.getScore()) : null);
-              eq.setGraderNotes(record.getNotes());
-              eq.setIsCorrect(record.getIsCorrect());
-          }
-          
-          examQuestions.add(eq);
+    }
+
+    long seed = exam.getRandomSeed() != null ? exam.getRandomSeed() : 0;
+    java.util.Random rng = new java.util.Random(seed);
+
+    List<ExamQuestion> examQuestions = new ArrayList<>();
+
+    for (QuestionEntity q : questions) {
+      ExamQuestion eq = new ExamQuestion();
+      eq.setQuestionId(q.getId());
+      eq.setStem(q.getStem());
+      eq.setType(q.getType());
+
+      if (q.getOptionsJson() != null) {
+        List<QuestionOption> opts = parseOptions(q.getOptionsJson(), rng);
+        eq.setOptions(opts);
       }
-      
-      resp.setQuestions(examQuestions);
-      return resp;
+
+      ExamRecordEntity record = recordMap.get(q.getId());
+      if (record != null) {
+        eq.setUserAnswer(record.getUserAnswer());
+        eq.setAwardedScore(
+            record.getScore() != null ? java.math.BigDecimal.valueOf(record.getScore()) : null);
+        eq.setGraderNotes(record.getNotes());
+        eq.setIsCorrect(record.getIsCorrect());
+      }
+
+      examQuestions.add(eq);
+    }
+
+    resp.setQuestions(examQuestions);
+    return resp;
   }
 
   private ExamResponse toExamResponse(ExamEntity exam) {
@@ -191,7 +194,7 @@ public class ExamController {
     PaperDetail pd = new PaperDetail();
     pd.id = paper.getId();
     pd.title = paper.getTitle();
-    
+
     // Randomization
     long seed = exam.getRandomSeed() != null ? exam.getRandomSeed() : 0;
     java.util.Random rng = new java.util.Random(seed);
@@ -206,10 +209,9 @@ public class ExamController {
                   qd.type = q.getType();
                   qd.options = new java.util.ArrayList<>();
                   if (q.getOptionsJson() != null) {
-                      List<QuestionOption> opts = parseOptions(q.getOptionsJson(), rng);
-                      qd.options = opts.stream()
-                          .map(QuestionOption::getText)
-                          .collect(Collectors.toList());
+                    List<QuestionOption> opts = parseOptions(q.getOptionsJson(), rng);
+                    qd.options =
+                        opts.stream().map(QuestionOption::getText).collect(Collectors.toList());
                   }
                   return qd;
                 })
@@ -258,51 +260,60 @@ public class ExamController {
   private List<QuestionOption> parseOptions(String json, java.util.Random rng) {
     List<QuestionOption> result = new ArrayList<>();
     if (json == null) return result;
-    
+
     // Debug logging
     System.out.println("DEBUG: Parsing optionsJson: " + json);
 
     try {
-        // Try 1: Standard List<QuestionOption>
-        result = objectMapper.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<List<QuestionOption>>(){});
+      // Try 1: Standard List<QuestionOption>
+      result =
+          objectMapper.readValue(
+              json, new com.fasterxml.jackson.core.type.TypeReference<List<QuestionOption>>() {});
     } catch (Exception e) {
-        try {
-            // Try 2: List<String>
-            List<String> strings = objectMapper.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<List<String>>(){});
-            for (String s : strings) {
-                QuestionOption opt = new QuestionOption();
-                opt.setText(s);
-                result.add(opt);
-            }
-        } catch (Exception e2) {
-            try {
-                // Try 3: List<Map<String, Object>> - Generic Object
-                List<Map<String, Object>> maps = objectMapper.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>(){});
-                for (Map<String, Object> map : maps) {
-                    QuestionOption opt = new QuestionOption();
-                    // Try to find text content
-                    if (map.containsKey("text")) opt.setText(String.valueOf(map.get("text")));
-                    else if (map.containsKey("content")) opt.setText(String.valueOf(map.get("content")));
-                    else if (map.containsKey("value")) opt.setText(String.valueOf(map.get("value")));
-                    else if (map.containsKey("label")) opt.setText(String.valueOf(map.get("label")));
-                    
-                    // Try to find key/label
-                    if (map.containsKey("key")) opt.setKey(String.valueOf(map.get("key")));
-                    
-                    // Try to find isCorrect
-                    if (map.containsKey("isCorrect")) opt.setIsCorrect(Boolean.valueOf(String.valueOf(map.get("isCorrect"))));
-                    
-                    result.add(opt);
-                }
-            } catch (Exception e3) {
-                System.err.println("Failed to parse optionsJson: " + json);
-                e3.printStackTrace();
-            }
+      try {
+        // Try 2: List<String>
+        List<String> strings =
+            objectMapper.readValue(
+                json, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+        for (String s : strings) {
+          QuestionOption opt = new QuestionOption();
+          opt.setText(s);
+          result.add(opt);
         }
+      } catch (Exception e2) {
+        try {
+          // Try 3: List<Map<String, Object>> - Generic Object
+          List<Map<String, Object>> maps =
+              objectMapper.readValue(
+                  json,
+                  new com.fasterxml.jackson.core.type.TypeReference<
+                      List<Map<String, Object>>>() {});
+          for (Map<String, Object> map : maps) {
+            QuestionOption opt = new QuestionOption();
+            // Try to find text content
+            if (map.containsKey("text")) opt.setText(String.valueOf(map.get("text")));
+            else if (map.containsKey("content")) opt.setText(String.valueOf(map.get("content")));
+            else if (map.containsKey("value")) opt.setText(String.valueOf(map.get("value")));
+            else if (map.containsKey("label")) opt.setText(String.valueOf(map.get("label")));
+
+            // Try to find key/label
+            if (map.containsKey("key")) opt.setKey(String.valueOf(map.get("key")));
+
+            // Try to find isCorrect
+            if (map.containsKey("isCorrect"))
+              opt.setIsCorrect(Boolean.valueOf(String.valueOf(map.get("isCorrect"))));
+
+            result.add(opt);
+          }
+        } catch (Exception e3) {
+          System.err.println("Failed to parse optionsJson: " + json);
+          e3.printStackTrace();
+        }
+      }
     }
-    
+
     if (rng != null && !result.isEmpty()) {
-        java.util.Collections.shuffle(result, rng);
+      java.util.Collections.shuffle(result, rng);
     }
     return result;
   }
