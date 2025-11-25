@@ -13,12 +13,13 @@ public class AnalyticsController implements AnalyticsApi {
   @Autowired private AnalyticsService analyticsService;
 
   @Override
-  public ResponseEntity<ExamAnalyticsResponse> analyticsExamsPaperVersionIdSummaryGet(String paperVersionId) {
+  public ResponseEntity<ExamAnalyticsResponse> analyticsExamsPaperVersionIdSummaryGet(
+      String paperVersionId) {
     try {
-        Long paperId = Long.parseLong(paperVersionId);
-        return ResponseEntity.ok(analyticsService.getPaperAnalytics(paperId));
+      Long paperId = Long.parseLong(paperVersionId);
+      return ResponseEntity.ok(analyticsService.getPaperAnalytics(paperId));
     } catch (NumberFormatException e) {
-        return ResponseEntity.badRequest().build();
+      return ResponseEntity.badRequest().build();
     }
   }
 }

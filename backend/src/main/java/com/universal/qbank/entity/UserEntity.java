@@ -25,6 +25,8 @@ public class UserEntity {
 
   private String role; // ADMIN, USER
 
+  private String status = "ACTIVE"; // ACTIVE, BANNED
+
   private OffsetDateTime createdAt;
 
   @PrePersist
@@ -87,6 +89,14 @@ public class UserEntity {
 
   public void setRole(String role) {
     this.role = role;
+  }
+
+  public String getStatus() {
+    return status;
+  }
+
+  public void setStatus(String status) {
+    this.status = status;
   }
 
   public OffsetDateTime getCreatedAt() {

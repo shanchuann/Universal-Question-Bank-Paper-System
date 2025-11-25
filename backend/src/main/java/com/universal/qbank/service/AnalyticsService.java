@@ -23,9 +23,10 @@ public class AnalyticsService {
   @Autowired private QuestionRepository questionRepository;
 
   public ExamAnalyticsResponse getPaperAnalytics(Long paperId) {
-    List<ExamEntity> exams = examRepository.findAll().stream()
-        .filter(e -> e.getPaperId().equals(paperId) && e.getScore() != null)
-        .collect(Collectors.toList());
+    List<ExamEntity> exams =
+        examRepository.findAll().stream()
+            .filter(e -> e.getPaperId().equals(paperId) && e.getScore() != null)
+            .collect(Collectors.toList());
 
     ExamAnalyticsResponse response = new ExamAnalyticsResponse();
     response.setPaperVersionId(String.valueOf(paperId));
@@ -42,9 +43,11 @@ public class AnalyticsService {
     double maxScore = exams.stream().mapToInt(ExamEntity::getScore).max().orElse(0);
     long passCount = exams.stream().filter(e -> e.getScore() >= 60).count();
 
-    response.setAverageScore(BigDecimal.valueOf(totalScore / exams.size()).setScale(2, RoundingMode.HALF_UP));
+    response.setAverageScore(
+        BigDecimal.valueOf(totalScore / exams.size()).setScale(2, RoundingMode.HALF_UP));
     response.setHighestScore(BigDecimal.valueOf(maxScore));
-    response.setPassRate(BigDecimal.valueOf((double) passCount / exams.size()).setScale(2, RoundingMode.HALF_UP));
+    response.setPassRate(
+        BigDecimal.valueOf((double) passCount / exams.size()).setScale(2, RoundingMode.HALF_UP));
 
     // Score Distribution
     Map<String, Integer> distribution = new HashMap<>();
@@ -66,7 +69,8 @@ public class AnalyticsService {
       bucket.setRange(range);
       int count = distribution.get(range);
       // Calculate percentage
-      BigDecimal percentage = BigDecimal.valueOf((double) count / exams.size() * 100).setScale(2, RoundingMode.HALF_UP);
+      BigDecimal percentage =
+          BigDecimal.valueOf((double) count / exams.size() * 100).setScale(2, RoundingMode.HALF_UP);
       bucket.setPercentage(percentage);
       buckets.add(bucket);
     }
@@ -76,18 +80,18 @@ public class AnalyticsService {
     // Need to load questions
     PaperEntity paper = paperRepository.findById(paperId).orElseThrow();
     List<QuestionEntity> questions = questionRepository.findAllById(paper.getQuestionIds());
-    Map<String, QuestionEntity> questionMap = questions.stream()
-        .collect(Collectors.toMap(QuestionEntity::getId, q -> q));
+    Map<String, QuestionEntity> questionMap =
+        questions.stream().collect(Collectors.toMap(QuestionEntity::getId, q -> q));
 
     // Map<KnowledgePoint, List<ScoreRatio>>
     Map<String, List<Double>> kpScores = new HashMap<>();
     // Map<QuestionId, CorrectCount>
     Map<String, Integer> questionCorrectCounts = new HashMap<>();
     Map<String, Integer> questionAttemptCounts = new HashMap<>();
-    
+
     for (QuestionEntity q : questions) {
-        questionCorrectCounts.put(q.getId(), 0);
-        questionAttemptCounts.put(q.getId(), 0);
+      questionCorrectCounts.put(q.getId(), 0);
+      questionAttemptCounts.put(q.getId(), 0);
     }
 
     for (ExamEntity exam : exams) {
@@ -100,16 +104,17 @@ public class AnalyticsService {
 
         boolean isCorrect = Boolean.TRUE.equals(record.getIsCorrect());
         if (isCorrect) {
-            questionCorrectCounts.put(q.getId(), questionCorrectCounts.getOrDefault(q.getId(), 0) + 1);
+          questionCorrectCounts.put(
+              q.getId(), questionCorrectCounts.getOrDefault(q.getId(), 0) + 1);
         }
 
         // For knowledge points
         double scoreRatio = isCorrect ? 1.0 : 0.0;
-        
+
         if (q.getKnowledgePointIds() != null) {
-            for (String kp : q.getKnowledgePointIds()) {
-                kpScores.computeIfAbsent(kp, k -> new ArrayList<>()).add(scoreRatio);
-            }
+          for (String kp : q.getKnowledgePointIds()) {
+            kpScores.computeIfAbsent(kp, k -> new ArrayList<>()).add(scoreRatio);
+          }
         }
       }
     }
@@ -117,33 +122,34 @@ public class AnalyticsService {
     // Build Knowledge Metrics
     List<KnowledgeMetric> metrics = new ArrayList<>();
     for (Map.Entry<String, List<Double>> entry : kpScores.entrySet()) {
-        KnowledgeMetric metric = new KnowledgeMetric();
-        metric.setKnowledgePointId(entry.getKey());
-        double avg = entry.getValue().stream().mapToDouble(d -> d).average().orElse(0.0);
-        metric.setMasteryPercent(BigDecimal.valueOf(avg * 100).setScale(2, RoundingMode.HALF_UP));
-        metrics.add(metric);
+      KnowledgeMetric metric = new KnowledgeMetric();
+      metric.setKnowledgePointId(entry.getKey());
+      double avg = entry.getValue().stream().mapToDouble(d -> d).average().orElse(0.0);
+      metric.setMasteryPercent(BigDecimal.valueOf(avg * 100).setScale(2, RoundingMode.HALF_UP));
+      metrics.add(metric);
     }
     response.setKnowledgeMastery(metrics);
 
     // Build Error Rates
     List<QuestionErrorRate> errorRates = new ArrayList<>();
     for (Map.Entry<String, Integer> entry : questionCorrectCounts.entrySet()) {
-        String qId = entry.getKey();
-        int correct = entry.getValue();
-        int attempts = questionAttemptCounts.getOrDefault(qId, 0);
-        
-        if (attempts == 0) continue;
+      String qId = entry.getKey();
+      int correct = entry.getValue();
+      int attempts = questionAttemptCounts.getOrDefault(qId, 0);
 
-        QuestionErrorRate rate = new QuestionErrorRate();
-        rate.setQuestionId(qId);
-        rate.setAttempts(attempts);
-        rate.setIncorrect(attempts - correct);
-        
-        // Error rate = 1 - (correct / attempts)
-        double correctRate = (double) correct / attempts;
-        rate.setErrorRate(BigDecimal.valueOf((1.0 - correctRate) * 100).setScale(2, RoundingMode.HALF_UP));
-        
-        errorRates.add(rate);
+      if (attempts == 0) continue;
+
+      QuestionErrorRate rate = new QuestionErrorRate();
+      rate.setQuestionId(qId);
+      rate.setAttempts(attempts);
+      rate.setIncorrect(attempts - correct);
+
+      // Error rate = 1 - (correct / attempts)
+      double correctRate = (double) correct / attempts;
+      rate.setErrorRate(
+          BigDecimal.valueOf((1.0 - correctRate) * 100).setScale(2, RoundingMode.HALF_UP));
+
+      errorRates.add(rate);
     }
     // Sort by error rate desc
     errorRates.sort((a, b) -> b.getErrorRate().compareTo(a.getErrorRate()));

@@ -6,7 +6,11 @@ import { authState } from '@/states/authState'
 const router = useRouter()
 
 const isTeacher = computed(() => {
-  return authState.user.role === 'TEACHER' || authState.user.role === 'ADMIN'
+  return authState.user.role === 'TEACHER'
+})
+
+const isAdmin = computed(() => {
+  return authState.user.role === 'ADMIN'
 })
 
 onMounted(() => {
@@ -38,7 +42,11 @@ const handleLogout = () => {
             <RouterLink to="/paper-generation">Generate</RouterLink>
             <RouterLink to="/grading">Grading</RouterLink>
           </template>
-          <RouterLink to="/exam">Exam</RouterLink>
+          <template v-if="isAdmin">
+            <RouterLink to="/admin/users">Users</RouterLink>
+            <RouterLink to="/admin/system">System</RouterLink>
+          </template>
+          <RouterLink v-if="!isAdmin" to="/exam">Exam</RouterLink>
         </template>
         
         <template v-if="!authState.isAuthenticated">
