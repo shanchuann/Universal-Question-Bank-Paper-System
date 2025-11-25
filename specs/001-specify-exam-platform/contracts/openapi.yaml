@@ -427,6 +427,109 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/QuestionErrorRate'
+  /knowledge-points:
+    get:
+      summary: Get all knowledge points as a tree structure.
+      tags: [KnowledgePoint]
+      responses:
+        '200':
+          description: List of root knowledge points with children.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/KnowledgePoint'
+    post:
+      summary: Create a new knowledge point.
+      tags: [KnowledgePoint]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgePoint'
+      responses:
+        '201':
+          description: Created knowledge point.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgePoint'
+  /knowledge-points/{id}:
+    put:
+      summary: Update a knowledge point.
+      tags: [KnowledgePoint]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgePoint'
+      responses:
+        '200':
+          description: Updated knowledge point.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgePoint'
+    delete:
+      summary: Delete a knowledge point.
+      tags: [KnowledgePoint]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted successfully.
+  /exams:
+    get:
+      summary: List exam sessions (for grading).
+      tags: [Exam]
+      parameters:
+        - in: query
+          name: paperId
+          schema:
+            type: string
+        - in: query
+          name: userId
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: List of exam sessions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamSessionPage'
+  /exams/{id}:
+    get:
+      summary: Get exam session details.
+      tags: [Exam]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Exam session details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamSessionResponse'
 components:
   securitySchemes:
     bearerAuth:
@@ -560,6 +663,8 @@ components:
           type: string
         subjectId:
           type: string
+        stem:
+          type: string
         type:
           type: string
         difficulty:
@@ -567,6 +672,10 @@ components:
         status:
           type: string
         tags:
+          type: array
+          items:
+            type: string
+        knowledgePointIds:
           type: array
           items:
             type: string
@@ -813,6 +922,10 @@ components:
           type: string
         paperVersionId:
           type: string
+        userId:
+          type: string
+        score:
+          type: integer
         startAt:
           type: string
           format: date-time
@@ -844,6 +957,14 @@ components:
             $ref: '#/components/schemas/QuestionOption'
         score:
           type: number
+        userAnswer:
+          type: string
+        awardedScore:
+          type: number
+        graderNotes:
+          type: string
+        isCorrect:
+          type: boolean
     AutosaveRequest:
       type: object
       required: [sequence, payload]
@@ -936,3 +1057,31 @@ components:
           type: integer
         errorRate:
           type: number
+    KnowledgePoint:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        parentId:
+          type: string
+        sortOrder:
+          type: integer
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgePoint'
+    ExamSessionPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamSessionResponse'
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer

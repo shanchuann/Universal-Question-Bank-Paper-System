@@ -1,16 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ExamView from '../ExamView.vue'
+import axios from 'axios'
+import { createRouter, createWebHistory } from 'vue-router'
 
-// Mock the API client
-vi.mock('@/api/client', () => ({
-  examApi: {
-    examsAccessCodeStartPost: vi.fn(),
-    examsSessionIdSubmitPost: vi.fn()
-  }
-}))
+// Mock axios
+vi.mock('axios')
 
-import { examApi } from '@/api/client'
+// Mock router
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [{ path: '/', component: { template: '<div>Home</div>' } }]
+})
 
 describe('ExamView', () => {
   beforeEach(() => {
@@ -18,53 +19,122 @@ describe('ExamView', () => {
   })
 
   it('renders start screen initially', () => {
-    const wrapper = mount(ExamView)
+    const wrapper = mount(ExamView, {
+      global: {
+        plugins: [router]
+      }
+    })
     expect(wrapper.find('h1').text()).toBe('Start Exam')
-    expect(wrapper.find('input[placeholder="Enter access code"]').exists()).toBe(true)
+    expect(wrapper.find('input[placeholder="Enter Paper ID"]').exists()).toBe(true)
   })
 
   it('starts exam successfully', async () => {
-    const mockStart = examApi.examsAccessCodeStartPost as unknown as ReturnType<typeof vi.fn>
-    mockStart.mockResolvedValue({
+    const mockPost = axios.post as unknown as ReturnType<typeof vi.fn>
+    mockPost.mockResolvedValue({
       data: {
-        sessionId: 'sess-123',
-        timeRemainingSeconds: 3600,
-        questions: [
-          {
-            questionId: 'q1',
-            type: 'SINGLE_CHOICE',
-            stem: 'What is 1+1?',
-            options: [
-              { key: 'A', text: '1' },
-              { key: 'B', text: '2' }
-            ]
-          }
-        ]
+        id: 1,
+        paper: {
+          id: 101,
+          title: 'Test Paper',
+          questions: [
+            {
+              id: 'q1',
+              content: 'What is 1+1?',
+              type: 'SINGLE_CHOICE',
+              options: ['1', '2', '3', '4']
+            }
+          ]
+        },
+        userId: 'user-1',
+        score: null
       }
     })
 
-    const wrapper = mount(ExamView)
+    const wrapper = mount(ExamView, {
+      global: {
+        plugins: [router]
+      }
+    })
     
-    // Enter access code
-    await wrapper.find('input').setValue('CODE123')
+    // Enter Paper ID
+    await wrapper.find('input[placeholder="Enter Paper ID"]').setValue('101')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
     // Check if exam screen is shown
     expect(wrapper.find('.exam-screen').exists()).toBe(true)
-    expect(wrapper.find('.stem').text()).toBe('What is 1+1?')
-    expect(wrapper.findAll('.option')).toHaveLength(2)
+    expect(wrapper.find('h2').text()).toContain('Test Paper')
+    expect(wrapper.find('.question-content').text()).toBe('What is 1+1?')
   })
 
-  it('handles start exam error', async () => {
-    const mockStart = examApi.examsAccessCodeStartPost as unknown as ReturnType<typeof vi.fn>
-    mockStart.mockRejectedValue(new Error('Invalid code'))
+  it('submits exam and shows score', async () => {
+    const mockPost = axios.post as unknown as ReturnType<typeof vi.fn>
+    // Mock start exam response
+    mockPost.mockResolvedValueOnce({
+      data: {
+        id: 1,
+        paper: {
+          id: 101,
+          title: 'Test Paper',
+          questions: [
+            {
+              id: 'q1',
+              content: 'What is 1+1?',
+              type: 'SINGLE_CHOICE',
+              options: ['1', '2']
+            }
+          ]
+        },
+        userId: 'user-1',
+        score: null
+      }
+    })
 
-    const wrapper = mount(ExamView)
-    await wrapper.find('input').setValue('INVALID')
+    // Mock submit exam response
+    mockPost.mockResolvedValueOnce({
+      data: {
+        id: 1,
+        paper: {
+          id: 101,
+          title: 'Test Paper',
+          questions: [
+            {
+              id: 'q1',
+              content: 'What is 1+1?',
+              type: 'SINGLE_CHOICE',
+              options: ['1', '2']
+            }
+          ]
+        },
+        userId: 'user-1',
+        score: 100,
+        records: [
+          { questionId: 'q1', userAnswer: '2', isCorrect: true }
+        ]
+      }
+    })
+
+    const wrapper = mount(ExamView, {
+      global: {
+        plugins: [router]
+      }
+    })
+
+    // Start exam
+    await wrapper.find('input[placeholder="Enter Paper ID"]').setValue('101')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Failed to start exam')
+    // Select answer
+    await wrapper.find('input[type="radio"]').setValue('2')
+    
+    // Submit exam
+    await wrapper.find('.submit-btn').trigger('click')
+    await flushPromises()
+
+    // Check score display
+    expect(wrapper.find('.score').text()).toContain('Score: 100')
+    expect(wrapper.find('.status-badge.correct').exists()).toBe(true)
+    expect(wrapper.find('.restart-btn').text()).toBe('Exit Exam')
   })
 })
