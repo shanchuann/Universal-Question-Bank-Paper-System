@@ -112,6 +112,16 @@ const router = createRouter({
       path: '/leaderboard',
       name: 'leaderboard',
       component: () => import('../views/LeaderboardView.vue')
+    },
+    {
+      path: '/admin/users',
+      name: 'admin-users',
+      component: () => import('../views/AdminUserView.vue')
+    },
+    {
+      path: '/admin/system',
+      name: 'admin-system',
+      component: () => import('../views/AdminSystemView.vue')
     }
   ]
 })

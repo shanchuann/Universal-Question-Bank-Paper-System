@@ -20,8 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ImportService {
 
-  @Autowired
-  private QuestionRepository questionRepository;
+  @Autowired private QuestionRepository questionRepository;
 
   private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -30,7 +29,10 @@ public class ImportService {
   // Group 1: Label from "A." or "A)" or "A、" (supports A-Z, a-z, 0-9)
   // Group 2: Label from "(A)"
   // Group 3: Content
-  private static final Pattern OPTION_PATTERN = Pattern.compile("(?:^|\\s+)(?:([A-Za-z0-9])\\s*[.、．\\)]|\\(([A-Za-z0-9])\\))\\s*(.*?)(?=\\s+(?:[A-Za-z0-9]\\s*[.、．\\)]|\\([A-Za-z0-9]\\))|$)", Pattern.DOTALL);
+  private static final Pattern OPTION_PATTERN =
+      Pattern.compile(
+          "(?:^|\\s+)(?:([A-Za-z0-9])\\s*[.、．\\)]|\\(([A-Za-z0-9])\\))\\s*(.*?)(?=\\s+(?:[A-Za-z0-9]\\s*[.、．\\)]|\\([A-Za-z0-9]\\))|$)",
+          Pattern.DOTALL);
   private static final Pattern ANSWER_PATTERN = Pattern.compile("^(Answer|答案)[:：]\\s*(.*)");
   private static final Pattern ANALYSIS_PATTERN = Pattern.compile("^(Analysis|解析)[:：]\\s*(.*)");
 
@@ -84,54 +86,55 @@ public class ImportService {
             }
             continue;
           }
-          
+
           // Check for Analysis
           Matcher analysisMatcher = ANALYSIS_PATTERN.matcher(text);
           if (analysisMatcher.find()) {
-             currentQuestion.setAnalysis(analysisMatcher.group(2));
-             continue;
+            currentQuestion.setAnalysis(analysisMatcher.group(2));
+            continue;
           }
 
           // Check for Options (Inline or Single line)
           Matcher optionMatcher = OPTION_PATTERN.matcher(text);
           if (optionMatcher.find()) {
-             System.out.println("Found options in line: " + text);
-             optionsStarted = true;
-             // Reset matcher to find all
-             optionMatcher.reset();
-             while (optionMatcher.find()) {
-                String label = optionMatcher.group(1) != null ? optionMatcher.group(1) : optionMatcher.group(2);
-                String content = optionMatcher.group(3).trim();
-                System.out.println("  Option " + label + ": " + content);
-                
-                QuestionOption option = new QuestionOption();
-                option.setKey(label.toUpperCase()); // Set key (A, B, C...)
-                option.setText(content);
-                option.setIsCorrect(false);
-                currentOptions.add(option);
-             }
-             continue;
+            System.out.println("Found options in line: " + text);
+            optionsStarted = true;
+            // Reset matcher to find all
+            optionMatcher.reset();
+            while (optionMatcher.find()) {
+              String label =
+                  optionMatcher.group(1) != null ? optionMatcher.group(1) : optionMatcher.group(2);
+              String content = optionMatcher.group(3).trim();
+              System.out.println("  Option " + label + ": " + content);
+
+              QuestionOption option = new QuestionOption();
+              option.setKey(label.toUpperCase()); // Set key (A, B, C...)
+              option.setText(content);
+              option.setIsCorrect(false);
+              currentOptions.add(option);
+            }
+            continue;
           }
-          
+
           // Handle auto-numbered lists as options
           if (paragraph.getNumID() != null) {
-             System.out.println("Found auto-numbered option: " + text);
-             optionsStarted = true;
-             QuestionOption option = new QuestionOption();
-             option.setText(text);
-             option.setIsCorrect(false);
-             currentOptions.add(option);
-             continue;
+            System.out.println("Found auto-numbered option: " + text);
+            optionsStarted = true;
+            QuestionOption option = new QuestionOption();
+            option.setText(text);
+            option.setIsCorrect(false);
+            currentOptions.add(option);
+            continue;
           }
 
           // If not a new question, not an answer, not an option line:
           // Append to Stem or Last Option
           if (!optionsStarted) {
-             currentQuestion.setStem(currentQuestion.getStem() + "\n" + text);
+            currentQuestion.setStem(currentQuestion.getStem() + "\n" + text);
           } else if (!currentOptions.isEmpty()) {
-             // Append to the last option
-             QuestionOption lastOption = currentOptions.get(currentOptions.size() - 1);
-             lastOption.setText(lastOption.getText() + "\n" + text);
+            // Append to the last option
+            QuestionOption lastOption = currentOptions.get(currentOptions.size() - 1);
+            lastOption.setText(lastOption.getText() + "\n" + text);
           }
         }
       }
@@ -159,26 +162,26 @@ public class ImportService {
 
   @Transactional
   public List<QuestionEntity> saveQuestions(List<QuestionCreateRequest> requests) {
-      List<QuestionEntity> entities = new ArrayList<>();
-      for (QuestionCreateRequest req : requests) {
-          QuestionEntity q = new QuestionEntity();
-          q.setSubjectId(req.getSubjectId());
-          q.setType(req.getType().getValue());
-          q.setDifficulty(req.getDifficulty().getValue());
-          q.setStem(req.getStem());
-          q.setAnalysis(req.getAnalysis());
-          q.setStatus("ACTIVE");
-          
-          try {
-              if (req.getOptions() != null) {
-                  q.setOptionsJson(objectMapper.writeValueAsString(req.getOptions()));
-              }
-          } catch (Exception e) {
-              throw new RuntimeException("Failed to serialize options", e);
-          }
-          
-          entities.add(q);
+    List<QuestionEntity> entities = new ArrayList<>();
+    for (QuestionCreateRequest req : requests) {
+      QuestionEntity q = new QuestionEntity();
+      q.setSubjectId(req.getSubjectId());
+      q.setType(req.getType().getValue());
+      q.setDifficulty(req.getDifficulty().getValue());
+      q.setStem(req.getStem());
+      q.setAnalysis(req.getAnalysis());
+      q.setStatus("ACTIVE");
+
+      try {
+        if (req.getOptions() != null) {
+          q.setOptionsJson(objectMapper.writeValueAsString(req.getOptions()));
+        }
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to serialize options", e);
       }
-      return questionRepository.saveAll(entities);
+
+      entities.add(q);
+    }
+    return questionRepository.saveAll(entities);
   }
 }

@@ -38,6 +38,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/import/**", "/api/import/**")
                     .permitAll()
+                    .requestMatchers("/admin/**", "/stats/**", "/api/admin/**", "/api/stats/**")
+                    .permitAll()
                     .anyRequest()
                     .authenticated())
         .headers(headers -> headers.frameOptions(frame -> frame.disable())); // For H2 Console

@@ -4,6 +4,7 @@ import com.universal.qbank.api.generated.AuthApi;
 import com.universal.qbank.api.generated.model.AuthTokenResponse;
 import com.universal.qbank.api.generated.model.LoginRequest;
 import com.universal.qbank.entity.UserEntity;
+import com.universal.qbank.service.SystemConfigService;
 import com.universal.qbank.service.UserService;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController implements AuthApi {
 
   @Autowired private UserService userService;
+
+  @Autowired private SystemConfigService systemConfigService;
 
   public static class RegisterRequest {
     public String username;
@@ -42,6 +45,11 @@ public class AuthController implements AuthApi {
         userService.login(loginRequest.getUsername(), loginRequest.getPassword());
 
     if (user.isPresent()) {
+      // Check system status
+      if (!systemConfigService.isSystemEnabled() && !"ADMIN".equals(user.get().getRole())) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+      }
+
       System.out.println("Login success");
       AuthTokenResponse response = new AuthTokenResponse();
       response.setAccessToken("dummy-jwt-token-" + user.get().getId());
