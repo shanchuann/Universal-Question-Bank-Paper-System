@@ -17,7 +17,18 @@ public class FileController {
   @Autowired private FileService fileService;
 
   @PostMapping("/upload")
-  public ResponseEntity<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) {
+  public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file) {
+    // Validate file type
+    String contentType = file.getContentType();
+    if (contentType == null || !contentType.startsWith("image/")) {
+      return ResponseEntity.badRequest().body(Map.of("error", "Only image files are allowed"));
+    }
+
+    // Validate file size (e.g., 5MB)
+    if (file.getSize() > 5 * 1024 * 1024) {
+      return ResponseEntity.badRequest().body(Map.of("error", "File size must be less than 5MB"));
+    }
+
     String fileName = fileService.storeFile(file);
 
     String fileDownloadUri =

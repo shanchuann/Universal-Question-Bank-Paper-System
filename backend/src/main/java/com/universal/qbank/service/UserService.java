@@ -37,20 +37,66 @@ public class UserService {
     return userRepository.findById(id);
   }
 
-  public UserEntity updateProfile(String id, String email, String avatarUrl, String nickname) {
+  public UserEntity updateProfile(String id, String username, String email, String avatarUrl, String nickname, String currentPassword) {
     UserEntity user =
         userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
 
-    if (email != null) {
-      user.setEmail(email);
+    // Validate Nickname
+    if (nickname != null) {
+        if (nickname.length() < 2 || nickname.length() > 20) {
+            throw new RuntimeException("Nickname must be between 2 and 20 characters");
+        }
+        // Simple regex for special characters (allow letters, numbers, spaces, underscores, hyphens)
+        if (!nickname.matches("^[a-zA-Z0-9 _-]+$")) {
+            throw new RuntimeException("Nickname contains invalid characters");
+        }
+        user.setNickname(nickname);
     }
+
+    // Validate Username
+    if (username != null && !username.isEmpty() && !username.equals(user.getUsername())) {
+      if (userRepository.findByUsername(username).isPresent()) {
+        throw new RuntimeException("Username already exists");
+      }
+      user.setUsername(username);
+    }
+
+    // Validate Email and Check Password if Email is changing
+    if (email != null && !email.equals(user.getEmail())) {
+        // Validate Email Format
+        if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            throw new RuntimeException("Invalid email format");
+        }
+
+        // Validate Email Uniqueness
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new RuntimeException("Email already in use");
+        }
+        
+        // Require password verification for sensitive change
+        if (currentPassword == null || !currentPassword.equals(user.getPassword())) {
+            throw new RuntimeException("Current password is required to change email");
+        }
+        user.setEmail(email);
+    }
+
     if (avatarUrl != null) {
       user.setAvatarUrl(avatarUrl);
     }
-    if (nickname != null && !nickname.isEmpty()) {
-      user.setNickname(nickname);
-    }
+    
     return userRepository.save(user);
+  }
+
+  public void updatePassword(String id, String oldPassword, String newPassword) {
+    UserEntity user =
+        userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+    
+    if (!user.getPassword().equals(oldPassword)) {
+      throw new RuntimeException("Invalid old password");
+    }
+    
+    user.setPassword(newPassword);
+    userRepository.save(user);
   }
 
   public org.springframework.data.domain.Page<UserEntity> getAllUsers(
