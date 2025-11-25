@@ -48,8 +48,30 @@ public class UserController {
     try {
       UserEntity updatedUser =
           userService.updateProfile(
-              userId, payload.get("email"), payload.get("avatarUrl"), payload.get("nickname"));
+              userId, 
+              payload.get("username"),
+              payload.get("email"), 
+              payload.get("avatarUrl"), 
+              payload.get("nickname"),
+              payload.get("currentPassword"));
       return ResponseEntity.ok(updatedUser);
+    } catch (RuntimeException e) {
+      return ResponseEntity.badRequest().body(e.getMessage());
+    }
+  }
+
+  @PutMapping("/user/password")
+  public ResponseEntity<?> updatePassword(
+      @RequestHeader("Authorization") String token, @RequestBody Map<String, String> payload) {
+    String userId = getUserIdFromToken(token);
+
+    if (userId == null) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
+    }
+
+    try {
+      userService.updatePassword(userId, payload.get("oldPassword"), payload.get("newPassword"));
+      return ResponseEntity.ok().build();
     } catch (RuntimeException e) {
       return ResponseEntity.badRequest().body(e.getMessage());
     }
