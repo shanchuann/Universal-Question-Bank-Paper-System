@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
 import 'katex/dist/katex.min.css';
 import katex from 'katex';
+import GoogleSelect from '@/components/GoogleSelect.vue'
+import GoogleCombobox from '@/components/GoogleCombobox.vue'
+import KnowledgePointDialog from '@/components/KnowledgePointDialog.vue'
 
 // Expose katex to window for Quill's formula module
 (window as any).katex = katex;
@@ -22,6 +25,36 @@ const form = ref({
 
 const knowledgePoints = ref<any[]>([])
 const flatPoints = ref<any[]>([])
+const showKPDialog = ref(false)
+const newKPName = ref('')
+
+const typeOptions = [
+  { label: 'Single Choice', value: 'SINGLE_CHOICE' },
+  { label: 'Multiple Choice', value: 'MULTIPLE_CHOICE' },
+  { label: 'True/False', value: 'TRUE_FALSE' },
+  { label: 'Fill Blank', value: 'FILL_BLANK' },
+  { label: 'Short Answer', value: 'SHORT_ANSWER' }
+]
+
+const difficultyOptions = [
+  { label: 'Easy', value: 'EASY' },
+  { label: 'Medium', value: 'MEDIUM' },
+  { label: 'Hard', value: 'HARD' }
+]
+
+const kpOptions = computed(() => {
+  return flatPoints.value.map(p => ({
+    label: p.name,
+    value: p.id
+  }))
+})
+
+const parentOptions = computed(() => {
+  // Filter for potential parents (Chapters and Sections)
+  return knowledgePoints.value
+    .filter((p: any) => ['CHAPTER', 'SECTION'].includes(p.level))
+    .map((p: any) => ({ id: p.id, label: p.name }))
+})
 
 const fetchKnowledgePoints = async () => {
   try {
@@ -56,7 +89,38 @@ const fetchKnowledgePoints = async () => {
   }
 }
 
+const handleCreateKP = (name: string) => {
+  newKPName.value = name
+  showKPDialog.value = true
+}
+
+const saveNewKP = async (kpData: any) => {
+  try {
+    const token = localStorage.getItem('token')
+    const res = await axios.post('/api/knowledge-points', {
+      ...kpData,
+      subjectId: form.value.subjectId || 'general'
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    
+    // Refresh list
+    await fetchKnowledgePoints()
+    
+    // Add new ID to selection
+    if (res.data && res.data.id) {
+      form.value.knowledgePointIds.push(res.data.id)
+    }
+    
+    showKPDialog.value = false
+  } catch (err) {
+    console.error('Failed to create KP', err)
+    alert('Failed to create knowledge point')
+  }
+}
+
 onMounted(fetchKnowledgePoints)
+
 
 const loading = ref(false)
 const message = ref('')
@@ -213,51 +277,52 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="container">
+  <div class="container add-question-container">
     <div class="google-card form-card">
       <div class="card-header">
         <h1>Add New Question</h1>
         <p class="subtitle">Create a new question for the bank</p>
       </div>
-      
+
       <form @submit.prevent="handleSubmit">
         <div class="form-grid">
           <div class="form-group">
-            <label>Subject ID</label>
-            <input v-model="form.subjectId" type="text" required placeholder="e.g. math" />
+            <label>Subject</label>
+            <input v-model="form.subjectId" type="text" required placeholder="e.g. Math" class="google-input" />
           </div>
-          
+
           <div class="form-group">
             <label>Type</label>
-            <div class="select-wrapper">
-              <select v-model="form.type">
-                <option value="SINGLE_CHOICE">Single Choice</option>
-                <option value="MULTIPLE_CHOICE">Multiple Choice</option>
-                <option value="TRUE_FALSE">True / False</option>
-                <option value="FILL_BLANK">Fill in the Blank</option>
-                <option value="SHORT_ANSWER">Short Answer</option>
-              </select>
-            </div>
+            <GoogleSelect
+              v-model="form.type"
+              :options="typeOptions"
+            />
           </div>
 
           <div class="form-group">
             <label>Difficulty</label>
-            <div class="select-wrapper">
-              <select v-model="form.difficulty">
-                <option value="EASY">Easy</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HARD">Hard</option>
-              </select>
-            </div>
+            <GoogleSelect
+              v-model="form.difficulty"
+              :options="difficultyOptions"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Knowledge Points</label>
+            <GoogleCombobox
+              v-model="form.knowledgePointIds"
+              :options="kpOptions"
+              placeholder="Select or create knowledge points..."
+              :allow-create="true"
+              @create="handleCreateKP"
+            />
+            <small class="helper-text">Type to search. If not found, click 'Create' to add new.</small>
           </div>
         </div>
 
-        <div class="form-group">
+        <div class="form-group full-width">
           <label>Question Stem</label>
-          <div class="editor-toolbar-extra" v-if="form.type === 'FILL_BLANK'">
-             <button type="button" @click="insertBlank" class="secondary-btn small-btn">Insert Blank (_____)</button>
-          </div>
-          <div class="editor-container">
+          <div class="editor-wrapper">
             <QuillEditor 
               ref="quillEditor"
               theme="snow" 
@@ -267,354 +332,233 @@ const handleSubmit = async () => {
               @ready="onEditorReady"
             />
           </div>
+          <button v-if="form.type === 'FILL_BLANK'" type="button" @click="insertBlank" class="google-btn text-btn small-btn mt-2">
+            Insert Blank (_____)
+          </button>
         </div>
 
-        <div class="form-group" v-if="['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(form.type)">
+        <!-- Options for Choice Questions -->
+        <div v-if="['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(form.type)" class="options-section">
           <label>Options</label>
-          <div class="options-container">
-            <div v-for="(_, index) in form.options" :key="index" class="option-row">
-              <span class="option-label">{{ String.fromCharCode(65 + index) }}.</span>
-              <input v-model="form.options[index]" type="text" :placeholder="'Option ' + (index + 1)" required />
-              <button type="button" @click="removeOption(index)" class="secondary-btn remove-btn" v-if="form.options.length > 2" title="Remove option">
-                Remove
-              </button>
-            </div>
-            <button type="button" @click="addOption" class="secondary-btn small-btn">Add Option</button>
+          <div v-for="(opt, idx) in form.options" :key="idx" class="option-row">
+            <span class="option-label">{{ String.fromCharCode(65 + idx) }}.</span>
+            <input v-model="form.options[idx]" type="text" required placeholder="Option text" class="google-input" />
+            <button type="button" @click="removeOption(idx)" class="icon-btn remove-opt" v-if="form.options.length > 2">×</button>
           </div>
+          <button type="button" @click="addOption" class="google-btn text-btn small-btn">+ Add Option</button>
         </div>
 
-        <div class="form-group" v-if="form.type === 'FILL_BLANK'">
-          <label>Blank Answers</label>
-          <div class="options-container">
-             <div v-for="(_, index) in form.options" :key="index" class="option-row">
-                <span class="option-label">{{ index + 1 }}.</span>
-                <input v-model="form.options[index]" type="text" :placeholder="'Answer for blank ' + (index + 1)" />
-             </div>
-             <div v-if="form.options.length === 0" class="hint">
-                Click "Insert Blank" above the editor to add blanks.
-             </div>
-          </div>
+        <!-- Fill Blank Answers -->
+        <div v-if="form.type === 'FILL_BLANK'" class="options-section">
+           <label>Correct Answers (in order)</label>
+           <div v-for="(opt, idx) in form.options" :key="idx" class="option-row">
+              <span class="option-label">{{ idx + 1 }}.</span>
+              <input v-model="form.options[idx]" type="text" required placeholder="Answer for blank" class="google-input" />
+           </div>
+           <p v-if="form.options.length === 0" class="helper-text">Type "_____" in the stem to add blanks.</p>
         </div>
 
-        <div class="form-group" v-if="form.type !== 'FILL_BLANK'">
+        <div class="form-group full-width">
           <label>Correct Answer</label>
           
-          <div class="select-wrapper" v-if="['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(form.type)">
-            <select v-model="form.answer" required>
-              <option value="" disabled>Select the correct answer</option>
-              <option v-for="(opt, index) in form.options" :key="index" :value="opt">
-                {{ String.fromCharCode(65 + index) }}. {{ opt }}
-              </option>
-            </select>
+          <!-- Single Choice Answer -->
+          <div v-if="form.type === 'SINGLE_CHOICE'" class="radio-group">
+            <label v-for="(opt, idx) in form.options" :key="idx" class="radio-label">
+              <input type="radio" :value="form.options[idx]" v-model="form.answer" class="google-radio" />
+              <span class="radio-text">{{ String.fromCharCode(65 + idx) }}</span>
+            </label>
           </div>
 
-          <div class="select-wrapper" v-else-if="form.type === 'TRUE_FALSE'">
-             <select v-model="form.answer" required>
-                <option value="" disabled>Select True or False</option>
-                <option value="True">True</option>
-                <option value="False">False</option>
-             </select>
+          <!-- Multiple Choice Answer -->
+          <div v-else-if="form.type === 'MULTIPLE_CHOICE'" class="checkbox-group">
+            <label v-for="(opt, idx) in form.options" :key="idx" class="checkbox-label">
+              <input type="checkbox" :value="form.options[idx]" v-model="multiAnswer" class="google-checkbox" />
+              <span class="checkbox-text">{{ String.fromCharCode(65 + idx) }}</span>
+            </label>
           </div>
 
-          <div v-else>
-             <input v-model="form.answer" type="text" required placeholder="Enter the correct answer" />
+          <!-- True/False Answer -->
+          <div v-else-if="form.type === 'TRUE_FALSE'" class="radio-group">
+            <label class="radio-label">
+              <input type="radio" value="True" v-model="form.answer" class="google-radio" />
+              <span class="radio-text">True</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" value="False" v-model="form.answer" class="google-radio" />
+              <span class="radio-text">False</span>
+            </label>
           </div>
-          
-          <small class="hint" v-if="['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(form.type)">Select the option that is the correct answer.</small>
+
+          <!-- Fill Blank (handled above) -->
+          <div v-else-if="form.type === 'FILL_BLANK'">
+             <!-- Answers are input in the options section above -->
+          </div>
+
+          <!-- Text Answer -->
+          <input v-else v-model="form.answer" type="text" required placeholder="Correct answer text" class="google-input" />
         </div>
 
-        <div class="form-group">
-          <label>Tags</label>
-          <input v-model="form.tags" type="text" placeholder="e.g. algebra, basics" />
-        </div>
-
-        <div class="form-group">
-          <label>Knowledge Points</label>
-          <select v-model="form.knowledgePointIds" multiple class="google-select" style="height: 100px;">
-            <option v-for="kp in flatPoints" :key="kp.id" :value="kp.id">
-              {{ kp.name }}
-            </option>
-          </select>
-          <small class="hint">Hold Ctrl/Cmd to select multiple</small>
+        <div class="form-group full-width">
+          <label>Tags (comma separated)</label>
+          <input v-model="form.tags" type="text" placeholder="math, algebra, year-1" class="google-input" />
         </div>
 
         <div class="form-actions">
-          <button type="submit" :disabled="loading" class="primary-btn full-width">
-            {{ loading ? 'Adding...' : 'Add Question' }}
+          <button type="submit" class="google-btn primary-btn" :disabled="loading">
+            {{ loading ? 'Saving...' : 'Create Question' }}
           </button>
+          <button type="button" @click="$router.back()" class="google-btn text-btn">Cancel</button>
         </div>
-        
-        <div v-if="message" class="message success">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-          {{ message }}
-        </div>
-        <div v-if="error" class="message error">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-          {{ error }}
-        </div>
+
+        <p v-if="error" class="error-text">{{ error }}</p>
+        <p v-if="message" class="success-text">{{ message }}</p>
       </form>
     </div>
+    <KnowledgePointDialog
+      :is-open="showKPDialog"
+      :initial-name="newKPName"
+      :parent-options="parentOptions"
+      @close="showKPDialog = false"
+      @save="saveNewKP"
+    />
   </div>
 </template>
 
 <style scoped>
-/* Google Material 风格美化和细节优化 */
-.form-card {
-  max-width: 700px;
+.add-question-container {
+  max-width: 800px;
   margin: 32px auto;
-  padding: 40px;
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 4px 24px rgba(60,64,67,0.12), 0 1.5px 6px rgba(60,64,67,0.08);
 }
+
+.form-card {
+  padding: 40px;
+}
+
 .card-header {
   text-align: center;
   margin-bottom: 32px;
 }
+
 .card-header h1 {
-  font-size: 30px;
-  font-weight: 700;
+  font-family: 'Google Sans', sans-serif;
+  font-size: 24px;
+  color: #202124;
   margin-bottom: 8px;
-  letter-spacing: 0.5px;
 }
+
 .subtitle {
   color: #5f6368;
-  font-size: 17px;
+  font-size: 14px;
 }
+
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 24px;
-  margin-bottom: 12px;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
 }
+
 .form-group {
   margin-bottom: 20px;
 }
-.form-group label {
-  margin-bottom: 6px;
+
+.full-width {
+  grid-column: 1 / -1;
 }
-.form-group input[type="text"],
-.form-group .select-wrapper,
-.form-group select,
-.form-group .google-select {
-  min-height: 44px;
-  box-sizing: border-box;
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #3c4043;
+  font-size: 14px;
 }
-.options-container {
-  margin-bottom: 12px;
+
+.helper-text {
+  display: block;
+  font-size: 12px;
+  color: #5f6368;
+  margin-top: 4px;
 }
-.editor-container {
-  min-height: 140px;
+
+.editor-wrapper {
+  background: #fff;
+  border-radius: 4px;
+  overflow: hidden;
 }
-.primary-btn {
-  margin-top: 18px;
+
+/* Quill Overrides */
+:deep(.ql-toolbar) {
+  border-color: #dadce0 !important;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  background-color: #f8f9fa;
 }
-.select-wrapper {
-  position: relative;
+
+:deep(.ql-container) {
+  border-color: #dadce0 !important;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+  font-family: 'Roboto', sans-serif;
+  font-size: 16px;
+  min-height: 150px;
 }
-.select-wrapper select {
-  width: 100%;
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1.5px solid #d2d2d7;
-  background: #f7f8fa;
-  font-size: 15px;
-  transition: border-color 0.2s;
-}
-.select-wrapper select:focus {
-  border-color: #4285f4;
-  outline: none;
-}
-.options-container {
-  background-color: #f1f3f4;
+
+.options-section {
+  margin-bottom: 24px;
+  background: #f8f9fa;
   padding: 20px;
-  border-radius: 14px;
-  box-shadow: 0 1px 4px rgba(60,64,67,0.08);
+  border-radius: 8px;
+  border: 1px solid #dadce0;
 }
+
 .option-row {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
 }
+
 .option-label {
-  font-weight: 600;
+  font-weight: 500;
   color: #5f6368;
   width: 24px;
 }
-.option-row input {
-  flex: 1;
+
+/* .remove-opt handled globally in style.css */
+
+.radio-group, .checkbox-group {
+  display: flex;
+  gap: 24px;
+  padding: 8px 0;
 }
-.remove-btn {
-  align-self: center;
-  min-width: 100px;
-  text-align: center;
-  margin-left: 8px;
+
+.radio-label, .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
 }
-.option-row input {
-  flex: 1;
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #d2d2d7;
-  background: #fff;
-  font-size: 15px;
-  transition: border-color 0.2s;
-}
-.option-row input:focus {
-  border-color: #4285f4;
-  outline: none;
-}
-.remove-btn {
-  color: #fff;
-  background: #ea4335;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
+
+.radio-text, .checkbox-text {
   font-size: 14px;
-  cursor: pointer;
-  font-weight: 500;
-  box-shadow: 0 1px 2px rgba(60,64,67,0.08);
-  transition: background 0.2s, box-shadow 0.2s;
-}
-.remove-btn:hover {
-  background-color: #d93025;
-  box-shadow: 0 2px 8px rgba(234,67,53,0.08);
-}
-.small-btn {
-  font-size: 13px;
-  padding: 6px 14px;
-  border-radius: 8px;
-  background: #fff;
-  border: 1px solid #d2d2d7;
-  color: #4285f4;
-  cursor: pointer;
-  transition: background 0.2s, box-shadow 0.2s;
-}
-.small-btn:hover {
-  background: #e3f2fd;
-  box-shadow: 0 2px 8px rgba(66,133,244,0.08);
-}
-.primary-btn {
-  width: 100%;
-  justify-content: center;
-  padding: 14px;
-  font-size: 17px;
-  font-weight: 600;
-  color: #fff;
-  background: linear-gradient(90deg,#4285f4 0%,#1a73e8 100%);
-  border: none;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(66,133,244,0.12);
-  cursor: pointer;
-  transition: box-shadow 0.2s, transform 0.2s;
-}
-.primary-btn:active {
-  transform: scale(0.98);
-  box-shadow: 0 1px 4px rgba(66,133,244,0.18);
-}
-.primary-btn:disabled {
-  background: #bcdffb;
-  color: #fff;
-  cursor: not-allowed;
-}
-.message {
-  margin-top: 20px;
-  padding: 12px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 15px;
-  box-shadow: 0 1px 4px rgba(60,64,67,0.08);
-}
-.success {
-  background-color: #e6f4ea;
-  color: #188038;
-}
-.error {
-  background-color: #fce8e6;
-  color: #d93025;
-}
-.editor-container {
-  border: 1.5px solid #d2d2d7;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(60,64,67,0.08);
-  min-height: 120px;
-}
-.ql-toolbar.ql-snow {
-  border-radius: 8px 8px 0 0;
-  background: #f7f8fa;
-  border: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0;
-  padding: 0 8px;
-}
-.ql-toolbar.ql-snow > .ql-formats {
-  margin-right: 0;
-  margin-bottom: 0;
-  display: flex;
-  align-items: center;
-  gap: 0;
-}
-.ql-toolbar.ql-snow button,
-.ql-toolbar.ql-snow .ql-picker {
-  margin: 0 2px;
-}
-.ql-toolbar.ql-snow .ql-video,
-.ql-toolbar.ql-snow .ql-code-block,
-.ql-toolbar.ql-snow .ql-color,
-.ql-toolbar.ql-snow .ql-background,
-.ql-toolbar.ql-snow .ql-size,
-.ql-toolbar.ql-snow .ql-font {
-  display: none !important;
-}
-.ql-container.ql-snow {
-  border-radius: 0 0 8px 8px;
-  min-height: 80px;
-  font-size: 16px;
-}
-.google-select {
-  border-radius: 8px;
-  border: 1.5px solid #d2d2d7;
-  background: #f7f8fa;
-  font-size: 15px;
-  padding: 10px 14px;
-  width: 100%;
-  box-sizing: border-box;
-  resize: none;
-  overflow-y: auto;
-}
-.google-select option {
-  padding: 8px 12px;
+  color: #3c4043;
 }
 
-/* 进一步美化 Subject ID 和 Tags 输入框 */
-.form-group input[type="text"] {
-  width: 100%;
-  padding: 12px 16px;
-  border-radius: 8px;
-  border: 1.5px solid #d2d2d7;
-  background: #f7f8fa;
-  font-size: 16px;
-  margin-bottom: 6px;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-shadow: 0 1px 4px rgba(60,64,67,0.08);
-}
-.form-group input[type="text"]:focus {
-  border-color: #4285f4;
-  outline: none;
-  box-shadow: 0 2px 8px rgba(66,133,244,0.12);
+.form-actions {
+  margin-top: 32px;
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
 }
 
-@media (max-width: 768px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-  .form-card {
-    padding: 18px;
-  }
+.error-text { color: #d93025; margin-top: 16px; text-align: center; }
+.success-text { color: #188038; margin-top: 16px; text-align: center; }
+
+.multi-select {
+  height: 120px;
+  padding: 8px;
 }
+
+.mt-2 { margin-top: 8px; }
 </style>
