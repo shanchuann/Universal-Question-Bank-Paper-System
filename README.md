@@ -1,15 +1,18 @@
 <p align="center">
    <img src="https://s2.loli.net/2025/11/25/vAmlECjbOaMWdif.png" alt="System Screenshot" width="600" />
 </p>
-
+<div align="center">
+   <img src="https://img.shields.io/badge/project-exam--system-blue" />
+   <img src="https://img.shields.io/badge/backend-spring--boot-green" />
+   <img src="https://img.shields.io/badge/frontend-vue3-brightgreen" />
+</div>
 A comprehensive system for managing exam questions, generating papers, and conducting online exams.
 
 ## Project Structure
 
 - `backend/` &mdash; Spring Boot application (Java 17+)
 - `frontend/` &mdash; Vue 3 + TypeScript + Vite application
-- `specs/` &mdash; OpenAPI specifications
-
+ 
 ## Tech Stack
 
 - **Backend**: Java 17+, Spring Boot, Gradle
@@ -50,7 +53,7 @@ cd backend
 cd frontend
 npm install
 npm run generate-api # If OpenAPI spec changed
-# OpenAPI spec: specs/001-specify-exam-platform/contracts/openapi.yaml
+# OpenAPI spec: ./openapi.yaml
 # Generated code: frontend/src/api/generated/
 npm run dev
 # The frontend will be available at http://localhost:5173
@@ -60,7 +63,7 @@ npm run build
 
 ## API Documentation
 
-- **OpenAPI specification:** [`specs/001-specify-exam-platform/contracts/openapi.yaml`](specs/001-specify-exam-platform/contracts/openapi.yaml)
+- **OpenAPI specification:** [`openapi.yaml`](openapi.yaml)
 - **Frontend API client** is auto-generated to ensure consistency between backend and frontend interfaces.
 
 ## Code Quality & Conventions
@@ -74,8 +77,7 @@ npm run build
 - `backend/src/main/java/` &mdash; Backend core business logic
 - `backend/src/main/resources/` &mdash; Backend configuration and templates
 - `frontend/src/` &mdash; Frontend pages, components, state management, API client
-- `specs/` &mdash; API specs, requirements docs, prototypes
-
+ 
 ---
 
 ## Contribution

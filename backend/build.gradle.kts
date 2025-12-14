@@ -64,7 +64,8 @@ spotless {
 	}
 }
 
-val openApiSpec = rootProject.layout.projectDirectory.dir("../specs/001-specify-exam-platform/contracts").file("openapi.yaml")
+// The OpenAPI spec now resides at the repository root (one level above this Gradle project).
+val openApiSpec = layout.projectDirectory.file("../openapi.yaml")
 val generatedApiDir = layout.buildDirectory.dir("generated/openapi")
 
 openApiGenerate {

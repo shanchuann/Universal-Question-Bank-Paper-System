@@ -1,22 +1,27 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
-import { RouterView, useRouter } from 'vue-router'
+import { RouterView, RouterLink, useRouter } from 'vue-router'
 import { authState } from '@/states/authState'
 
 const router = useRouter()
 
-const isTeacher = computed(() => {
-  return authState.user.role === 'TEACHER'
+const isTeacher = computed(() => authState.user.role === 'TEACHER')
+const isAdmin = computed(() => authState.user.role === 'ADMIN')
+
+const initial = computed(() => {
+  const name = authState.user.nickname || authState.user.username || ''
+  return name.length > 0 ? name.charAt(0).toUpperCase() : 'U'
 })
 
-const isAdmin = computed(() => {
-  return authState.user.role === 'ADMIN'
+const avatarStyle = computed(() => {
+  if (authState.user.avatarUrl) {
+    return { backgroundImage: `url(${authState.user.avatarUrl})` }
+  }
+  return { backgroundColor: '#1a73e8' } // Google Blue default
 })
 
 onMounted(() => {
-  if (authState.isAuthenticated) {
-    authState.fetchUser()
-  }
+  if (authState.isAuthenticated) authState.fetchUser()
 })
 
 const handleLogout = () => {
@@ -28,166 +33,158 @@ const handleLogout = () => {
 <template>
   <header class="google-header">
     <div class="header-content">
-      <div class="logo">
-        <RouterLink to="/">
-          <span class="logo-blue">U</span>niversal <span class="logo-grey">QBank</span>
-        </RouterLink>
+      <!-- Logo -->
+      <div class="logo" @click="$router.push('/')">
+        <span class="logo-blue">U</span>niversal&nbsp;<span class="logo-grey">QBank</span>
       </div>
-      <nav>
-        <template v-if="authState.isAuthenticated">
-          <RouterLink to="/">Home</RouterLink>
-          <template v-if="isTeacher">
-            <RouterLink to="/questions">Questions</RouterLink>
-            <RouterLink to="/papers">Papers</RouterLink>
-            <RouterLink to="/paper-generation">Generate</RouterLink>
-            <RouterLink to="/grading">Grading</RouterLink>
-            <RouterLink to="/knowledge-point-manage">Knowledge Points</RouterLink>
-          </template>
-          <template v-if="isAdmin">
-            <RouterLink to="/admin/users">Users</RouterLink>
-            <RouterLink to="/admin/system">System</RouterLink>
-          </template>
-          <RouterLink v-if="!isAdmin" to="/exam">Exam</RouterLink>
+
+      <!-- Navigation Links -->
+      <nav class="nav-links" v-if="authState.isAuthenticated">
+        <RouterLink to="/" class="nav-item">Home</RouterLink>
+        <template v-if="isTeacher">
+          <RouterLink to="/questions" class="nav-item">Questions</RouterLink>
+          <RouterLink to="/papers" class="nav-item">Papers</RouterLink>
+          <RouterLink to="/paper-generation" class="nav-item">Generate</RouterLink>
+          <RouterLink to="/grading" class="nav-item">Grading</RouterLink>
+          <RouterLink to="/knowledge-point-manage" class="nav-item">Knowledge Points</RouterLink>
         </template>
-        
-        <template v-if="!authState.isAuthenticated">
-          <RouterLink to="/login" class="auth-link">Login</RouterLink>
-          <RouterLink to="/register" class="auth-link">Register</RouterLink>
-        </template>
-        <template v-else>
-          <div class="user-menu">
-            <a href="#" @click.prevent="handleLogout" class="auth-link logout">Logout</a>
-            <RouterLink to="/profile" class="avatar-link" title="My Profile">
-              <div class="header-avatar" :style="{ backgroundImage: authState.user.avatarUrl ? `url(${authState.user.avatarUrl})` : '' }">
-                <span v-if="!authState.user.avatarUrl">{{ authState.user.username.charAt(0).toUpperCase() }}</span>
-              </div>
-            </RouterLink>
-          </div>
+        <template v-if="isAdmin">
+          <RouterLink to="/admin/users" class="nav-item">Users</RouterLink>
+          <RouterLink to="/admin/system" class="nav-item">System</RouterLink>
         </template>
       </nav>
+
+      <!-- User Actions -->
+      <div class="user-actions">
+        <template v-if="!authState.isAuthenticated">
+          <RouterLink to="/login" class="google-btn text-btn">Login</RouterLink>
+          <RouterLink to="/register" class="google-btn primary-btn">Register</RouterLink>
+        </template>
+        <template v-else>
+          <div class="user-profile">
+            <div class="avatar" :style="avatarStyle">
+              <span v-if="!authState.user.avatarUrl">{{ initial }}</span>
+            </div>
+            <button @click="handleLogout" class="google-btn text-btn logout-btn">Logout</button>
+          </div>
+        </template>
+      </div>
     </div>
   </header>
 
-  <main class="main-content">
+  <main class="main-container">
     <RouterView />
   </main>
 </template>
 
 <style scoped>
 .google-header {
+  background-color: #fff;
+  border-bottom: 1px solid #dadce0;
+  height: 64px;
   position: sticky;
   top: 0;
-  z-index: 100;
-  background-color: #ffffff;
-  border-bottom: 1px solid #dadce0;
-  height: 64px; /* Standard Google Toolbar height */
-  display: flex;
-  align-items: center;
+  z-index: 1000;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .header-content {
-  max-width: 1200px; /* Wider layout */
-  width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 0 24px;
+  height: 100%;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
 }
 
-.logo a {
-  font-family: 'Product Sans', 'Google Sans', 'Roboto', sans-serif;
-  font-weight: 400;
+.logo {
+  font-family: 'Google Sans', sans-serif;
   font-size: 22px;
   color: #5f6368;
-  text-decoration: none;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
-}
-
-.logo-blue {
-  color: #1a73e8;
   font-weight: 500;
-  font-size: 24px;
 }
 
-nav {
+.logo-blue { color: #4285f4; }
+.logo-grey { color: #5f6368; }
+
+.nav-links {
   display: flex;
-  gap: 32px;
-  font-size: 14px;
-  font-family: 'Google Sans', 'Roboto', sans-serif;
-  font-weight: 500;
+  gap: 8px;
+  margin-left: 40px;
+  flex: 1;
+  overflow-x: auto;
 }
 
-nav a {
+.nav-item {
   color: #5f6368;
   text-decoration: none;
-  transition: color 0.2s;
-  padding: 8px 0;
-  border-bottom: 2px solid transparent;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 4px;
+  white-space: nowrap;
+  transition: background-color 0.2s, color 0.2s;
 }
 
-nav a:hover {
+.nav-item:hover {
+  background-color: #f1f3f4;
   color: #202124;
 }
 
-nav a.router-link-active {
+.nav-item.router-link-active {
   color: #1a73e8;
-  border-bottom-color: #1a73e8;
+  background-color: #e8f0fe;
 }
 
-.auth-link {
-  font-weight: 500;
-}
-
-.logout {
-  color: #5f6368;
-}
-.logout:hover {
-  color: #d93025; /* Google Red */
-}
-
-.user-menu {
+.user-actions {
   display: flex;
   align-items: center;
   gap: 16px;
 }
 
-.header-avatar {
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background-color: #1a73e8; /* Google Blue */
-  color: white;
+  background-size: cover;
+  background-position: center;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #fff;
   font-weight: 500;
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
-  transition: background-color 0.2s;
-  background-size: cover;
-  background-position: center;
 }
 
-.header-avatar:hover {
-  background-color: #174ea6;
+.logout-btn {
+  font-size: 14px;
+  padding: 6px 12px;
 }
 
-.avatar-link {
-  text-decoration: none;
-  border-bottom: none; /* Override nav link style */
-  padding: 0;
+.main-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
 }
 
-.avatar-link:hover {
-  background-color: transparent;
-}
-
-.main-content {
-  padding-top: 20px;
-  min-height: calc(100vh - 50px);
+@media (max-width: 768px) {
+  .nav-links {
+    display: none;
+  }
+  
+  .header-content {
+    padding: 0 16px;
+  }
 }
 </style>

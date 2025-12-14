@@ -5,6 +5,7 @@ import type { QuestionSummary, KnowledgePoint } from '@/api/generated'
 import { useBasket } from '@/stores/basket'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import GoogleSelect from '@/components/GoogleSelect.vue'
 
 const questions = ref<QuestionSummary[]>([])
 const loading = ref(false)
@@ -22,6 +23,29 @@ const filterType = ref<string>('')
 const filterDifficulty = ref<string>('')
 const knowledgePoints = ref<KnowledgePoint[]>([])
 const flattenedKnowledgePoints = ref<{ id: string, label: string }[]>([])
+
+const typeOptions = [
+  { label: 'All Types', value: '' },
+  { label: 'Single Choice', value: 'SINGLE_CHOICE' },
+  { label: 'Multiple Choice', value: 'MULTIPLE_CHOICE' },
+  { label: 'True/False', value: 'TRUE_FALSE' },
+  { label: 'Fill Blank', value: 'FILL_BLANK' },
+  { label: 'Short Answer', value: 'SHORT_ANSWER' }
+]
+
+const difficultyOptions = [
+  { label: 'All Difficulties', value: '' },
+  { label: 'Easy', value: 'EASY' },
+  { label: 'Medium', value: 'MEDIUM' },
+  { label: 'Hard', value: 'HARD' }
+]
+
+const kpOptions = computed(() => {
+  return [
+    { label: 'All Knowledge Points', value: '' },
+    ...flattenedKnowledgePoints.value.map(kp => ({ label: kp.label, value: kp.id }))
+  ]
+})
 
 const fetchKnowledgePoints = async () => {
   try {
@@ -196,35 +220,25 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
 
     <div class="filter-bar google-card">
       <div class="filter-group">
-        <label>Knowledge Point</label>
-        <select v-model="filterKnowledgePoint" class="google-select">
-          <option value="">All Knowledge Points</option>
-          <option v-for="kp in flattenedKnowledgePoints" :key="kp.id" :value="kp.id">
-            {{ kp.label }}
-          </option>
-        </select>
+        <GoogleSelect
+          v-model="filterKnowledgePoint"
+          :options="kpOptions"
+          label="Knowledge Point"
+        />
       </div>
       <div class="filter-group">
-        <label>Type</label>
-        <select v-model="filterType" class="google-select">
-          <option value="">All Types</option>
-          <option value="SINGLE_CHOICE">Single Choice</option>
-          <option value="MULTIPLE_CHOICE">Multiple Choice</option>
-          <option value="TRUE_FALSE">True/False</option>
-          <option value="FILL_BLANK">Fill Blank</option>
-          <option value="SHORT_ANSWER">Short Answer</option>
-        </select>
+        <GoogleSelect
+          v-model="filterType"
+          :options="typeOptions"
+          label="Type"
+        />
       </div>
       <div class="filter-group">
-        <label>Difficulty</label>
-        <div class="select-wrapper">
-          <select v-model="filterDifficulty" class="google-select">
-            <option value="">All Difficulties</option>
-            <option value="EASY">Easy</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="HARD">Hard</option>
-          </select>
-        </div>
+        <GoogleSelect
+          v-model="filterDifficulty"
+          :options="difficultyOptions"
+          label="Difficulty"
+        />
       </div>
     </div>
 
