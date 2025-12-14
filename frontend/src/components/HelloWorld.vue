@@ -212,7 +212,7 @@ watch(() => authState.user.id, (newId) => {
         </router-link>
       </template>
 
-      <router-link v-if="authState.isAuthenticated" to="/knowledge-point-manage" class="nav-card google-card">
+      <router-link v-if="isTeacher" to="/knowledge-point-manage" class="nav-card google-card">
         <div class="icon-circle purple-bg">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-.29 0-.58-.03-.86-.08 3.54-.49 6.36-3.31 6.85-6.85.05-.28.08-.57.08-.86h-2c0 .29-.03.58-.08.86-.49 3.54-3.31 6.36-6.85 6.85-.28.05-.57.08-.86.08zm1-15.93c.29 0 .58.03.86.08-3.54.49-6.36 3.31-6.85 6.85-.05.28-.08.57-.08.86h2c0-.29.03-.58.08-.86.49-3.54 3.31-6.36 6.85-6.85.28-.05.57-.08.86-.08zm-1 4.93c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path></svg>
         </div>
@@ -269,7 +269,7 @@ watch(() => authState.user.id, (newId) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 16px;
   max-width: 800px;
   margin: 0 auto;
 }
@@ -342,10 +342,10 @@ watch(() => authState.user.id, (newId) => {
 
 .student-dashboard {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  margin-bottom: 3rem;
-  max-width: 1200px;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  max-width: 800px;
   margin-left: auto;
   margin-right: auto;
 }

@@ -8,6 +8,7 @@ import PaperPreviewView from '../views/PaperPreviewView.vue'
 import PaperEditView from '../views/PaperEditView.vue'
 import ExamView from '../views/ExamView.vue'
 import HelloWorld from '../components/HelloWorld.vue'
+import { authState } from '../states/authState'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -81,7 +82,8 @@ const router = createRouter({
     {
       path: '/knowledge-points',
       name: 'knowledge-points',
-      component: () => import('../views/KnowledgePointView.vue')
+      component: () => import('../views/KnowledgePointView.vue'),
+      meta: { roles: ['TEACHER'] }
     },
     {
       path: '/grading',
@@ -126,9 +128,27 @@ const router = createRouter({
     {
       path: '/knowledge-point-manage',
       name: 'knowledge-point-manage',
-      component: () => import('../views/KnowledgePointManageView.vue')
+      component: () => import('../views/KnowledgePointManageView.vue'),
+      meta: { roles: ['TEACHER'] }
     }
   ]
+})
+
+router.beforeEach((to, _from, next) => {
+  const requiredRoles = to.meta?.roles as string[] | undefined
+  if (!requiredRoles || requiredRoles.length === 0) {
+    return next()
+  }
+
+  if (!authState.isAuthenticated) {
+    return next({ name: 'login', query: { redirect: to.fullPath } })
+  }
+
+  if (!requiredRoles.includes(authState.user.role)) {
+    return next({ name: 'home' })
+  }
+
+  return next()
 })
 
 export default router
