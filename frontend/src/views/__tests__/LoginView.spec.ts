@@ -23,9 +23,9 @@ describe('LoginView', () => {
       }
     })
 
-    expect(wrapper.find('h1').text()).toBe('Login')
+    expect(wrapper.find('h1').text()).toBe('Sign in')
     expect(wrapper.find('input[type="text"]').exists()).toBe(true)
     expect(wrapper.find('input[type="password"]').exists()).toBe(true)
-    expect(wrapper.find('button').text()).toBe('Login')
+    expect(wrapper.find('button').text()).toBe('Next')
   })
 })
