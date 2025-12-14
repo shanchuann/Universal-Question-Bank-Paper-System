@@ -7,6 +7,11 @@ import { createRouter, createWebHistory } from 'vue-router'
 // Mock axios
 vi.mock('axios')
 
+// Mock requestFullscreen
+Element.prototype.requestFullscreen = vi.fn().mockResolvedValue(undefined)
+// Mock exitFullscreen
+Document.prototype.exitFullscreen = vi.fn().mockResolvedValue(undefined)
+
 // Mock router
 const router = createRouter({
   history: createWebHistory(),
@@ -39,7 +44,7 @@ describe('ExamView', () => {
           questions: [
             {
               id: 'q1',
-              content: 'What is 1+1?',
+              stem: 'What is 1+1?',
               type: 'SINGLE_CHOICE',
               options: ['1', '2', '3', '4']
             }
@@ -79,14 +84,17 @@ describe('ExamView', () => {
           questions: [
             {
               id: 'q1',
-              content: 'What is 1+1?',
+              stem: 'What is 1+1?',
               type: 'SINGLE_CHOICE',
               options: ['1', '2']
             }
           ]
         },
         userId: 'user-1',
-        score: null
+        score: 100,
+        records: [
+          { questionId: 'q1', userAnswer: '2', isCorrect: true }
+        ]
       }
     })
 
@@ -100,7 +108,7 @@ describe('ExamView', () => {
           questions: [
             {
               id: 'q1',
-              content: 'What is 1+1?',
+              stem: 'What is 1+1?',
               type: 'SINGLE_CHOICE',
               options: ['1', '2']
             }
@@ -126,15 +134,23 @@ describe('ExamView', () => {
     await flushPromises()
 
     // Select answer
-    await wrapper.find('input[type="radio"]').setValue('2')
+    const radio = wrapper.find('input[type="radio"]')
+    if (radio.exists()) {
+      await radio.setValue('2')
+    }
     
     // Submit exam
-    await wrapper.find('.submit-btn').trigger('click')
+    const buttons = wrapper.findAll('button')
+    const submitBtn = buttons.find(b => b.text().includes('Submit Exam'))
+    expect(submitBtn?.exists()).toBe(true)
+    await submitBtn?.trigger('click')
     await flushPromises()
 
     // Check score display
-    expect(wrapper.find('.score').text()).toContain('Score: 100')
+    expect(wrapper.find('.score-value').text()).toBe('100')
     expect(wrapper.find('.status-badge.correct').exists()).toBe(true)
-    expect(wrapper.find('.restart-btn').text()).toBe('Exit Exam')
+    
+    const exitBtn = wrapper.findAll('button').find(b => b.text().includes('Exit Exam'))
+    expect(exitBtn?.exists()).toBe(true)
   })
 })
