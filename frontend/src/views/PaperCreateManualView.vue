@@ -7,7 +7,7 @@ import { questionApi } from '@/api/client'
 
 const { basket, clearBasket } = useBasket()
 const router = useRouter()
-const title = ref('Manual Paper')
+const title = ref('手动组卷')
 const loading = ref(false)
 const error = ref('')
 const debugMsg = ref('')
@@ -53,7 +53,7 @@ const createPaper = async () => {
     clearBasket()
     router.push(`/papers/${response.data.id}/preview`)
   } catch (err) {
-    error.value = 'Failed to create paper.'
+    error.value = '创建试卷失败。'
     console.error(err)
   } finally {
     loading.value = false
@@ -62,7 +62,7 @@ const createPaper = async () => {
 
 const loadQuestions = async () => {
   if (basket.value.length === 0) {
-    debugMsg.value = 'Basket is empty'
+    debugMsg.value = '题篮为空'
     return;
   }
   
@@ -70,7 +70,7 @@ const loadQuestions = async () => {
   error.value = '';
   try {
     const promises = basket.value.map(id => 
-      questionApi.questionsQuestionIdGet(id)
+      questionApi.apiQuestionsQuestionIdGet(id)
         .then((res: any) => ({
           uuid: generateUuid(),
           type: 'QUESTION' as const,
@@ -88,12 +88,12 @@ const loadQuestions = async () => {
     items.value = results.filter((i: any) => i !== null) as PaperItem[];
     
     if (items.value.length === 0 && basket.value.length > 0) {
-      error.value = 'Failed to load selected questions. Please try again.';
+      error.value = '加载选中的题目失败，请重试。';
     }
     
   } catch (err) {
     console.error(err);
-    error.value = 'Failed to load questions.';
+    error.value = '加载题目失败。';
   } finally {
     loading.value = false;
   }
@@ -111,7 +111,7 @@ const addSection = () => {
   items.value.push({
     uuid: generateUuid(),
     type: 'SECTION',
-    sectionTitle: 'New Section',
+    sectionTitle: '新分区',
     score: 0
   });
 };
@@ -193,27 +193,27 @@ const resetDragState = () => {
   <div class="container">
     <div class="google-card form-card">
       <div class="card-header">
-        <h1>Manual Paper Assembly</h1>
-        <p class="subtitle">Arrange questions, set scores, and organize sections.</p>
+        <h1>手动组卷</h1>
+        <p class="subtitle">排列题目、设置分数、组织分区。</p>
       </div>
 
       <div class="form-group">
-        <label class="field-label">Paper Title</label>
-        <input v-model="title" type="text" class="google-input" placeholder="e.g. Midterm Exam" />
+        <label class="field-label">试卷标题</label>
+        <input v-model="title" type="text" class="google-input" placeholder="如：期中考试" />
       </div>
 
       <div class="toolbar">
-        <span class="total-score">Total Score: {{ totalScore }}</span>
+        <span class="total-score">总分: {{ totalScore }}</span>
         <button @click="addSection" class="google-btn text-btn">
-          <span class="material-icon">+</span> Add Section Header
+          <span class="material-icon">+</span> 添加分区标题
         </button>
       </div>
 
       <div class="paper-content">
-        <div v-if="loading" class="loading-state">Loading questions...</div>
+        <div v-if="loading" class="loading-state">正在加载题目...</div>
         
         <div v-else-if="items.length === 0" class="empty-state">
-          No questions selected. Go to Question Bank to add questions.
+          未选择题目。请先到题库中添加题目。
         </div>
 
         <div v-else class="items-list">
@@ -233,16 +233,16 @@ const resetDragState = () => {
             <div class="item-controls">
               <span 
                 class="drag-handle" 
-                title="Drag to reorder"
+                title="拖动排序"
                 draggable="true"
                 @dragstart="onDragStart($event, index)"
                 @dragend="onDragEnd"
               >⋮⋮</span>
-              <button @click="removeItem(index)" class="control-btn delete-btn" title="Remove">×</button>
+              <button @click="removeItem(index)" class="control-btn delete-btn" title="移除">×</button>
             </div>
 
             <div v-if="item.type === 'SECTION'" class="item-body section-body">
-              <input v-model="item.sectionTitle" type="text" class="section-input" placeholder="Section Title (e.g. Part I)" />
+              <input v-model="item.sectionTitle" type="text" class="section-input" placeholder="分区标题（如：第一部分）" />
             </div>
 
             <div v-else class="item-body question-body">
@@ -252,7 +252,7 @@ const resetDragState = () => {
                 <span class="chip">{{ item.data?.difficulty }}</span>
               </div>
               <div class="score-input-wrapper">
-                <label>Score:</label>
+                <label>分数:</label>
                 <input v-model.number="item.score" type="number" class="score-input" min="0" />
               </div>
             </div>
@@ -262,7 +262,7 @@ const resetDragState = () => {
 
       <div class="form-actions">
         <button @click="createPaper" :disabled="loading || items.length === 0" class="google-btn primary-btn full-width">
-          Create Paper
+          创建试卷
         </button>
       </div>
       

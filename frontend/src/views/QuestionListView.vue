@@ -17,6 +17,16 @@ const { basket, addToBasket, removeFromBasket, isInBasket, clearBasket } = useBa
 const router = useRouter()
 const showRestorePrompt = ref(false)
 
+// 分类统计
+const categoryStats = ref({
+  total: 0,
+  singleChoice: 0,
+  multiChoice: 0,
+  trueFalse: 0,
+  fillBlank: 0,
+  shortAnswer: 0
+})
+
 // Filters
 const filterKnowledgePoint = ref<string>('')
 const filterType = ref<string>('')
@@ -24,32 +34,23 @@ const filterDifficulty = ref<string>('')
 const knowledgePoints = ref<KnowledgePoint[]>([])
 const flattenedKnowledgePoints = ref<{ id: string, label: string }[]>([])
 
-const typeOptions = [
-  { label: 'All Types', value: '' },
-  { label: 'Single Choice', value: 'SINGLE_CHOICE' },
-  { label: 'Multiple Choice', value: 'MULTIPLE_CHOICE' },
-  { label: 'True/False', value: 'TRUE_FALSE' },
-  { label: 'Fill Blank', value: 'FILL_BLANK' },
-  { label: 'Short Answer', value: 'SHORT_ANSWER' }
-]
-
 const difficultyOptions = [
-  { label: 'All Difficulties', value: '' },
-  { label: 'Easy', value: 'EASY' },
-  { label: 'Medium', value: 'MEDIUM' },
-  { label: 'Hard', value: 'HARD' }
+  { label: '全部难度', value: '' },
+  { label: '简单', value: 'EASY' },
+  { label: '中等', value: 'MEDIUM' },
+  { label: '困难', value: 'HARD' }
 ]
 
 const kpOptions = computed(() => {
   return [
-    { label: 'All Knowledge Points', value: '' },
+    { label: '全部知识点', value: '' },
     ...flattenedKnowledgePoints.value.map(kp => ({ label: kp.label, value: kp.id }))
   ]
 })
 
 const fetchKnowledgePoints = async () => {
   try {
-    const response = await knowledgePointApi.knowledgePointsGet()
+    const response = await knowledgePointApi.apiKnowledgePointsGet()
     knowledgePoints.value = response.data
     flattenedKnowledgePoints.value = flattenPoints(knowledgePoints.value)
   } catch (err) {
@@ -100,6 +101,33 @@ const getAllIds = (points: KnowledgePoint[]): string[] => {
   return ids
 }
 
+// 获取分类统计数据
+const fetchCategoryStats = async () => {
+  try {
+    // 获取各类型的数量 (只统计 APPROVED 状态)
+    const types = ['SINGLE_CHOICE', 'MULTI_CHOICE', 'TRUE_FALSE', 'FILL_BLANK', 'SHORT_ANSWER']
+    const responses = await Promise.all([
+      // 总数
+      questionApi.apiQuestionsGet(0, 1, undefined, undefined, undefined, undefined, undefined, 'APPROVED'),
+      // 各类型数量
+      ...types.map(type => 
+        questionApi.apiQuestionsGet(0, 1, undefined, undefined, type as any, undefined, undefined, 'APPROVED')
+      )
+    ])
+    
+    categoryStats.value = {
+      total: responses[0].data.totalElements || 0,
+      singleChoice: responses[1].data.totalElements || 0,
+      multiChoice: responses[2].data.totalElements || 0,
+      trueFalse: responses[3].data.totalElements || 0,
+      fillBlank: responses[4].data.totalElements || 0,
+      shortAnswer: responses[5].data.totalElements || 0
+    }
+  } catch (err) {
+    console.error('Failed to fetch category stats', err)
+  }
+}
+
 const fetchQuestions = async () => {
   loading.value = true
   error.value = ''
@@ -109,18 +137,20 @@ const fetchQuestions = async () => {
       kpIds = getDescendantIds(knowledgePoints.value, filterKnowledgePoint.value)
     }
 
-    const response = await questionApi.questionsGet(
+    const response = await questionApi.apiQuestionsGet(
       page.value, 
       size.value, 
       undefined, // subjectId
       kpIds,
       filterType.value as any,
-      filterDifficulty.value as any
+      filterDifficulty.value as any,
+      undefined, // keywords
+      'APPROVED' // status - 只显示已通过的题目
     )
     questions.value = response.data.content || []
     totalElements.value = response.data.totalElements || 0
   } catch (err) {
-    error.value = 'Failed to load questions.'
+    error.value = '加载题目失败'
     console.error(err)
   } finally {
     loading.value = false
@@ -163,8 +193,12 @@ const goToBasket = () => {
   router.push('/papers/manual')
 }
 
+const editQuestion = (id: string) => {
+  router.push(`/questions/${id}/edit`)
+}
+
 const deleteQuestion = async (id: string) => {
-  if (!confirm('Are you sure you want to delete this question?')) return
+  if (!confirm('确定要删除这道题目吗？')) return
   try {
     const token = localStorage.getItem('token')
     await axios.delete(`/api/questions/${id}`, {
@@ -175,7 +209,7 @@ const deleteQuestion = async (id: string) => {
     totalElements.value--
   } catch (err) {
     console.error('Failed to delete question', err)
-    alert('Failed to delete question')
+    alert('删除失败')
   }
 }
 
@@ -186,12 +220,38 @@ const stripHtml = (html: string | undefined) => {
   return tmp.textContent || tmp.innerText || ''
 }
 
+// 中文映射
+const typeLabels: Record<string, string> = {
+  SINGLE_CHOICE: '单选题',
+  MULTI_CHOICE: '多选题',
+  MULTIPLE_CHOICE: '多选题',
+  TRUE_FALSE: '判断题',
+  FILL_BLANK: '填空题',
+  SHORT_ANSWER: '简答题'
+}
+
+const difficultyLabels: Record<string, string> = {
+  EASY: '简单',
+  MEDIUM: '中等',
+  HARD: '困难'
+}
+
+const statusLabels: Record<string, string> = {
+  DRAFT: '草稿',
+  PENDING_REVIEW: '待审核',
+  APPROVED: '已通过',
+  REJECTED: '未通过',
+  PUBLISHED: '已发布',
+  ACTIVE: '已激活'
+}
+
 onMounted(() => {
   if (basket.value.length > 0) {
     showRestorePrompt.value = true
   }
   fetchKnowledgePoints()
   fetchQuestions()
+  fetchCategoryStats()
 })
 
 watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
@@ -203,18 +263,67 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
 <template>
   <div class="question-list-container container">
     <div class="header-row">
-      <h1>Question Bank</h1>
+      <div class="header-title-section">
+        <h1>题库管理</h1>
+        <span class="total-count">共 {{ categoryStats.total }} 道题目</span>
+      </div>
       <div class="header-actions">
         <router-link to="/import" class="add-btn-link">
           <button class="google-btn text-btn">
-            File Import
+            文件导入
           </button>
         </router-link>
         <router-link to="/questions/add" class="add-btn-link">
           <button class="google-btn primary-btn">
-            <span class="material-icon">+</span> New Question
+            <span class="material-icon"></span> 添加题目
           </button>
         </router-link>
+      </div>
+    </div>
+
+    <!-- 分类统计标签 -->
+    <div class="category-tabs">
+      <div 
+        class="category-tab" 
+        :class="{ active: filterType === '' }"
+        @click="filterType = ''"
+      >
+        全部 <span class="count">{{ categoryStats.total }}</span>
+      </div>
+      <div 
+        class="category-tab" 
+        :class="{ active: filterType === 'SINGLE_CHOICE' }"
+        @click="filterType = 'SINGLE_CHOICE'"
+      >
+        单选题 <span class="count">{{ categoryStats.singleChoice }}</span>
+      </div>
+      <div 
+        class="category-tab" 
+        :class="{ active: filterType === 'MULTI_CHOICE' }"
+        @click="filterType = 'MULTI_CHOICE'"
+      >
+        多选题 <span class="count">{{ categoryStats.multiChoice }}</span>
+      </div>
+      <div 
+        class="category-tab" 
+        :class="{ active: filterType === 'TRUE_FALSE' }"
+        @click="filterType = 'TRUE_FALSE'"
+      >
+        判断题 <span class="count">{{ categoryStats.trueFalse }}</span>
+      </div>
+      <div 
+        class="category-tab" 
+        :class="{ active: filterType === 'FILL_BLANK' }"
+        @click="filterType = 'FILL_BLANK'"
+      >
+        填空题 <span class="count">{{ categoryStats.fillBlank }}</span>
+      </div>
+      <div 
+        class="category-tab" 
+        :class="{ active: filterType === 'SHORT_ANSWER' }"
+        @click="filterType = 'SHORT_ANSWER'"
+      >
+        简答题 <span class="count">{{ categoryStats.shortAnswer }}</span>
       </div>
     </div>
 
@@ -223,44 +332,37 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
         <GoogleSelect
           v-model="filterKnowledgePoint"
           :options="kpOptions"
-          label="Knowledge Point"
-        />
-      </div>
-      <div class="filter-group">
-        <GoogleSelect
-          v-model="filterType"
-          :options="typeOptions"
-          label="Type"
+          label="知识点"
         />
       </div>
       <div class="filter-group">
         <GoogleSelect
           v-model="filterDifficulty"
           :options="difficultyOptions"
-          label="Difficulty"
+          label="难度"
         />
       </div>
     </div>
 
     <div v-if="showRestorePrompt" class="restore-overlay">
       <div class="restore-dialog google-card">
-        <h3>Restore Selection?</h3>
-        <p>You have {{ basket.length }} questions selected from a previous session. Do you want to keep them?</p>
+        <h3>恢复之前的选择？</h3>
+        <p>您有 {{ basket.length }} 道题目在上次会话中被选中。是否保留？</p>
         <div class="dialog-actions">
-          <button @click="handleRestoreChoice(false)" class="google-btn text-btn">Clear</button>
-          <button @click="handleRestoreChoice(true)" class="google-btn primary-btn">Restore</button>
+          <button @click="handleRestoreChoice(false)" class="google-btn text-btn">清除</button>
+          <button @click="handleRestoreChoice(true)" class="google-btn primary-btn">保留</button>
         </div>
       </div>
     </div>
     
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
-      <p>Loading questions...</p>
+      <p>加载中...</p>
     </div>
     
     <div v-else-if="error" class="error-state google-card">
       <p>{{ error }}</p>
-      <button @click="fetchQuestions" class="google-btn">Try Again</button>
+      <button @click="fetchQuestions" class="google-btn">重试</button>
     </div>
     
     <div v-else class="google-card table-card">
@@ -275,12 +377,12 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
                 class="google-checkbox"
               />
             </th>
-            <th>Subject</th>
-            <th>Question</th>
-            <th>Type</th>
-            <th>Difficulty</th>
-            <th>Status</th>
-            <th>Actions</th>
+            <th>科目</th>
+            <th>题目</th>
+            <th>题型</th>
+            <th>难度</th>
+            <th>状态</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -294,21 +396,22 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
               />
             </td>
             <td>{{ question.subjectId }}</td>
-            <td class="stem-col" :title="stripHtml(question.stem)">
+            <td class="stem-col clickable" :title="stripHtml(question.stem)" @click="editQuestion(question.id!)">
               {{ stripHtml(question.stem).substring(0, 50) }}{{ stripHtml(question.stem).length > 50 ? '...' : '' }}
             </td>
-            <td><span class="chip type-chip">{{ question.type }}</span></td>
+            <td><span class="chip type-chip">{{ typeLabels[question.type || ''] || question.type }}</span></td>
             <td>
               <span class="chip" :class="question.difficulty?.toLowerCase()">
-                {{ question.difficulty }}
+                {{ difficultyLabels[question.difficulty || ''] || question.difficulty }}
               </span>
             </td>
             <td>
               <span class="status-dot" :class="['active', 'published'].includes(question.status?.toLowerCase() || '') ? 'active' : ''"></span>
-              {{ question.status }}
+              {{ statusLabels[question.status || ''] || question.status }}
             </td>
-            <td>
-              <button @click="deleteQuestion(question.id!)" class="google-btn text-btn danger-btn">Delete</button>
+            <td class="action-col">
+              <button @click="editQuestion(question.id!)" class="google-btn text-btn">编辑</button>
+              <button @click="deleteQuestion(question.id!)" class="google-btn text-btn danger-btn">删除</button>
             </td>
           </tr>
           <tr v-if="questions.length === 0">
@@ -323,16 +426,16 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
       </table>
       
       <div class="pagination">
-        <button :disabled="page === 0" @click="page--; fetchQuestions()" class="google-btn text-btn">Previous</button>
-        <span class="page-info">Page {{ page + 1 }}</span>
-        <button :disabled="(page + 1) * size >= totalElements" @click="page++; fetchQuestions()" class="google-btn text-btn">Next</button>
+        <button :disabled="page === 0" @click="page--; fetchQuestions()" class="google-btn text-btn">上一页</button>
+        <span class="page-info">第 {{ page + 1 }} 页</span>
+        <button :disabled="(page + 1) * size >= totalElements" @click="page++; fetchQuestions()" class="google-btn text-btn">下一页</button>
       </div>
     </div>
 
     <div v-if="basket.length > 0" class="basket-float">
       <div class="basket-content">
-        <span>{{ basket.length }} questions selected</span>
-        <button @click="goToBasket" class="google-btn primary-btn small-btn">Create Paper</button>
+        <span>已选 {{ basket.length }} 道题目</span>
+        <button @click="goToBasket" class="google-btn primary-btn small-btn">创建试卷</button>
       </div>
     </div>
   </div>
@@ -370,7 +473,64 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+}
+
+.header-title-section {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.header-title-section h1 {
+  margin: 0;
+}
+
+.total-count {
+  font-size: 14px;
+  color: #5f6368;
+  font-family: 'Google Sans', sans-serif;
+}
+
+.category-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.category-tab {
+  padding: 8px 16px;
+  border-radius: 18px;
+  background: #f1f3f4;
+  color: #5f6368;
+  font-size: 14px;
+  font-family: 'Google Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.category-tab:hover {
+  background: #e8eaed;
+}
+
+.category-tab.active {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.category-tab .count {
+  background: rgba(0, 0, 0, 0.08);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.category-tab.active .count {
+  background: rgba(26, 115, 232, 0.15);
 }
 
 .header-actions {
@@ -400,7 +560,7 @@ h1 {
 .question-table {
   width: 100%;
   border-collapse: collapse;
-  text-align: left;
+  text-align: center;
 }
 
 .question-table th {
@@ -410,6 +570,7 @@ h1 {
   color: #5f6368;
   font-size: 14px;
   border-bottom: 1px solid #dadce0;
+  text-align: center;
 }
 
 .question-table td {
@@ -417,6 +578,7 @@ h1 {
   border-bottom: 1px solid #f1f3f4;
   color: #3c4043;
   font-size: 14px;
+  text-align: center;
 }
 
 .question-table tr:last-child td {
@@ -594,5 +756,28 @@ h1 {
 
 .danger-btn:hover {
   background-color: #fce8e6 !important;
+}
+
+.stem-col.clickable {
+  cursor: pointer;
+  color: #1a73e8;
+  transition: color 0.2s;
+}
+
+.stem-col.clickable:hover {
+  color: #1557b0;
+  text-decoration: underline;
+}
+
+.action-col {
+  white-space: nowrap;
+}
+
+.action-col .google-btn {
+  margin-right: 8px;
+}
+
+.action-col .google-btn:last-child {
+  margin-right: 0;
 }
 </style>

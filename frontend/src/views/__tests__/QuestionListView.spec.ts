@@ -6,10 +6,10 @@ import { createRouter, createWebHistory } from 'vue-router'
 // Mock the API client
 vi.mock('@/api/client', () => ({
   questionApi: {
-    questionsGet: vi.fn()
+    apiQuestionsGet: vi.fn()
   },
   knowledgePointApi: {
-    knowledgePointsGet: vi.fn().mockResolvedValue({ data: [] })
+    apiKnowledgePointsGet: vi.fn().mockResolvedValue({ data: [] })
   }
 }))
 
@@ -28,7 +28,7 @@ describe('QuestionListView', () => {
     ]
     
     // Setup mock response
-    const mockGet = questionApi.questionsGet as unknown as ReturnType<typeof vi.fn>
+    const mockGet = questionApi.apiQuestionsGet as unknown as ReturnType<typeof vi.fn>
     mockGet.mockResolvedValue({
       data: {
         content: mockQuestions,
@@ -72,7 +72,7 @@ describe('QuestionListView', () => {
     })
 
     // Setup mock error
-    const mockGet = questionApi.questionsGet as unknown as ReturnType<typeof vi.fn>
+    const mockGet = questionApi.apiQuestionsGet as unknown as ReturnType<typeof vi.fn>
     mockGet.mockRejectedValue(new Error('Network error'))
 
     const wrapper = mount(QuestionListView, {

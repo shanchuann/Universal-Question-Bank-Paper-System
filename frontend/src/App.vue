@@ -1,12 +1,88 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
-import { RouterView, RouterLink, useRouter } from 'vue-router'
-import { authState } from '@/states/authState'
+import { ref, onMounted, computed } from 'vue'
+import { RouterView, useRouter } from 'vue-router'
+import { authState, type UserRole } from '@/states/authState'
 
 const router = useRouter()
 
-const isTeacher = computed(() => authState.user.role === 'TEACHER')
-const isAdmin = computed(() => authState.user.role === 'ADMIN')
+type NavChild = { to: string; label: string }
+type NavGroup = {
+  label: string
+  roles?: Array<Exclude<UserRole, ''>>
+  children?: NavChild[]
+  to?: string
+}
+
+const activeDropdown = ref<string | null>(null)
+
+const navGroups = computed<NavGroup[]>(() => {
+  const role = authState.user.role
+  const isStudent = role !== 'TEACHER' && role !== 'ADMIN'
+  const isTeacher = role === 'TEACHER'
+  const isAdmin = role === 'ADMIN'
+
+  const groups: NavGroup[] = [
+    { to: '/', label: '首页' },
+    {
+      label: '题库管理',
+      roles: ['TEACHER', 'ADMIN'],
+      children: [
+        { to: '/questions', label: '题目列表' },
+        { to: '/questions/add', label: '添加题目' },
+        { to: '/import', label: '批量导入' },
+        { to: '/questions/review', label: '题目审核' },
+        { to: '/knowledge-point-manage', label: '知识点管理' }
+      ]
+    },
+    {
+      label: '试卷管理',
+      roles: ['TEACHER', 'ADMIN'],
+      children: [
+        { to: '/papers', label: '试卷列表' },
+        { to: '/papers/manual', label: '手动组卷' },
+        { to: '/paper-generation', label: '智能组卷' }
+      ]
+    },
+    {
+      label: '考试管理',
+      to: '/exams/manage',
+      roles: ['TEACHER', 'ADMIN']
+    },
+    {
+      label: '阅卷评分',
+      to: '/grading',
+      roles: ['TEACHER', 'ADMIN']
+    },
+    // 学生专属菜单（直接展示在导航栏）
+    ...(isStudent ? [
+      { to: '/exams/list', label: '我的考试' },
+      { to: '/practice', label: '练习模式' },
+      { to: '/leaderboard', label: '排行榜' },
+      { to: '/questions/add', label: '我要出题' },
+      { to: '/my-organizations', label: '我的班级' }
+    ] : []),
+    // 教师的班级管理
+    ...(isTeacher ? [{
+      label: '班级管理',
+      children: [
+        { to: '/admin/organizations', label: '我的班级' },
+        { to: '/leaderboard', label: '排行榜' }
+      ]
+    }] : []),
+    // 管理员的系统管理
+    ...(isAdmin ? [{
+      label: '系统管理',
+      children: [
+        { to: '/admin/organizations', label: '组织架构' },
+        { to: '/admin/roles', label: '角色权限' },
+        { to: '/admin/users', label: '用户管理' },
+        { to: '/admin/system', label: '系统设置' }
+      ]
+    }] : [])
+  ]
+
+  return groups
+})
 
 const initial = computed(() => {
   const name = authState.user.nickname || authState.user.username || ''
@@ -17,7 +93,7 @@ const avatarStyle = computed(() => {
   if (authState.user.avatarUrl) {
     return { backgroundImage: `url(${authState.user.avatarUrl})` }
   }
-  return { backgroundColor: '#1a73e8' } // Google Blue default
+  return { backgroundColor: '#1a73e8' }
 })
 
 onMounted(() => {
@@ -28,6 +104,23 @@ const handleLogout = () => {
   authState.logout()
   router.push('/login')
 }
+
+const goProfile = () => {
+  router.push('/profile')
+}
+
+const toggleDropdown = (label: string) => {
+  activeDropdown.value = activeDropdown.value === label ? null : label
+}
+
+const closeDropdown = () => {
+  activeDropdown.value = null
+}
+
+const navigateTo = (to: string) => {
+  router.push(to)
+  closeDropdown()
+}
 </script>
 
 <template>
@@ -35,37 +128,59 @@ const handleLogout = () => {
     <div class="header-content">
       <!-- Logo -->
       <div class="logo" @click="$router.push('/')">
-        <span class="logo-blue">U</span>niversal&nbsp;<span class="logo-grey">QBank</span>
+        <span class="logo-blue">UQ</span><span class="logo-gray">Bank</span>
       </div>
 
       <!-- Navigation Links -->
       <nav class="nav-links" v-if="authState.isAuthenticated">
-        <RouterLink to="/" class="nav-item">Home</RouterLink>
-        <template v-if="isTeacher">
-          <RouterLink to="/questions" class="nav-item">Questions</RouterLink>
-          <RouterLink to="/papers" class="nav-item">Papers</RouterLink>
-          <RouterLink to="/paper-generation" class="nav-item">Generate</RouterLink>
-          <RouterLink to="/grading" class="nav-item">Grading</RouterLink>
-          <RouterLink to="/knowledge-point-manage" class="nav-item">Knowledge Points</RouterLink>
-        </template>
-        <template v-if="isAdmin">
-          <RouterLink to="/admin/users" class="nav-item">Users</RouterLink>
-          <RouterLink to="/admin/system" class="nav-item">System</RouterLink>
+        <template v-for="group in navGroups" :key="group.label">
+          <!-- 角色检查：如果有roles限制，检查当前用户角色 -->
+          <template v-if="!group.roles || (authState.user.role && group.roles.includes(authState.user.role as Exclude<UserRole, ''>))">
+            <!-- 单个链接 -->
+            <div v-if="group.to" class="nav-item" @click="navigateTo(group.to)">
+              {{ group.label }}
+            </div>
+            
+            <!-- 下拉菜单 -->
+            <div v-else-if="group.children" class="nav-dropdown" @mouseleave="closeDropdown">
+              <div 
+                class="nav-item dropdown-trigger" 
+                :class="{ active: activeDropdown === group.label }"
+                @click="toggleDropdown(group.label)"
+                @mouseenter="activeDropdown = group.label"
+              >
+                {{ group.label }}
+                <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+              <div v-show="activeDropdown === group.label" class="dropdown-menu">
+                <div 
+                  v-for="child in group.children" 
+                  :key="child.to" 
+                  class="dropdown-item"
+                  @click="navigateTo(child.to)"
+                >
+                  {{ child.label }}
+                </div>
+              </div>
+            </div>
+          </template>
         </template>
       </nav>
 
       <!-- User Actions -->
       <div class="user-actions">
         <template v-if="!authState.isAuthenticated">
-          <RouterLink to="/login" class="google-btn text-btn">Login</RouterLink>
-          <RouterLink to="/register" class="google-btn primary-btn">Register</RouterLink>
+          <button class="google-btn text-btn" @click="$router.push('/login')">登录</button>
+          <button class="google-btn primary-btn" @click="$router.push('/register')">注册</button>
         </template>
         <template v-else>
           <div class="user-profile">
-            <div class="avatar" :style="avatarStyle">
+            <div class="avatar" :style="avatarStyle" @click="goProfile" title="个人设置">
               <span v-if="!authState.user.avatarUrl">{{ initial }}</span>
             </div>
-            <button @click="handleLogout" class="google-btn text-btn logout-btn">Logout</button>
+            <button @click="handleLogout" class="google-btn text-btn logout-btn">退出</button>
           </div>
         </template>
       </div>
@@ -89,7 +204,7 @@ const handleLogout = () => {
 }
 
 .header-content {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   height: 100%;
   display: flex;
@@ -100,34 +215,38 @@ const handleLogout = () => {
 
 .logo {
   font-family: 'Google Sans', sans-serif;
-  font-size: 22px;
-  color: #5f6368;
+  font-size: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
   font-weight: 500;
+  white-space: nowrap;
 }
 
-.logo-blue { color: #4285f4; }
+.logo-blue { color: #1a73e8; }
 .logo-grey { color: #5f6368; }
 
 .nav-links {
   display: flex;
-  gap: 8px;
-  margin-left: 40px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-left: 32px;
   flex: 1;
-  overflow-x: auto;
 }
 
 .nav-item {
   color: #5f6368;
-  text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  padding: 8px 12px;
+  padding: 10px 16px;
   border-radius: 4px;
   white-space: nowrap;
+  cursor: pointer;
   transition: background-color 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .nav-item:hover {
@@ -135,15 +254,59 @@ const handleLogout = () => {
   color: #202124;
 }
 
-.nav-item.router-link-active {
-  color: #1a73e8;
+.nav-dropdown {
+  position: relative;
+}
+
+.dropdown-trigger.active {
   background-color: #e8f0fe;
+  color: #1a73e8;
+}
+
+.dropdown-arrow {
+  transition: transform 0.2s;
+}
+
+.dropdown-trigger.active .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #fff;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  min-width: 160px;
+  padding: 8px 0;
+  z-index: 1001;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-item {
+  padding: 10px 16px;
+  font-size: 14px;
+  color: #202124;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.dropdown-item:hover {
+  background-color: #f1f3f4;
 }
 
 .user-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  margin-left: 16px;
 }
 
 .user-profile {
@@ -153,8 +316,8 @@ const handleLogout = () => {
 }
 
 .avatar {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background-size: cover;
   background-position: center;
@@ -165,6 +328,39 @@ const handleLogout = () => {
   font-weight: 500;
   font-size: 16px;
   cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+.avatar:hover {
+  box-shadow: 0 0 0 4px rgba(26,115,232,0.2);
+}
+
+.google-btn {
+  padding: 8px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.2s;
+}
+
+.primary-btn {
+  background: #1a73e8;
+  color: #fff;
+}
+
+.primary-btn:hover {
+  background: #1557b0;
+}
+
+.text-btn {
+  background: transparent;
+  color: #1a73e8;
+}
+
+.text-btn:hover {
+  background: #e8f0fe;
 }
 
 .logout-btn {
@@ -173,9 +369,20 @@ const handleLogout = () => {
 }
 
 .main-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 24px;
+}
+
+@media (max-width: 1024px) {
+  .nav-links {
+    gap: 0;
+  }
+  
+  .nav-item {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
 }
 
 @media (max-width: 768px) {

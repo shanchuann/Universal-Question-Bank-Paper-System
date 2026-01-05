@@ -1,7 +1,8 @@
 import { Configuration, AuthApi, QuestionBankApi, PaperApi, ExamApi, KnowledgePointApi, AnalyticsApi } from './generated'
 
+// 使用当前域名（开发时为 localhost:5173，由 Vite 代理转发到后端）
 const config = new Configuration({
-  basePath: '/api',
+  basePath: window.location.origin,  // 这将使用当前页面的域名
 })
 
 export const authApi = new AuthApi(config)

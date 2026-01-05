@@ -8,7 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/stats")
+@RequestMapping("/api/stats")
 public class StudentStatsController {
 
   @Autowired private StudentStatsService studentStatsService;
@@ -20,7 +20,11 @@ public class StudentStatsController {
 
   @GetMapping("/leaderboard")
   public ResponseEntity<List<StudentStatsEntity>> getLeaderboard(
-      @RequestParam(defaultValue = "5") int limit) {
+      @RequestParam(defaultValue = "50") int limit,
+      @RequestParam(required = false) String orgId) {
+    if (orgId != null && !orgId.isEmpty()) {
+      return ResponseEntity.ok(studentStatsService.getLeaderboardByOrganization(orgId, limit));
+    }
     return ResponseEntity.ok(studentStatsService.getLeaderboard(limit));
   }
 }

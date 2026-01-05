@@ -13,7 +13,7 @@ const loading = ref(false)
 
 const handleRegister = async () => {
   if (password.value !== confirmPassword.value) {
-    error.value = 'Passwords do not match'
+    error.value = '两次输入的密码不一致'
     return
   }
 
@@ -26,10 +26,10 @@ const handleRegister = async () => {
       password: password.value,
       role: role.value
     })
-    alert('Registration successful! Please login.')
+    alert('注册成功！请登录')
     router.push('/login')
   } catch (err: any) {
-    error.value = err.response?.data || 'Registration failed'
+    error.value = err.response?.data || '注册失败'
   } finally {
     loading.value = false
   }
@@ -42,37 +42,37 @@ const handleRegister = async () => {
       <div class="logo-area">
         <span class="google-logo">G</span>
       </div>
-      <h1>Create your Account</h1>
-      <p class="subtitle">to continue to Question Bank</p>
+      <h1>创建账号</h1>
+      <p class="subtitle">继续使用题库系统</p>
       
       <form @submit.prevent="handleRegister">
         <div class="form-group">
-          <input v-model="username" type="text" required placeholder="Username" class="google-input" />
+          <input v-model="username" type="text" required placeholder="用户名" class="google-input" />
         </div>
         
         <div class="form-row">
           <div class="form-group half">
-            <input v-model="password" type="password" required placeholder="Password" class="google-input" />
+            <input v-model="password" type="password" required placeholder="密码" class="google-input" />
           </div>
           <div class="form-group half">
-            <input v-model="confirmPassword" type="password" required placeholder="Confirm" class="google-input" />
+            <input v-model="confirmPassword" type="password" required placeholder="确认密码" class="google-input" />
           </div>
         </div>
-        <p class="hint-text">Use 8 or more characters with a mix of letters, numbers & symbols</p>
+        <p class="hint-text">密码至少8位，包含字母、数字和符号</p>
 
         <div class="form-group">
           <div class="select-wrapper">
             <select v-model="role" class="google-input">
-              <option value="USER">Student</option>
-              <option value="TEACHER">Teacher</option>
+              <option value="USER">学生</option>
+              <option value="TEACHER">教师</option>
             </select>
           </div>
         </div>
 
         <div class="actions">
-          <router-link to="/login" class="sign-in-link">Sign in instead</router-link>
+          <router-link to="/login" class="sign-in-link">已有账号？登录</router-link>
           <button type="submit" :disabled="loading" class="primary-btn">
-            {{ loading ? 'Creating...' : 'Next' }}
+            {{ loading ? '创建中...' : '注册' }}
           </button>
         </div>
         

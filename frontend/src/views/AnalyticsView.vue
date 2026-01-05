@@ -7,7 +7,7 @@
 
     <div v-if="loading" class="text-center my-5">
       <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
+        <span class="visually-hidden">加载中...</span>
       </div>
       <p class="mt-2">正在加载分析数据...</p>
     </div>
@@ -99,8 +99,8 @@
                         <div 
                           class="progress-bar bg-danger" 
                           role="progressbar" 
-                          :style="{ width: (item.errorRate * 100) + '%' }"
-                          :aria-valuenow="item.errorRate * 100" 
+                          :style="{ width: ((item.errorRate ?? 0) * 100) + '%' }"
+                          :aria-valuenow="(item.errorRate ?? 0) * 100" 
                           aria-valuemin="0" 
                           aria-valuemax="100">
                         </div>
@@ -108,8 +108,8 @@
                       <span>{{ formatPercent(item.errorRate) }}</span>
                     </div>
                   </td>
-                  <td>{{ item.errorCount }}</td>
-                  <td>{{ item.totalAttempts }}</td>
+                  <td>{{ item.errorCount ?? item.incorrect }}</td>
+                  <td>{{ item.totalAttempts ?? item.attempts }}</td>
                 </tr>
               </tbody>
             </table>
@@ -171,7 +171,7 @@ const formatPercent = (num?: number) => {
 const fetchData = async () => {
   try {
     loading.value = true
-    const response = await analyticsApi.analyticsExamsPaperVersionIdSummaryGet(paperId)
+    const response = await analyticsApi.apiAnalyticsExamsPaperVersionIdSummaryGet(paperId)
     analyticsData.value = response.data
   } catch (err: any) {
     console.error('Failed to fetch analytics:', err)
@@ -185,8 +185,8 @@ const fetchData = async () => {
 const scoreDistributionData = computed(() => {
   if (!analyticsData.value?.scoreDistribution) return null
   
-  const labels = analyticsData.value.scoreDistribution.map(b => b.rangeLabel)
-  const data = analyticsData.value.scoreDistribution.map(b => b.count)
+  const labels = analyticsData.value.scoreDistribution.map(b => b.rangeLabel || b.range || '')
+  const data = analyticsData.value.scoreDistribution.map(b => b.count ?? b.percentage ?? 0)
 
   return {
     labels,

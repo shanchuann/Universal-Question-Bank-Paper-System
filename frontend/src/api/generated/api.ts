@@ -318,6 +318,18 @@ export interface ExamSessionResponse {
     'userId'?: string;
     /**
      * 
+     * @type {string}
+     * @memberof ExamSessionResponse
+     */
+    'nickname'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ExamSessionResponse
+     */
+    'username'?: string;
+    /**
+     * 
      * @type {number}
      * @memberof ExamSessionResponse
      */
@@ -371,6 +383,12 @@ export interface KnowledgeMetric {
      * @memberof KnowledgeMetric
      */
     'masteryPercent'?: number;
+    /**
+     * Same as masteryPercent but as decimal (0-1)
+     * @type {number}
+     * @memberof KnowledgeMetric
+     */
+    'masteryRate'?: number;
 }
 /**
  * 
@@ -809,6 +827,18 @@ export interface QuestionErrorRate {
      * @memberof QuestionErrorRate
      */
     'errorRate'?: number;
+    /**
+     * Alias for incorrect
+     * @type {number}
+     * @memberof QuestionErrorRate
+     */
+    'errorCount'?: number;
+    /**
+     * Alias for attempts
+     * @type {number}
+     * @memberof QuestionErrorRate
+     */
+    'totalAttempts'?: number;
 }
 /**
  * 
@@ -915,17 +945,11 @@ export interface QuestionResponse {
      */
     'knowledgePointIds'?: Array<string>;
     /**
-     * 
+     * JSON string of options array
      * @type {string}
      * @memberof QuestionResponse
      */
-    'createdAt'?: string;
-    /**
-     * 
-     * @type {Array<QuestionOption>}
-     * @memberof QuestionResponse
-     */
-    'options'?: Array<QuestionOption>;
+    'optionsJson'?: string;
     /**
      * 
      * @type {object}
@@ -938,6 +962,30 @@ export interface QuestionResponse {
      * @memberof QuestionResponse
      */
     'analysis'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof QuestionResponse
+     */
+    'reviewNotes'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof QuestionResponse
+     */
+    'createdBy'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof QuestionResponse
+     */
+    'createdAt'?: string;
+    /**
+     * 
+     * @type {Array<QuestionOption>}
+     * @memberof QuestionResponse
+     */
+    'options'?: Array<QuestionOption>;
     /**
      * 
      * @type {string}
@@ -1119,6 +1167,36 @@ export interface QuestionSummary {
      */
     'knowledgePointIds'?: Array<string>;
     /**
+     * JSON string of options array
+     * @type {string}
+     * @memberof QuestionSummary
+     */
+    'optionsJson'?: string;
+    /**
+     * Answer (e.g., \"A\" or \"A,B\")
+     * @type {string}
+     * @memberof QuestionSummary
+     */
+    'answerSchema'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof QuestionSummary
+     */
+    'analysis'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof QuestionSummary
+     */
+    'reviewNotes'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof QuestionSummary
+     */
+    'createdBy'?: string;
+    /**
      * 
      * @type {string}
      * @memberof QuestionSummary
@@ -1206,11 +1284,23 @@ export interface ScoreBucket {
      */
     'range'?: string;
     /**
+     * Display label for the range
+     * @type {string}
+     * @memberof ScoreBucket
+     */
+    'rangeLabel'?: string;
+    /**
      * 
      * @type {number}
      * @memberof ScoreBucket
      */
     'percentage'?: number;
+    /**
+     * Number of students in this range
+     * @type {number}
+     * @memberof ScoreBucket
+     */
+    'count'?: number;
 }
 /**
  * 
@@ -1373,8 +1463,8 @@ export const AdminApiAxiosParamCreator = function (configuration?: Configuration
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        usersGet: async (page?: number, size?: number, role?: 'ADMIN' | 'TEACHER' | 'STUDENT', status?: 'ACTIVE' | 'LOCKED' | 'INVITED', options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/users`;
+        apiUsersGet: async (page?: number, size?: number, role?: 'ADMIN' | 'TEACHER' | 'STUDENT', status?: 'ACTIVE' | 'LOCKED' | 'INVITED', options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/users`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1424,10 +1514,10 @@ export const AdminApiAxiosParamCreator = function (configuration?: Configuration
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        usersPost: async (userCreateRequest: UserCreateRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiUsersPost: async (userCreateRequest: UserCreateRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'userCreateRequest' is not null or undefined
-            assertParamExists('usersPost', 'userCreateRequest', userCreateRequest)
-            const localVarPath = `/users`;
+            assertParamExists('apiUsersPost', 'userCreateRequest', userCreateRequest)
+            const localVarPath = `/api/users`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1477,8 +1567,8 @@ export const AdminApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async usersGet(page?: number, size?: number, role?: 'ADMIN' | 'TEACHER' | 'STUDENT', status?: 'ACTIVE' | 'LOCKED' | 'INVITED', options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UserPage>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.usersGet(page, size, role, status, options);
+        async apiUsersGet(page?: number, size?: number, role?: 'ADMIN' | 'TEACHER' | 'STUDENT', status?: 'ACTIVE' | 'LOCKED' | 'INVITED', options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UserPage>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiUsersGet(page, size, role, status, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -1488,8 +1578,8 @@ export const AdminApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async usersPost(userCreateRequest: UserCreateRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UserResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.usersPost(userCreateRequest, options);
+        async apiUsersPost(userCreateRequest: UserCreateRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UserResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiUsersPost(userCreateRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
     }
@@ -1512,8 +1602,8 @@ export const AdminApiFactory = function (configuration?: Configuration, basePath
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        usersGet(page?: number, size?: number, role?: 'ADMIN' | 'TEACHER' | 'STUDENT', status?: 'ACTIVE' | 'LOCKED' | 'INVITED', options?: any): AxiosPromise<UserPage> {
-            return localVarFp.usersGet(page, size, role, status, options).then((request) => request(axios, basePath));
+        apiUsersGet(page?: number, size?: number, role?: 'ADMIN' | 'TEACHER' | 'STUDENT', status?: 'ACTIVE' | 'LOCKED' | 'INVITED', options?: any): AxiosPromise<UserPage> {
+            return localVarFp.apiUsersGet(page, size, role, status, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1522,8 +1612,8 @@ export const AdminApiFactory = function (configuration?: Configuration, basePath
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        usersPost(userCreateRequest: UserCreateRequest, options?: any): AxiosPromise<UserResponse> {
-            return localVarFp.usersPost(userCreateRequest, options).then((request) => request(axios, basePath));
+        apiUsersPost(userCreateRequest: UserCreateRequest, options?: any): AxiosPromise<UserResponse> {
+            return localVarFp.apiUsersPost(userCreateRequest, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -1546,8 +1636,8 @@ export class AdminApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof AdminApi
      */
-    public usersGet(page?: number, size?: number, role?: 'ADMIN' | 'TEACHER' | 'STUDENT', status?: 'ACTIVE' | 'LOCKED' | 'INVITED', options?: AxiosRequestConfig) {
-        return AdminApiFp(this.configuration).usersGet(page, size, role, status, options).then((request) => request(this.axios, this.basePath));
+    public apiUsersGet(page?: number, size?: number, role?: 'ADMIN' | 'TEACHER' | 'STUDENT', status?: 'ACTIVE' | 'LOCKED' | 'INVITED', options?: AxiosRequestConfig) {
+        return AdminApiFp(this.configuration).apiUsersGet(page, size, role, status, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -1558,8 +1648,8 @@ export class AdminApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof AdminApi
      */
-    public usersPost(userCreateRequest: UserCreateRequest, options?: AxiosRequestConfig) {
-        return AdminApiFp(this.configuration).usersPost(userCreateRequest, options).then((request) => request(this.axios, this.basePath));
+    public apiUsersPost(userCreateRequest: UserCreateRequest, options?: AxiosRequestConfig) {
+        return AdminApiFp(this.configuration).apiUsersPost(userCreateRequest, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
@@ -1577,10 +1667,10 @@ export const AnalyticsApiAxiosParamCreator = function (configuration?: Configura
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        analyticsExamsPaperVersionIdSummaryGet: async (paperVersionId: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiAnalyticsExamsPaperVersionIdSummaryGet: async (paperVersionId: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'paperVersionId' is not null or undefined
-            assertParamExists('analyticsExamsPaperVersionIdSummaryGet', 'paperVersionId', paperVersionId)
-            const localVarPath = `/analytics/exams/{paperVersionId}/summary`
+            assertParamExists('apiAnalyticsExamsPaperVersionIdSummaryGet', 'paperVersionId', paperVersionId)
+            const localVarPath = `/api/analytics/exams/{paperVersionId}/summary`
                 .replace(`{${"paperVersionId"}}`, encodeURIComponent(String(paperVersionId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -1619,8 +1709,8 @@ export const AnalyticsApiAxiosParamCreator = function (configuration?: Configura
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        analyticsQuestionsErrorRateGet: async (subjectId?: string, knowledgePointId?: string, startDate?: string, endDate?: string, limit?: number, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/analytics/questions/error-rate`;
+        apiAnalyticsQuestionsErrorRateGet: async (subjectId?: string, knowledgePointId?: string, startDate?: string, endDate?: string, limit?: number, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/analytics/questions/error-rate`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1688,8 +1778,8 @@ export const AnalyticsApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async analyticsExamsPaperVersionIdSummaryGet(paperVersionId: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ExamAnalyticsResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.analyticsExamsPaperVersionIdSummaryGet(paperVersionId, options);
+        async apiAnalyticsExamsPaperVersionIdSummaryGet(paperVersionId: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ExamAnalyticsResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiAnalyticsExamsPaperVersionIdSummaryGet(paperVersionId, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -1703,8 +1793,8 @@ export const AnalyticsApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async analyticsQuestionsErrorRateGet(subjectId?: string, knowledgePointId?: string, startDate?: string, endDate?: string, limit?: number, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<QuestionErrorRate>>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.analyticsQuestionsErrorRateGet(subjectId, knowledgePointId, startDate, endDate, limit, options);
+        async apiAnalyticsQuestionsErrorRateGet(subjectId?: string, knowledgePointId?: string, startDate?: string, endDate?: string, limit?: number, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<QuestionErrorRate>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiAnalyticsQuestionsErrorRateGet(subjectId, knowledgePointId, startDate, endDate, limit, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
     }
@@ -1724,8 +1814,8 @@ export const AnalyticsApiFactory = function (configuration?: Configuration, base
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        analyticsExamsPaperVersionIdSummaryGet(paperVersionId: string, options?: any): AxiosPromise<ExamAnalyticsResponse> {
-            return localVarFp.analyticsExamsPaperVersionIdSummaryGet(paperVersionId, options).then((request) => request(axios, basePath));
+        apiAnalyticsExamsPaperVersionIdSummaryGet(paperVersionId: string, options?: any): AxiosPromise<ExamAnalyticsResponse> {
+            return localVarFp.apiAnalyticsExamsPaperVersionIdSummaryGet(paperVersionId, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1738,8 +1828,8 @@ export const AnalyticsApiFactory = function (configuration?: Configuration, base
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        analyticsQuestionsErrorRateGet(subjectId?: string, knowledgePointId?: string, startDate?: string, endDate?: string, limit?: number, options?: any): AxiosPromise<Array<QuestionErrorRate>> {
-            return localVarFp.analyticsQuestionsErrorRateGet(subjectId, knowledgePointId, startDate, endDate, limit, options).then((request) => request(axios, basePath));
+        apiAnalyticsQuestionsErrorRateGet(subjectId?: string, knowledgePointId?: string, startDate?: string, endDate?: string, limit?: number, options?: any): AxiosPromise<Array<QuestionErrorRate>> {
+            return localVarFp.apiAnalyticsQuestionsErrorRateGet(subjectId, knowledgePointId, startDate, endDate, limit, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -1759,8 +1849,8 @@ export class AnalyticsApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof AnalyticsApi
      */
-    public analyticsExamsPaperVersionIdSummaryGet(paperVersionId: string, options?: AxiosRequestConfig) {
-        return AnalyticsApiFp(this.configuration).analyticsExamsPaperVersionIdSummaryGet(paperVersionId, options).then((request) => request(this.axios, this.basePath));
+    public apiAnalyticsExamsPaperVersionIdSummaryGet(paperVersionId: string, options?: AxiosRequestConfig) {
+        return AnalyticsApiFp(this.configuration).apiAnalyticsExamsPaperVersionIdSummaryGet(paperVersionId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -1775,8 +1865,8 @@ export class AnalyticsApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof AnalyticsApi
      */
-    public analyticsQuestionsErrorRateGet(subjectId?: string, knowledgePointId?: string, startDate?: string, endDate?: string, limit?: number, options?: AxiosRequestConfig) {
-        return AnalyticsApiFp(this.configuration).analyticsQuestionsErrorRateGet(subjectId, knowledgePointId, startDate, endDate, limit, options).then((request) => request(this.axios, this.basePath));
+    public apiAnalyticsQuestionsErrorRateGet(subjectId?: string, knowledgePointId?: string, startDate?: string, endDate?: string, limit?: number, options?: AxiosRequestConfig) {
+        return AnalyticsApiFp(this.configuration).apiAnalyticsQuestionsErrorRateGet(subjectId, knowledgePointId, startDate, endDate, limit, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
@@ -1794,10 +1884,10 @@ export const AuthApiAxiosParamCreator = function (configuration?: Configuration)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        authLoginPost: async (loginRequest: LoginRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiAuthLoginPost: async (loginRequest: LoginRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'loginRequest' is not null or undefined
-            assertParamExists('authLoginPost', 'loginRequest', loginRequest)
-            const localVarPath = `/auth/login`;
+            assertParamExists('apiAuthLoginPost', 'loginRequest', loginRequest)
+            const localVarPath = `/api/auth/login`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1834,10 +1924,10 @@ export const AuthApiAxiosParamCreator = function (configuration?: Configuration)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        authTokenRefreshPost: async (refreshTokenRequest: RefreshTokenRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiAuthTokenRefreshPost: async (refreshTokenRequest: RefreshTokenRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'refreshTokenRequest' is not null or undefined
-            assertParamExists('authTokenRefreshPost', 'refreshTokenRequest', refreshTokenRequest)
-            const localVarPath = `/auth/token/refresh`;
+            assertParamExists('apiAuthTokenRefreshPost', 'refreshTokenRequest', refreshTokenRequest)
+            const localVarPath = `/api/auth/token/refresh`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1884,8 +1974,8 @@ export const AuthApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async authLoginPost(loginRequest: LoginRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AuthTokenResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.authLoginPost(loginRequest, options);
+        async apiAuthLoginPost(loginRequest: LoginRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AuthTokenResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiAuthLoginPost(loginRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -1895,8 +1985,8 @@ export const AuthApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async authTokenRefreshPost(refreshTokenRequest: RefreshTokenRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AuthTokenResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.authTokenRefreshPost(refreshTokenRequest, options);
+        async apiAuthTokenRefreshPost(refreshTokenRequest: RefreshTokenRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AuthTokenResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiAuthTokenRefreshPost(refreshTokenRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
     }
@@ -1916,8 +2006,8 @@ export const AuthApiFactory = function (configuration?: Configuration, basePath?
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        authLoginPost(loginRequest: LoginRequest, options?: any): AxiosPromise<AuthTokenResponse> {
-            return localVarFp.authLoginPost(loginRequest, options).then((request) => request(axios, basePath));
+        apiAuthLoginPost(loginRequest: LoginRequest, options?: any): AxiosPromise<AuthTokenResponse> {
+            return localVarFp.apiAuthLoginPost(loginRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1926,8 +2016,8 @@ export const AuthApiFactory = function (configuration?: Configuration, basePath?
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        authTokenRefreshPost(refreshTokenRequest: RefreshTokenRequest, options?: any): AxiosPromise<AuthTokenResponse> {
-            return localVarFp.authTokenRefreshPost(refreshTokenRequest, options).then((request) => request(axios, basePath));
+        apiAuthTokenRefreshPost(refreshTokenRequest: RefreshTokenRequest, options?: any): AxiosPromise<AuthTokenResponse> {
+            return localVarFp.apiAuthTokenRefreshPost(refreshTokenRequest, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -1947,8 +2037,8 @@ export class AuthApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof AuthApi
      */
-    public authLoginPost(loginRequest: LoginRequest, options?: AxiosRequestConfig) {
-        return AuthApiFp(this.configuration).authLoginPost(loginRequest, options).then((request) => request(this.axios, this.basePath));
+    public apiAuthLoginPost(loginRequest: LoginRequest, options?: AxiosRequestConfig) {
+        return AuthApiFp(this.configuration).apiAuthLoginPost(loginRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -1959,8 +2049,8 @@ export class AuthApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof AuthApi
      */
-    public authTokenRefreshPost(refreshTokenRequest: RefreshTokenRequest, options?: AxiosRequestConfig) {
-        return AuthApiFp(this.configuration).authTokenRefreshPost(refreshTokenRequest, options).then((request) => request(this.axios, this.basePath));
+    public apiAuthTokenRefreshPost(refreshTokenRequest: RefreshTokenRequest, options?: AxiosRequestConfig) {
+        return AuthApiFp(this.configuration).apiAuthTokenRefreshPost(refreshTokenRequest, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
@@ -1978,10 +2068,10 @@ export const ExamApiAxiosParamCreator = function (configuration?: Configuration)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        examsAccessCodeStartPost: async (accessCode: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiExamsAccessCodeStartPost: async (accessCode: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'accessCode' is not null or undefined
-            assertParamExists('examsAccessCodeStartPost', 'accessCode', accessCode)
-            const localVarPath = `/exams/{accessCode}/start`
+            assertParamExists('apiExamsAccessCodeStartPost', 'accessCode', accessCode)
+            const localVarPath = `/api/exams/{accessCode}/start`
                 .replace(`{${"accessCode"}}`, encodeURIComponent(String(accessCode)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -2019,8 +2109,8 @@ export const ExamApiAxiosParamCreator = function (configuration?: Configuration)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        examsGet: async (paperId?: string, userId?: string, page?: number, size?: number, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/exams`;
+        apiExamsGet: async (paperId?: string, userId?: string, page?: number, size?: number, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/exams`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -2070,10 +2160,10 @@ export const ExamApiAxiosParamCreator = function (configuration?: Configuration)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        examsIdGet: async (id: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiExamsIdGet: async (id: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
-            assertParamExists('examsIdGet', 'id', id)
-            const localVarPath = `/exams/{id}`
+            assertParamExists('apiExamsIdGet', 'id', id)
+            const localVarPath = `/api/exams/{id}`
                 .replace(`{${"id"}}`, encodeURIComponent(String(id)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -2109,12 +2199,12 @@ export const ExamApiAxiosParamCreator = function (configuration?: Configuration)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        examsSessionIdAutosavePost: async (sessionId: string, autosaveRequest: AutosaveRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiExamsSessionIdAutosavePost: async (sessionId: string, autosaveRequest: AutosaveRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'sessionId' is not null or undefined
-            assertParamExists('examsSessionIdAutosavePost', 'sessionId', sessionId)
+            assertParamExists('apiExamsSessionIdAutosavePost', 'sessionId', sessionId)
             // verify required parameter 'autosaveRequest' is not null or undefined
-            assertParamExists('examsSessionIdAutosavePost', 'autosaveRequest', autosaveRequest)
-            const localVarPath = `/exams/{sessionId}/autosave`
+            assertParamExists('apiExamsSessionIdAutosavePost', 'autosaveRequest', autosaveRequest)
+            const localVarPath = `/api/exams/{sessionId}/autosave`
                 .replace(`{${"sessionId"}}`, encodeURIComponent(String(sessionId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -2153,12 +2243,12 @@ export const ExamApiAxiosParamCreator = function (configuration?: Configuration)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        examsSessionIdGradePost: async (sessionId: string, manualGradeRequest: ManualGradeRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiExamsSessionIdGradePost: async (sessionId: string, manualGradeRequest: ManualGradeRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'sessionId' is not null or undefined
-            assertParamExists('examsSessionIdGradePost', 'sessionId', sessionId)
+            assertParamExists('apiExamsSessionIdGradePost', 'sessionId', sessionId)
             // verify required parameter 'manualGradeRequest' is not null or undefined
-            assertParamExists('examsSessionIdGradePost', 'manualGradeRequest', manualGradeRequest)
-            const localVarPath = `/exams/{sessionId}/grade`
+            assertParamExists('apiExamsSessionIdGradePost', 'manualGradeRequest', manualGradeRequest)
+            const localVarPath = `/api/exams/{sessionId}/grade`
                 .replace(`{${"sessionId"}}`, encodeURIComponent(String(sessionId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -2196,10 +2286,10 @@ export const ExamApiAxiosParamCreator = function (configuration?: Configuration)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        examsSessionIdHeartbeatPost: async (sessionId: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiExamsSessionIdHeartbeatPost: async (sessionId: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'sessionId' is not null or undefined
-            assertParamExists('examsSessionIdHeartbeatPost', 'sessionId', sessionId)
-            const localVarPath = `/exams/{sessionId}/heartbeat`
+            assertParamExists('apiExamsSessionIdHeartbeatPost', 'sessionId', sessionId)
+            const localVarPath = `/api/exams/{sessionId}/heartbeat`
                 .replace(`{${"sessionId"}}`, encodeURIComponent(String(sessionId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -2234,10 +2324,10 @@ export const ExamApiAxiosParamCreator = function (configuration?: Configuration)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        examsSessionIdSubmitPost: async (sessionId: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiExamsSessionIdSubmitPost: async (sessionId: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'sessionId' is not null or undefined
-            assertParamExists('examsSessionIdSubmitPost', 'sessionId', sessionId)
-            const localVarPath = `/exams/{sessionId}/submit`
+            assertParamExists('apiExamsSessionIdSubmitPost', 'sessionId', sessionId)
+            const localVarPath = `/api/exams/{sessionId}/submit`
                 .replace(`{${"sessionId"}}`, encodeURIComponent(String(sessionId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -2282,8 +2372,8 @@ export const ExamApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async examsAccessCodeStartPost(accessCode: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ExamSessionResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.examsAccessCodeStartPost(accessCode, options);
+        async apiExamsAccessCodeStartPost(accessCode: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ExamSessionResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiExamsAccessCodeStartPost(accessCode, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -2296,8 +2386,8 @@ export const ExamApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async examsGet(paperId?: string, userId?: string, page?: number, size?: number, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ExamSessionPage>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.examsGet(paperId, userId, page, size, options);
+        async apiExamsGet(paperId?: string, userId?: string, page?: number, size?: number, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ExamSessionPage>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiExamsGet(paperId, userId, page, size, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -2307,8 +2397,8 @@ export const ExamApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async examsIdGet(id: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ExamSessionResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.examsIdGet(id, options);
+        async apiExamsIdGet(id: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ExamSessionResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiExamsIdGet(id, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -2319,8 +2409,8 @@ export const ExamApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async examsSessionIdAutosavePost(sessionId: string, autosaveRequest: AutosaveRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.examsSessionIdAutosavePost(sessionId, autosaveRequest, options);
+        async apiExamsSessionIdAutosavePost(sessionId: string, autosaveRequest: AutosaveRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiExamsSessionIdAutosavePost(sessionId, autosaveRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -2331,8 +2421,8 @@ export const ExamApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async examsSessionIdGradePost(sessionId: string, manualGradeRequest: ManualGradeRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.examsSessionIdGradePost(sessionId, manualGradeRequest, options);
+        async apiExamsSessionIdGradePost(sessionId: string, manualGradeRequest: ManualGradeRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiExamsSessionIdGradePost(sessionId, manualGradeRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -2342,8 +2432,8 @@ export const ExamApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async examsSessionIdHeartbeatPost(sessionId: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.examsSessionIdHeartbeatPost(sessionId, options);
+        async apiExamsSessionIdHeartbeatPost(sessionId: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiExamsSessionIdHeartbeatPost(sessionId, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -2353,8 +2443,8 @@ export const ExamApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async examsSessionIdSubmitPost(sessionId: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SubmissionResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.examsSessionIdSubmitPost(sessionId, options);
+        async apiExamsSessionIdSubmitPost(sessionId: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SubmissionResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiExamsSessionIdSubmitPost(sessionId, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
     }
@@ -2374,8 +2464,8 @@ export const ExamApiFactory = function (configuration?: Configuration, basePath?
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        examsAccessCodeStartPost(accessCode: string, options?: any): AxiosPromise<ExamSessionResponse> {
-            return localVarFp.examsAccessCodeStartPost(accessCode, options).then((request) => request(axios, basePath));
+        apiExamsAccessCodeStartPost(accessCode: string, options?: any): AxiosPromise<ExamSessionResponse> {
+            return localVarFp.apiExamsAccessCodeStartPost(accessCode, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -2387,8 +2477,8 @@ export const ExamApiFactory = function (configuration?: Configuration, basePath?
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        examsGet(paperId?: string, userId?: string, page?: number, size?: number, options?: any): AxiosPromise<ExamSessionPage> {
-            return localVarFp.examsGet(paperId, userId, page, size, options).then((request) => request(axios, basePath));
+        apiExamsGet(paperId?: string, userId?: string, page?: number, size?: number, options?: any): AxiosPromise<ExamSessionPage> {
+            return localVarFp.apiExamsGet(paperId, userId, page, size, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -2397,8 +2487,8 @@ export const ExamApiFactory = function (configuration?: Configuration, basePath?
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        examsIdGet(id: string, options?: any): AxiosPromise<ExamSessionResponse> {
-            return localVarFp.examsIdGet(id, options).then((request) => request(axios, basePath));
+        apiExamsIdGet(id: string, options?: any): AxiosPromise<ExamSessionResponse> {
+            return localVarFp.apiExamsIdGet(id, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -2408,8 +2498,8 @@ export const ExamApiFactory = function (configuration?: Configuration, basePath?
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        examsSessionIdAutosavePost(sessionId: string, autosaveRequest: AutosaveRequest, options?: any): AxiosPromise<void> {
-            return localVarFp.examsSessionIdAutosavePost(sessionId, autosaveRequest, options).then((request) => request(axios, basePath));
+        apiExamsSessionIdAutosavePost(sessionId: string, autosaveRequest: AutosaveRequest, options?: any): AxiosPromise<void> {
+            return localVarFp.apiExamsSessionIdAutosavePost(sessionId, autosaveRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -2419,8 +2509,8 @@ export const ExamApiFactory = function (configuration?: Configuration, basePath?
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        examsSessionIdGradePost(sessionId: string, manualGradeRequest: ManualGradeRequest, options?: any): AxiosPromise<void> {
-            return localVarFp.examsSessionIdGradePost(sessionId, manualGradeRequest, options).then((request) => request(axios, basePath));
+        apiExamsSessionIdGradePost(sessionId: string, manualGradeRequest: ManualGradeRequest, options?: any): AxiosPromise<void> {
+            return localVarFp.apiExamsSessionIdGradePost(sessionId, manualGradeRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -2429,8 +2519,8 @@ export const ExamApiFactory = function (configuration?: Configuration, basePath?
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        examsSessionIdHeartbeatPost(sessionId: string, options?: any): AxiosPromise<void> {
-            return localVarFp.examsSessionIdHeartbeatPost(sessionId, options).then((request) => request(axios, basePath));
+        apiExamsSessionIdHeartbeatPost(sessionId: string, options?: any): AxiosPromise<void> {
+            return localVarFp.apiExamsSessionIdHeartbeatPost(sessionId, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -2439,8 +2529,8 @@ export const ExamApiFactory = function (configuration?: Configuration, basePath?
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        examsSessionIdSubmitPost(sessionId: string, options?: any): AxiosPromise<SubmissionResponse> {
-            return localVarFp.examsSessionIdSubmitPost(sessionId, options).then((request) => request(axios, basePath));
+        apiExamsSessionIdSubmitPost(sessionId: string, options?: any): AxiosPromise<SubmissionResponse> {
+            return localVarFp.apiExamsSessionIdSubmitPost(sessionId, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -2460,8 +2550,8 @@ export class ExamApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof ExamApi
      */
-    public examsAccessCodeStartPost(accessCode: string, options?: AxiosRequestConfig) {
-        return ExamApiFp(this.configuration).examsAccessCodeStartPost(accessCode, options).then((request) => request(this.axios, this.basePath));
+    public apiExamsAccessCodeStartPost(accessCode: string, options?: AxiosRequestConfig) {
+        return ExamApiFp(this.configuration).apiExamsAccessCodeStartPost(accessCode, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2475,8 +2565,8 @@ export class ExamApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof ExamApi
      */
-    public examsGet(paperId?: string, userId?: string, page?: number, size?: number, options?: AxiosRequestConfig) {
-        return ExamApiFp(this.configuration).examsGet(paperId, userId, page, size, options).then((request) => request(this.axios, this.basePath));
+    public apiExamsGet(paperId?: string, userId?: string, page?: number, size?: number, options?: AxiosRequestConfig) {
+        return ExamApiFp(this.configuration).apiExamsGet(paperId, userId, page, size, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2487,8 +2577,8 @@ export class ExamApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof ExamApi
      */
-    public examsIdGet(id: string, options?: AxiosRequestConfig) {
-        return ExamApiFp(this.configuration).examsIdGet(id, options).then((request) => request(this.axios, this.basePath));
+    public apiExamsIdGet(id: string, options?: AxiosRequestConfig) {
+        return ExamApiFp(this.configuration).apiExamsIdGet(id, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2500,8 +2590,8 @@ export class ExamApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof ExamApi
      */
-    public examsSessionIdAutosavePost(sessionId: string, autosaveRequest: AutosaveRequest, options?: AxiosRequestConfig) {
-        return ExamApiFp(this.configuration).examsSessionIdAutosavePost(sessionId, autosaveRequest, options).then((request) => request(this.axios, this.basePath));
+    public apiExamsSessionIdAutosavePost(sessionId: string, autosaveRequest: AutosaveRequest, options?: AxiosRequestConfig) {
+        return ExamApiFp(this.configuration).apiExamsSessionIdAutosavePost(sessionId, autosaveRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2513,8 +2603,8 @@ export class ExamApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof ExamApi
      */
-    public examsSessionIdGradePost(sessionId: string, manualGradeRequest: ManualGradeRequest, options?: AxiosRequestConfig) {
-        return ExamApiFp(this.configuration).examsSessionIdGradePost(sessionId, manualGradeRequest, options).then((request) => request(this.axios, this.basePath));
+    public apiExamsSessionIdGradePost(sessionId: string, manualGradeRequest: ManualGradeRequest, options?: AxiosRequestConfig) {
+        return ExamApiFp(this.configuration).apiExamsSessionIdGradePost(sessionId, manualGradeRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2525,8 +2615,8 @@ export class ExamApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof ExamApi
      */
-    public examsSessionIdHeartbeatPost(sessionId: string, options?: AxiosRequestConfig) {
-        return ExamApiFp(this.configuration).examsSessionIdHeartbeatPost(sessionId, options).then((request) => request(this.axios, this.basePath));
+    public apiExamsSessionIdHeartbeatPost(sessionId: string, options?: AxiosRequestConfig) {
+        return ExamApiFp(this.configuration).apiExamsSessionIdHeartbeatPost(sessionId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2537,8 +2627,8 @@ export class ExamApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof ExamApi
      */
-    public examsSessionIdSubmitPost(sessionId: string, options?: AxiosRequestConfig) {
-        return ExamApiFp(this.configuration).examsSessionIdSubmitPost(sessionId, options).then((request) => request(this.axios, this.basePath));
+    public apiExamsSessionIdSubmitPost(sessionId: string, options?: AxiosRequestConfig) {
+        return ExamApiFp(this.configuration).apiExamsSessionIdSubmitPost(sessionId, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
@@ -2555,8 +2645,8 @@ export const KnowledgePointApiAxiosParamCreator = function (configuration?: Conf
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        knowledgePointsGet: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/knowledge-points`;
+        apiKnowledgePointsGet: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/knowledge-points`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -2590,10 +2680,10 @@ export const KnowledgePointApiAxiosParamCreator = function (configuration?: Conf
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        knowledgePointsIdDelete: async (id: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiKnowledgePointsIdDelete: async (id: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
-            assertParamExists('knowledgePointsIdDelete', 'id', id)
-            const localVarPath = `/knowledge-points/{id}`
+            assertParamExists('apiKnowledgePointsIdDelete', 'id', id)
+            const localVarPath = `/api/knowledge-points/{id}`
                 .replace(`{${"id"}}`, encodeURIComponent(String(id)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -2629,12 +2719,12 @@ export const KnowledgePointApiAxiosParamCreator = function (configuration?: Conf
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        knowledgePointsIdPut: async (id: string, knowledgePoint: KnowledgePoint, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiKnowledgePointsIdPut: async (id: string, knowledgePoint: KnowledgePoint, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'id' is not null or undefined
-            assertParamExists('knowledgePointsIdPut', 'id', id)
+            assertParamExists('apiKnowledgePointsIdPut', 'id', id)
             // verify required parameter 'knowledgePoint' is not null or undefined
-            assertParamExists('knowledgePointsIdPut', 'knowledgePoint', knowledgePoint)
-            const localVarPath = `/knowledge-points/{id}`
+            assertParamExists('apiKnowledgePointsIdPut', 'knowledgePoint', knowledgePoint)
+            const localVarPath = `/api/knowledge-points/{id}`
                 .replace(`{${"id"}}`, encodeURIComponent(String(id)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -2672,10 +2762,10 @@ export const KnowledgePointApiAxiosParamCreator = function (configuration?: Conf
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        knowledgePointsPost: async (knowledgePoint: KnowledgePoint, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiKnowledgePointsPost: async (knowledgePoint: KnowledgePoint, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'knowledgePoint' is not null or undefined
-            assertParamExists('knowledgePointsPost', 'knowledgePoint', knowledgePoint)
-            const localVarPath = `/knowledge-points`;
+            assertParamExists('apiKnowledgePointsPost', 'knowledgePoint', knowledgePoint)
+            const localVarPath = `/api/knowledge-points`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -2721,8 +2811,8 @@ export const KnowledgePointApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async knowledgePointsGet(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<KnowledgePoint>>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.knowledgePointsGet(options);
+        async apiKnowledgePointsGet(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<KnowledgePoint>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiKnowledgePointsGet(options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -2732,8 +2822,8 @@ export const KnowledgePointApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async knowledgePointsIdDelete(id: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.knowledgePointsIdDelete(id, options);
+        async apiKnowledgePointsIdDelete(id: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiKnowledgePointsIdDelete(id, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -2744,8 +2834,8 @@ export const KnowledgePointApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async knowledgePointsIdPut(id: string, knowledgePoint: KnowledgePoint, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<KnowledgePoint>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.knowledgePointsIdPut(id, knowledgePoint, options);
+        async apiKnowledgePointsIdPut(id: string, knowledgePoint: KnowledgePoint, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<KnowledgePoint>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiKnowledgePointsIdPut(id, knowledgePoint, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -2755,8 +2845,8 @@ export const KnowledgePointApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async knowledgePointsPost(knowledgePoint: KnowledgePoint, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<KnowledgePoint>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.knowledgePointsPost(knowledgePoint, options);
+        async apiKnowledgePointsPost(knowledgePoint: KnowledgePoint, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<KnowledgePoint>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiKnowledgePointsPost(knowledgePoint, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
     }
@@ -2775,8 +2865,8 @@ export const KnowledgePointApiFactory = function (configuration?: Configuration,
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        knowledgePointsGet(options?: any): AxiosPromise<Array<KnowledgePoint>> {
-            return localVarFp.knowledgePointsGet(options).then((request) => request(axios, basePath));
+        apiKnowledgePointsGet(options?: any): AxiosPromise<Array<KnowledgePoint>> {
+            return localVarFp.apiKnowledgePointsGet(options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -2785,8 +2875,8 @@ export const KnowledgePointApiFactory = function (configuration?: Configuration,
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        knowledgePointsIdDelete(id: string, options?: any): AxiosPromise<void> {
-            return localVarFp.knowledgePointsIdDelete(id, options).then((request) => request(axios, basePath));
+        apiKnowledgePointsIdDelete(id: string, options?: any): AxiosPromise<void> {
+            return localVarFp.apiKnowledgePointsIdDelete(id, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -2796,8 +2886,8 @@ export const KnowledgePointApiFactory = function (configuration?: Configuration,
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        knowledgePointsIdPut(id: string, knowledgePoint: KnowledgePoint, options?: any): AxiosPromise<KnowledgePoint> {
-            return localVarFp.knowledgePointsIdPut(id, knowledgePoint, options).then((request) => request(axios, basePath));
+        apiKnowledgePointsIdPut(id: string, knowledgePoint: KnowledgePoint, options?: any): AxiosPromise<KnowledgePoint> {
+            return localVarFp.apiKnowledgePointsIdPut(id, knowledgePoint, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -2806,8 +2896,8 @@ export const KnowledgePointApiFactory = function (configuration?: Configuration,
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        knowledgePointsPost(knowledgePoint: KnowledgePoint, options?: any): AxiosPromise<KnowledgePoint> {
-            return localVarFp.knowledgePointsPost(knowledgePoint, options).then((request) => request(axios, basePath));
+        apiKnowledgePointsPost(knowledgePoint: KnowledgePoint, options?: any): AxiosPromise<KnowledgePoint> {
+            return localVarFp.apiKnowledgePointsPost(knowledgePoint, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -2826,8 +2916,8 @@ export class KnowledgePointApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof KnowledgePointApi
      */
-    public knowledgePointsGet(options?: AxiosRequestConfig) {
-        return KnowledgePointApiFp(this.configuration).knowledgePointsGet(options).then((request) => request(this.axios, this.basePath));
+    public apiKnowledgePointsGet(options?: AxiosRequestConfig) {
+        return KnowledgePointApiFp(this.configuration).apiKnowledgePointsGet(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2838,8 +2928,8 @@ export class KnowledgePointApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof KnowledgePointApi
      */
-    public knowledgePointsIdDelete(id: string, options?: AxiosRequestConfig) {
-        return KnowledgePointApiFp(this.configuration).knowledgePointsIdDelete(id, options).then((request) => request(this.axios, this.basePath));
+    public apiKnowledgePointsIdDelete(id: string, options?: AxiosRequestConfig) {
+        return KnowledgePointApiFp(this.configuration).apiKnowledgePointsIdDelete(id, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2851,8 +2941,8 @@ export class KnowledgePointApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof KnowledgePointApi
      */
-    public knowledgePointsIdPut(id: string, knowledgePoint: KnowledgePoint, options?: AxiosRequestConfig) {
-        return KnowledgePointApiFp(this.configuration).knowledgePointsIdPut(id, knowledgePoint, options).then((request) => request(this.axios, this.basePath));
+    public apiKnowledgePointsIdPut(id: string, knowledgePoint: KnowledgePoint, options?: AxiosRequestConfig) {
+        return KnowledgePointApiFp(this.configuration).apiKnowledgePointsIdPut(id, knowledgePoint, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -2863,8 +2953,8 @@ export class KnowledgePointApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof KnowledgePointApi
      */
-    public knowledgePointsPost(knowledgePoint: KnowledgePoint, options?: AxiosRequestConfig) {
-        return KnowledgePointApiFp(this.configuration).knowledgePointsPost(knowledgePoint, options).then((request) => request(this.axios, this.basePath));
+    public apiKnowledgePointsPost(knowledgePoint: KnowledgePoint, options?: AxiosRequestConfig) {
+        return KnowledgePointApiFp(this.configuration).apiKnowledgePointsPost(knowledgePoint, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
@@ -2882,10 +2972,10 @@ export const PaperApiAxiosParamCreator = function (configuration?: Configuration
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        papersAutoPost: async (autoPaperCreateRequest: AutoPaperCreateRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiPapersAutoPost: async (autoPaperCreateRequest: AutoPaperCreateRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'autoPaperCreateRequest' is not null or undefined
-            assertParamExists('papersAutoPost', 'autoPaperCreateRequest', autoPaperCreateRequest)
-            const localVarPath = `/papers/auto`;
+            assertParamExists('apiPapersAutoPost', 'autoPaperCreateRequest', autoPaperCreateRequest)
+            const localVarPath = `/api/papers/auto`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -2922,10 +3012,10 @@ export const PaperApiAxiosParamCreator = function (configuration?: Configuration
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        papersManualPost: async (manualPaperCreateRequest: ManualPaperCreateRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiPapersManualPost: async (manualPaperCreateRequest: ManualPaperCreateRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'manualPaperCreateRequest' is not null or undefined
-            assertParamExists('papersManualPost', 'manualPaperCreateRequest', manualPaperCreateRequest)
-            const localVarPath = `/papers/manual`;
+            assertParamExists('apiPapersManualPost', 'manualPaperCreateRequest', manualPaperCreateRequest)
+            const localVarPath = `/api/papers/manual`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -2963,12 +3053,12 @@ export const PaperApiAxiosParamCreator = function (configuration?: Configuration
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        papersPaperIdPublishPost: async (paperId: string, paperPublishRequest: PaperPublishRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiPapersPaperIdPublishPost: async (paperId: string, paperPublishRequest: PaperPublishRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'paperId' is not null or undefined
-            assertParamExists('papersPaperIdPublishPost', 'paperId', paperId)
+            assertParamExists('apiPapersPaperIdPublishPost', 'paperId', paperId)
             // verify required parameter 'paperPublishRequest' is not null or undefined
-            assertParamExists('papersPaperIdPublishPost', 'paperPublishRequest', paperPublishRequest)
-            const localVarPath = `/papers/{paperId}/publish`
+            assertParamExists('apiPapersPaperIdPublishPost', 'paperPublishRequest', paperPublishRequest)
+            const localVarPath = `/api/papers/{paperId}/publish`
                 .replace(`{${"paperId"}}`, encodeURIComponent(String(paperId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3006,10 +3096,10 @@ export const PaperApiAxiosParamCreator = function (configuration?: Configuration
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        papersPaperIdVersionsGet: async (paperId: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiPapersPaperIdVersionsGet: async (paperId: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'paperId' is not null or undefined
-            assertParamExists('papersPaperIdVersionsGet', 'paperId', paperId)
-            const localVarPath = `/papers/{paperId}/versions`
+            assertParamExists('apiPapersPaperIdVersionsGet', 'paperId', paperId)
+            const localVarPath = `/api/papers/{paperId}/versions`
                 .replace(`{${"paperId"}}`, encodeURIComponent(String(paperId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3054,8 +3144,8 @@ export const PaperApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async papersAutoPost(autoPaperCreateRequest: AutoPaperCreateRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaperVersionResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.papersAutoPost(autoPaperCreateRequest, options);
+        async apiPapersAutoPost(autoPaperCreateRequest: AutoPaperCreateRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaperVersionResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiPapersAutoPost(autoPaperCreateRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -3065,8 +3155,8 @@ export const PaperApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async papersManualPost(manualPaperCreateRequest: ManualPaperCreateRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaperVersionResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.papersManualPost(manualPaperCreateRequest, options);
+        async apiPapersManualPost(manualPaperCreateRequest: ManualPaperCreateRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaperVersionResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiPapersManualPost(manualPaperCreateRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -3077,8 +3167,8 @@ export const PaperApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async papersPaperIdPublishPost(paperId: string, paperPublishRequest: PaperPublishRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.papersPaperIdPublishPost(paperId, paperPublishRequest, options);
+        async apiPapersPaperIdPublishPost(paperId: string, paperPublishRequest: PaperPublishRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiPapersPaperIdPublishPost(paperId, paperPublishRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -3088,8 +3178,8 @@ export const PaperApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async papersPaperIdVersionsGet(paperId: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaperVersionPage>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.papersPaperIdVersionsGet(paperId, options);
+        async apiPapersPaperIdVersionsGet(paperId: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<PaperVersionPage>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiPapersPaperIdVersionsGet(paperId, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
     }
@@ -3109,8 +3199,8 @@ export const PaperApiFactory = function (configuration?: Configuration, basePath
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        papersAutoPost(autoPaperCreateRequest: AutoPaperCreateRequest, options?: any): AxiosPromise<PaperVersionResponse> {
-            return localVarFp.papersAutoPost(autoPaperCreateRequest, options).then((request) => request(axios, basePath));
+        apiPapersAutoPost(autoPaperCreateRequest: AutoPaperCreateRequest, options?: any): AxiosPromise<PaperVersionResponse> {
+            return localVarFp.apiPapersAutoPost(autoPaperCreateRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3119,8 +3209,8 @@ export const PaperApiFactory = function (configuration?: Configuration, basePath
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        papersManualPost(manualPaperCreateRequest: ManualPaperCreateRequest, options?: any): AxiosPromise<PaperVersionResponse> {
-            return localVarFp.papersManualPost(manualPaperCreateRequest, options).then((request) => request(axios, basePath));
+        apiPapersManualPost(manualPaperCreateRequest: ManualPaperCreateRequest, options?: any): AxiosPromise<PaperVersionResponse> {
+            return localVarFp.apiPapersManualPost(manualPaperCreateRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3130,8 +3220,8 @@ export const PaperApiFactory = function (configuration?: Configuration, basePath
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        papersPaperIdPublishPost(paperId: string, paperPublishRequest: PaperPublishRequest, options?: any): AxiosPromise<void> {
-            return localVarFp.papersPaperIdPublishPost(paperId, paperPublishRequest, options).then((request) => request(axios, basePath));
+        apiPapersPaperIdPublishPost(paperId: string, paperPublishRequest: PaperPublishRequest, options?: any): AxiosPromise<void> {
+            return localVarFp.apiPapersPaperIdPublishPost(paperId, paperPublishRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3140,8 +3230,8 @@ export const PaperApiFactory = function (configuration?: Configuration, basePath
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        papersPaperIdVersionsGet(paperId: string, options?: any): AxiosPromise<PaperVersionPage> {
-            return localVarFp.papersPaperIdVersionsGet(paperId, options).then((request) => request(axios, basePath));
+        apiPapersPaperIdVersionsGet(paperId: string, options?: any): AxiosPromise<PaperVersionPage> {
+            return localVarFp.apiPapersPaperIdVersionsGet(paperId, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -3161,8 +3251,8 @@ export class PaperApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof PaperApi
      */
-    public papersAutoPost(autoPaperCreateRequest: AutoPaperCreateRequest, options?: AxiosRequestConfig) {
-        return PaperApiFp(this.configuration).papersAutoPost(autoPaperCreateRequest, options).then((request) => request(this.axios, this.basePath));
+    public apiPapersAutoPost(autoPaperCreateRequest: AutoPaperCreateRequest, options?: AxiosRequestConfig) {
+        return PaperApiFp(this.configuration).apiPapersAutoPost(autoPaperCreateRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3173,8 +3263,8 @@ export class PaperApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof PaperApi
      */
-    public papersManualPost(manualPaperCreateRequest: ManualPaperCreateRequest, options?: AxiosRequestConfig) {
-        return PaperApiFp(this.configuration).papersManualPost(manualPaperCreateRequest, options).then((request) => request(this.axios, this.basePath));
+    public apiPapersManualPost(manualPaperCreateRequest: ManualPaperCreateRequest, options?: AxiosRequestConfig) {
+        return PaperApiFp(this.configuration).apiPapersManualPost(manualPaperCreateRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3186,8 +3276,8 @@ export class PaperApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof PaperApi
      */
-    public papersPaperIdPublishPost(paperId: string, paperPublishRequest: PaperPublishRequest, options?: AxiosRequestConfig) {
-        return PaperApiFp(this.configuration).papersPaperIdPublishPost(paperId, paperPublishRequest, options).then((request) => request(this.axios, this.basePath));
+    public apiPapersPaperIdPublishPost(paperId: string, paperPublishRequest: PaperPublishRequest, options?: AxiosRequestConfig) {
+        return PaperApiFp(this.configuration).apiPapersPaperIdPublishPost(paperId, paperPublishRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3198,8 +3288,8 @@ export class PaperApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof PaperApi
      */
-    public papersPaperIdVersionsGet(paperId: string, options?: AxiosRequestConfig) {
-        return PaperApiFp(this.configuration).papersPaperIdVersionsGet(paperId, options).then((request) => request(this.axios, this.basePath));
+    public apiPapersPaperIdVersionsGet(paperId: string, options?: AxiosRequestConfig) {
+        return PaperApiFp(this.configuration).apiPapersPaperIdVersionsGet(paperId, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
@@ -3224,8 +3314,8 @@ export const QuestionBankApiAxiosParamCreator = function (configuration?: Config
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        questionsGet: async (page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/questions`;
+        apiQuestionsGet: async (page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/questions`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -3291,8 +3381,8 @@ export const QuestionBankApiAxiosParamCreator = function (configuration?: Config
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        questionsImportDocxPost: async (file?: any, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/questions/import/docx`;
+        apiQuestionsImportDocxPost: async (file?: any, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/questions/import/docx`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -3334,10 +3424,10 @@ export const QuestionBankApiAxiosParamCreator = function (configuration?: Config
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        questionsPost: async (questionCreateRequest: QuestionCreateRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiQuestionsPost: async (questionCreateRequest: QuestionCreateRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'questionCreateRequest' is not null or undefined
-            assertParamExists('questionsPost', 'questionCreateRequest', questionCreateRequest)
-            const localVarPath = `/questions`;
+            assertParamExists('apiQuestionsPost', 'questionCreateRequest', questionCreateRequest)
+            const localVarPath = `/api/questions`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -3374,10 +3464,10 @@ export const QuestionBankApiAxiosParamCreator = function (configuration?: Config
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        questionsQuestionIdDelete: async (questionId: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiQuestionsQuestionIdDelete: async (questionId: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'questionId' is not null or undefined
-            assertParamExists('questionsQuestionIdDelete', 'questionId', questionId)
-            const localVarPath = `/questions/{questionId}`
+            assertParamExists('apiQuestionsQuestionIdDelete', 'questionId', questionId)
+            const localVarPath = `/api/questions/{questionId}`
                 .replace(`{${"questionId"}}`, encodeURIComponent(String(questionId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3412,10 +3502,10 @@ export const QuestionBankApiAxiosParamCreator = function (configuration?: Config
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        questionsQuestionIdGet: async (questionId: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiQuestionsQuestionIdGet: async (questionId: string, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'questionId' is not null or undefined
-            assertParamExists('questionsQuestionIdGet', 'questionId', questionId)
-            const localVarPath = `/questions/{questionId}`
+            assertParamExists('apiQuestionsQuestionIdGet', 'questionId', questionId)
+            const localVarPath = `/api/questions/{questionId}`
                 .replace(`{${"questionId"}}`, encodeURIComponent(String(questionId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3451,12 +3541,12 @@ export const QuestionBankApiAxiosParamCreator = function (configuration?: Config
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        questionsQuestionIdPut: async (questionId: string, questionUpdateRequest: QuestionUpdateRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiQuestionsQuestionIdPut: async (questionId: string, questionUpdateRequest: QuestionUpdateRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'questionId' is not null or undefined
-            assertParamExists('questionsQuestionIdPut', 'questionId', questionId)
+            assertParamExists('apiQuestionsQuestionIdPut', 'questionId', questionId)
             // verify required parameter 'questionUpdateRequest' is not null or undefined
-            assertParamExists('questionsQuestionIdPut', 'questionUpdateRequest', questionUpdateRequest)
-            const localVarPath = `/questions/{questionId}`
+            assertParamExists('apiQuestionsQuestionIdPut', 'questionUpdateRequest', questionUpdateRequest)
+            const localVarPath = `/api/questions/{questionId}`
                 .replace(`{${"questionId"}}`, encodeURIComponent(String(questionId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3495,12 +3585,12 @@ export const QuestionBankApiAxiosParamCreator = function (configuration?: Config
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        questionsQuestionIdReviewPost: async (questionId: string, questionReviewRequest: QuestionReviewRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiQuestionsQuestionIdReviewPost: async (questionId: string, questionReviewRequest: QuestionReviewRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'questionId' is not null or undefined
-            assertParamExists('questionsQuestionIdReviewPost', 'questionId', questionId)
+            assertParamExists('apiQuestionsQuestionIdReviewPost', 'questionId', questionId)
             // verify required parameter 'questionReviewRequest' is not null or undefined
-            assertParamExists('questionsQuestionIdReviewPost', 'questionReviewRequest', questionReviewRequest)
-            const localVarPath = `/questions/{questionId}/review`
+            assertParamExists('apiQuestionsQuestionIdReviewPost', 'questionReviewRequest', questionReviewRequest)
+            const localVarPath = `/api/questions/{questionId}/review`
                 .replace(`{${"questionId"}}`, encodeURIComponent(String(questionId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3555,8 +3645,8 @@ export const QuestionBankApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async questionsGet(page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<QuestionPage>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.questionsGet(page, size, subjectId, knowledgePointIds, type, difficulty, keywords, status, options);
+        async apiQuestionsGet(page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<QuestionPage>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiQuestionsGet(page, size, subjectId, knowledgePointIds, type, difficulty, keywords, status, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -3566,8 +3656,8 @@ export const QuestionBankApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async questionsImportDocxPost(file?: any, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.questionsImportDocxPost(file, options);
+        async apiQuestionsImportDocxPost(file?: any, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiQuestionsImportDocxPost(file, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -3577,8 +3667,8 @@ export const QuestionBankApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async questionsPost(questionCreateRequest: QuestionCreateRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<QuestionResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.questionsPost(questionCreateRequest, options);
+        async apiQuestionsPost(questionCreateRequest: QuestionCreateRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<QuestionResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiQuestionsPost(questionCreateRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -3588,8 +3678,8 @@ export const QuestionBankApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async questionsQuestionIdDelete(questionId: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.questionsQuestionIdDelete(questionId, options);
+        async apiQuestionsQuestionIdDelete(questionId: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiQuestionsQuestionIdDelete(questionId, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -3599,8 +3689,8 @@ export const QuestionBankApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async questionsQuestionIdGet(questionId: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<QuestionResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.questionsQuestionIdGet(questionId, options);
+        async apiQuestionsQuestionIdGet(questionId: string, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<QuestionResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiQuestionsQuestionIdGet(questionId, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -3611,8 +3701,8 @@ export const QuestionBankApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async questionsQuestionIdPut(questionId: string, questionUpdateRequest: QuestionUpdateRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.questionsQuestionIdPut(questionId, questionUpdateRequest, options);
+        async apiQuestionsQuestionIdPut(questionId: string, questionUpdateRequest: QuestionUpdateRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiQuestionsQuestionIdPut(questionId, questionUpdateRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -3623,8 +3713,8 @@ export const QuestionBankApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async questionsQuestionIdReviewPost(questionId: string, questionReviewRequest: QuestionReviewRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.questionsQuestionIdReviewPost(questionId, questionReviewRequest, options);
+        async apiQuestionsQuestionIdReviewPost(questionId: string, questionReviewRequest: QuestionReviewRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiQuestionsQuestionIdReviewPost(questionId, questionReviewRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
     }
@@ -3651,8 +3741,8 @@ export const QuestionBankApiFactory = function (configuration?: Configuration, b
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        questionsGet(page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options?: any): AxiosPromise<QuestionPage> {
-            return localVarFp.questionsGet(page, size, subjectId, knowledgePointIds, type, difficulty, keywords, status, options).then((request) => request(axios, basePath));
+        apiQuestionsGet(page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options?: any): AxiosPromise<QuestionPage> {
+            return localVarFp.apiQuestionsGet(page, size, subjectId, knowledgePointIds, type, difficulty, keywords, status, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3661,8 +3751,8 @@ export const QuestionBankApiFactory = function (configuration?: Configuration, b
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        questionsImportDocxPost(file?: any, options?: any): AxiosPromise<void> {
-            return localVarFp.questionsImportDocxPost(file, options).then((request) => request(axios, basePath));
+        apiQuestionsImportDocxPost(file?: any, options?: any): AxiosPromise<void> {
+            return localVarFp.apiQuestionsImportDocxPost(file, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3671,8 +3761,8 @@ export const QuestionBankApiFactory = function (configuration?: Configuration, b
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        questionsPost(questionCreateRequest: QuestionCreateRequest, options?: any): AxiosPromise<QuestionResponse> {
-            return localVarFp.questionsPost(questionCreateRequest, options).then((request) => request(axios, basePath));
+        apiQuestionsPost(questionCreateRequest: QuestionCreateRequest, options?: any): AxiosPromise<QuestionResponse> {
+            return localVarFp.apiQuestionsPost(questionCreateRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3681,8 +3771,8 @@ export const QuestionBankApiFactory = function (configuration?: Configuration, b
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        questionsQuestionIdDelete(questionId: string, options?: any): AxiosPromise<void> {
-            return localVarFp.questionsQuestionIdDelete(questionId, options).then((request) => request(axios, basePath));
+        apiQuestionsQuestionIdDelete(questionId: string, options?: any): AxiosPromise<void> {
+            return localVarFp.apiQuestionsQuestionIdDelete(questionId, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3691,8 +3781,8 @@ export const QuestionBankApiFactory = function (configuration?: Configuration, b
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        questionsQuestionIdGet(questionId: string, options?: any): AxiosPromise<QuestionResponse> {
-            return localVarFp.questionsQuestionIdGet(questionId, options).then((request) => request(axios, basePath));
+        apiQuestionsQuestionIdGet(questionId: string, options?: any): AxiosPromise<QuestionResponse> {
+            return localVarFp.apiQuestionsQuestionIdGet(questionId, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3702,8 +3792,8 @@ export const QuestionBankApiFactory = function (configuration?: Configuration, b
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        questionsQuestionIdPut(questionId: string, questionUpdateRequest: QuestionUpdateRequest, options?: any): AxiosPromise<void> {
-            return localVarFp.questionsQuestionIdPut(questionId, questionUpdateRequest, options).then((request) => request(axios, basePath));
+        apiQuestionsQuestionIdPut(questionId: string, questionUpdateRequest: QuestionUpdateRequest, options?: any): AxiosPromise<void> {
+            return localVarFp.apiQuestionsQuestionIdPut(questionId, questionUpdateRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3713,8 +3803,8 @@ export const QuestionBankApiFactory = function (configuration?: Configuration, b
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        questionsQuestionIdReviewPost(questionId: string, questionReviewRequest: QuestionReviewRequest, options?: any): AxiosPromise<void> {
-            return localVarFp.questionsQuestionIdReviewPost(questionId, questionReviewRequest, options).then((request) => request(axios, basePath));
+        apiQuestionsQuestionIdReviewPost(questionId: string, questionReviewRequest: QuestionReviewRequest, options?: any): AxiosPromise<void> {
+            return localVarFp.apiQuestionsQuestionIdReviewPost(questionId, questionReviewRequest, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -3741,8 +3831,8 @@ export class QuestionBankApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof QuestionBankApi
      */
-    public questionsGet(page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options?: AxiosRequestConfig) {
-        return QuestionBankApiFp(this.configuration).questionsGet(page, size, subjectId, knowledgePointIds, type, difficulty, keywords, status, options).then((request) => request(this.axios, this.basePath));
+    public apiQuestionsGet(page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options?: AxiosRequestConfig) {
+        return QuestionBankApiFp(this.configuration).apiQuestionsGet(page, size, subjectId, knowledgePointIds, type, difficulty, keywords, status, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3753,8 +3843,8 @@ export class QuestionBankApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof QuestionBankApi
      */
-    public questionsImportDocxPost(file?: any, options?: AxiosRequestConfig) {
-        return QuestionBankApiFp(this.configuration).questionsImportDocxPost(file, options).then((request) => request(this.axios, this.basePath));
+    public apiQuestionsImportDocxPost(file?: any, options?: AxiosRequestConfig) {
+        return QuestionBankApiFp(this.configuration).apiQuestionsImportDocxPost(file, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3765,8 +3855,8 @@ export class QuestionBankApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof QuestionBankApi
      */
-    public questionsPost(questionCreateRequest: QuestionCreateRequest, options?: AxiosRequestConfig) {
-        return QuestionBankApiFp(this.configuration).questionsPost(questionCreateRequest, options).then((request) => request(this.axios, this.basePath));
+    public apiQuestionsPost(questionCreateRequest: QuestionCreateRequest, options?: AxiosRequestConfig) {
+        return QuestionBankApiFp(this.configuration).apiQuestionsPost(questionCreateRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3777,8 +3867,8 @@ export class QuestionBankApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof QuestionBankApi
      */
-    public questionsQuestionIdDelete(questionId: string, options?: AxiosRequestConfig) {
-        return QuestionBankApiFp(this.configuration).questionsQuestionIdDelete(questionId, options).then((request) => request(this.axios, this.basePath));
+    public apiQuestionsQuestionIdDelete(questionId: string, options?: AxiosRequestConfig) {
+        return QuestionBankApiFp(this.configuration).apiQuestionsQuestionIdDelete(questionId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3789,8 +3879,8 @@ export class QuestionBankApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof QuestionBankApi
      */
-    public questionsQuestionIdGet(questionId: string, options?: AxiosRequestConfig) {
-        return QuestionBankApiFp(this.configuration).questionsQuestionIdGet(questionId, options).then((request) => request(this.axios, this.basePath));
+    public apiQuestionsQuestionIdGet(questionId: string, options?: AxiosRequestConfig) {
+        return QuestionBankApiFp(this.configuration).apiQuestionsQuestionIdGet(questionId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3802,8 +3892,8 @@ export class QuestionBankApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof QuestionBankApi
      */
-    public questionsQuestionIdPut(questionId: string, questionUpdateRequest: QuestionUpdateRequest, options?: AxiosRequestConfig) {
-        return QuestionBankApiFp(this.configuration).questionsQuestionIdPut(questionId, questionUpdateRequest, options).then((request) => request(this.axios, this.basePath));
+    public apiQuestionsQuestionIdPut(questionId: string, questionUpdateRequest: QuestionUpdateRequest, options?: AxiosRequestConfig) {
+        return QuestionBankApiFp(this.configuration).apiQuestionsQuestionIdPut(questionId, questionUpdateRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3815,8 +3905,8 @@ export class QuestionBankApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof QuestionBankApi
      */
-    public questionsQuestionIdReviewPost(questionId: string, questionReviewRequest: QuestionReviewRequest, options?: AxiosRequestConfig) {
-        return QuestionBankApiFp(this.configuration).questionsQuestionIdReviewPost(questionId, questionReviewRequest, options).then((request) => request(this.axios, this.basePath));
+    public apiQuestionsQuestionIdReviewPost(questionId: string, questionReviewRequest: QuestionReviewRequest, options?: AxiosRequestConfig) {
+        return QuestionBankApiFp(this.configuration).apiQuestionsQuestionIdReviewPost(questionId, questionReviewRequest, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

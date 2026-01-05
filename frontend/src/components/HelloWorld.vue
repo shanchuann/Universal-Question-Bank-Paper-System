@@ -74,39 +74,39 @@ watch(() => authState.user.id, (newId) => {
         <span class="g-grey"> Question Bank PaperSYS</span>
       </h1>
       <p v-if="authState.isAuthenticated" class="welcome-text">
-        Welcome, {{ authState.user.nickname || authState.user.username }}
+        欢迎回来，{{ authState.user.nickname || authState.user.username }}
       </p>
-      <p class="hero-subtitle">Manage questions, generate papers, and take exams.</p>
+      <p class="hero-subtitle">题目管理、智能组卷、在线考试一站式平台</p>
     </div>
 
     <div v-if="authState.isAuthenticated && !isTeacher && !isAdmin" class="student-dashboard">
       <div class="stats-card">
-        <h3>My Progress</h3>
+        <h3>我的进度</h3>
         <div class="stat-row">
           <div class="stat-item">
             <span class="stat-value">{{ stats.totalQuestionsAnswered }}</span>
-            <span class="stat-label">Questions</span>
+            <span class="stat-label">答题数</span>
           </div>
           <div class="stat-item">
             <span class="stat-value">{{ (stats.accuracy * 100).toFixed(1) }}%</span>
-            <span class="stat-label">Accuracy</span>
+            <span class="stat-label">正确率</span>
           </div>
           <div class="stat-item">
             <span class="stat-value">{{ stats.currentStreak }}</span>
-            <span class="stat-label">Day Streak</span>
+            <span class="stat-label">连续天数</span>
           </div>
         </div>
       </div>
 
       <div class="leaderboard-card">
         <div class="leaderboard-header">
-          <h3>Top Students</h3>
-          <router-link to="/leaderboard" class="view-all">View All</router-link>
+          <h3>排行榜</h3>
+          <router-link to="/leaderboard" class="view-all">查看全部</router-link>
         </div>
         <ul class="leaderboard-list">
           <li v-for="(user, index) in leaderboard" :key="user.id" class="leaderboard-item">
             <span class="rank" :class="'rank-' + (index + 1)">{{ index + 1 }}</span>
-            <span class="name">{{ user.userId }}</span>
+            <span class="name">{{ user.nickname || user.userId }}</span>
             <span class="score">{{ user.correctAnswers }} pts</span>
           </li>
         </ul>
@@ -120,8 +120,8 @@ watch(() => authState.user.id, (newId) => {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
           </div>
           <div class="nav-text">
-            <h3>Login</h3>
-            <p>Access your account</p>
+            <h3>登录</h3>
+            <p>登录您的账户</p>
           </div>
         </router-link>
 
@@ -130,8 +130,8 @@ watch(() => authState.user.id, (newId) => {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
           </div>
           <div class="nav-text">
-            <h3>Register</h3>
-            <p>Create a new account</p>
+            <h3>注册</h3>
+            <p>创建新账户</p>
           </div>
         </router-link>
       </template>
@@ -142,8 +142,8 @@ watch(() => authState.user.id, (newId) => {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
           </div>
           <div class="nav-text">
-            <h3>Question Bank</h3>
-            <p>Browse all questions</p>
+            <h3>题库管理</h3>
+            <p>浏览所有题目</p>
           </div>
         </router-link>
 
@@ -152,8 +152,8 @@ watch(() => authState.user.id, (newId) => {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           </div>
           <div class="nav-text">
-            <h3>Add Question</h3>
-            <p>Create new questions</p>
+            <h3>添加题目</h3>
+            <p>创建新题目</p>
           </div>
         </router-link>
 
@@ -162,19 +162,29 @@ watch(() => authState.user.id, (newId) => {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           </div>
           <div class="nav-text">
-            <h3>Generate Paper</h3>
-            <p>Create new exam papers</p>
+            <h3>智能组卷</h3>
+            <p>创建试卷</p>
+          </div>
+        </router-link>
+
+        <router-link to="/questions/review" class="nav-card google-card">
+          <div class="icon-circle purple-bg">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          </div>
+          <div class="nav-text">
+            <h3>题目审核</h3>
+            <p>审核学生提交的题目</p>
           </div>
         </router-link>
       </template>
 
       <router-link v-if="authState.isAuthenticated && !isAdmin" to="/exam" class="nav-card google-card">
         <div class="icon-circle green-bg">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><circle cx="16" cy="16" r="4"></circle><path d="M16 14v2l1 1"></path></svg>
         </div>
         <div class="nav-text">
-          <h3>Take Exam</h3>
-          <p>Enter an exam session</p>
+          <h3>在线考试</h3>
+          <p>进入考试</p>
         </div>
       </router-link>
 
@@ -184,8 +194,8 @@ watch(() => authState.user.id, (newId) => {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
           </div>
           <div class="nav-text">
-            <h3>User Management</h3>
-            <p>Manage system users</p>
+            <h3>用户管理</h3>
+            <p>管理系统用户</p>
           </div>
         </router-link>
 
@@ -194,8 +204,18 @@ watch(() => authState.user.id, (newId) => {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           </div>
           <div class="nav-text">
-            <h3>System Settings</h3>
-            <p>Configure system availability</p>
+            <h3>系统设置</h3>
+            <p>配置系统参数</p>
+          </div>
+        </router-link>
+
+        <router-link to="/admin/organizations" class="nav-card google-card">
+          <div class="icon-circle purple-bg">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          </div>
+          <div class="nav-text">
+            <h3>组织管理</h3>
+            <p>管理班级组织架构</p>
           </div>
         </router-link>
       </template>
@@ -206,19 +226,39 @@ watch(() => authState.user.id, (newId) => {
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           </div>
           <div class="nav-text">
-            <h3>Self Practice</h3>
-            <p>Practice with past papers</p>
+            <h3>自主练习</h3>
+            <p>历史试卷练习</p>
+          </div>
+        </router-link>
+
+        <router-link to="/questions/add" class="nav-card google-card">
+          <div class="icon-circle red-bg">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </div>
+          <div class="nav-text">
+            <h3>我要出题</h3>
+            <p>提交题目供教师审核</p>
+          </div>
+        </router-link>
+
+        <router-link to="/my-organizations" class="nav-card google-card">
+          <div class="icon-circle blue-bg">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          </div>
+          <div class="nav-text">
+            <h3>我的班级</h3>
+            <p>加入班级组织</p>
           </div>
         </router-link>
       </template>
 
       <router-link v-if="isTeacher" to="/knowledge-point-manage" class="nav-card google-card">
         <div class="icon-circle purple-bg">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-.29 0-.58-.03-.86-.08 3.54-.49 6.36-3.31 6.85-6.85.05-.28.08-.57.08-.86h-2c0 .29-.03.58-.08.86-.49 3.54-3.31 6.36-6.85 6.85-.28.05-.57.08-.86.08zm1-15.93c.29 0 .58.03.86.08-3.54.49-6.36 3.31-6.85 6.85-.05.28-.08.57-.08.86h2c0-.29.03-.58.08-.86.49-3.54 3.31-6.36 6.85-6.85.28-.05.57-.08.86-.08zm-1 4.93c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><circle cx="19" cy="5" r="2"></circle><circle cx="5" cy="5" r="2"></circle><circle cx="19" cy="19" r="2"></circle><circle cx="5" cy="19" r="2"></circle><line x1="12" y1="9" x2="12" y2="5"></line><line x1="6.5" y1="6.5" x2="9.5" y2="9.5"></line><line x1="17.5" y1="6.5" x2="14.5" y2="9.5"></line><line x1="6.5" y1="17.5" x2="9.5" y2="14.5"></line><line x1="17.5" y1="17.5" x2="14.5" y2="14.5"></line></svg>
         </div>
         <div class="nav-text">
-          <h3>Knowledge Points</h3>
-          <p>Manage knowledge points</p>
+          <h3>知识点管理</h3>
+          <p>管理知识点体系</p>
         </div>
       </router-link>
     </div>

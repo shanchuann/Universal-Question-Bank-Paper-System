@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping({"/import", "/api/import"})
+@RequestMapping("/api/import")
 public class ImportController {
 
   @Autowired private ImportService importService;

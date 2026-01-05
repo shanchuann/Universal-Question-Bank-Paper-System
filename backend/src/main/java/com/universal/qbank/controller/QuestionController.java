@@ -8,9 +8,13 @@ import com.universal.qbank.api.generated.model.QuestionOption;
 import com.universal.qbank.api.generated.model.QuestionPage;
 import com.universal.qbank.api.generated.model.QuestionResponse;
 import com.universal.qbank.api.generated.model.QuestionSummary;
+import com.universal.qbank.api.generated.model.QuestionUpdateRequest;
 import com.universal.qbank.entity.QuestionEntity;
+import com.universal.qbank.entity.UserEntity;
 import com.universal.qbank.repository.QuestionRepository;
+import com.universal.qbank.repository.UserRepository;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -26,22 +30,43 @@ import org.springframework.web.bind.annotation.RestController;
 public class QuestionController implements QuestionBankApi {
 
   @Autowired private QuestionRepository questionRepository;
+  @Autowired private UserRepository userRepository;
+  @Autowired private HttpServletRequest httpRequest;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   @Override
-  public ResponseEntity<QuestionResponse> questionsPost(QuestionCreateRequest req) {
+  public ResponseEntity<QuestionResponse> apiQuestionsPost(QuestionCreateRequest req) {
     QuestionEntity q = new QuestionEntity();
     q.setSubjectId(req.getSubjectId());
     q.setType(req.getType().getValue());
     q.setDifficulty(req.getDifficulty().getValue());
     q.setStem(req.getStem());
+    
+    // 从请求头获取用户ID并设置为创建者
+    String authHeader = httpRequest.getHeader("Authorization");
+    String userId = null;
+    if (authHeader != null && authHeader.startsWith("Bearer dummy-jwt-token-")) {
+      userId = authHeader.replace("Bearer dummy-jwt-token-", "");
+      q.setCreatedBy(userId);
+    }
 
     try {
       if (req.getOptions() != null) {
         q.setOptionsJson(objectMapper.writeValueAsString(req.getOptions()));
       }
+      // answerSchema 可能是字符串或对象，直接转为字符串存储
       if (req.getAnswerSchema() != null) {
-        q.setAnswerSchema(objectMapper.writeValueAsString(req.getAnswerSchema()));
+        Object answer = req.getAnswerSchema();
+        if (answer instanceof String) {
+          q.setAnswerSchema((String) answer);
+        } else {
+          // 如果是对象，尝试获取其字符串表示
+          String answerStr = answer.toString();
+          // 如果是空对象 "{}"，则不保存
+          if (!answerStr.equals("{}") && !answerStr.isEmpty()) {
+            q.setAnswerSchema(answerStr);
+          }
+        }
       }
     } catch (Exception e) {
       throw new RuntimeException("Failed to serialize options or answer schema", e);
@@ -49,7 +74,19 @@ public class QuestionController implements QuestionBankApi {
 
     // q.setTags(req.getTags());
     q.setKnowledgePointIds(req.getKnowledgePointIds());
-    q.setStatus("ACTIVE");
+    
+    // 根据用户角色设置初始状态：学生创建的为待审核，教师/管理员创建的直接激活
+    String initialStatus = "ACTIVE";
+    if (userId != null) {
+      var userOpt = userRepository.findById(userId);
+      if (userOpt.isPresent()) {
+        String role = userOpt.get().getRole();
+        if ("USER".equals(role) || "STUDENT".equals(role)) {
+          initialStatus = "PENDING_REVIEW";
+        }
+      }
+    }
+    q.setStatus(initialStatus);
 
     QuestionEntity saved = questionRepository.save(q);
     return ResponseEntity.ok(convertToResponse(saved));
@@ -66,6 +103,11 @@ public class QuestionController implements QuestionBankApi {
     resp.setKnowledgePointIds(entity.getKnowledgePointIds());
     resp.setStem(entity.getStem());
     resp.setAnalysis(entity.getAnalysis());
+    
+    // 设置 answerSchema
+    if (entity.getAnswerSchema() != null) {
+      resp.setAnswerSchema(entity.getAnswerSchema());
+    }
 
     try {
       if (entity.getOptionsJson() != null) {
@@ -74,9 +116,6 @@ public class QuestionController implements QuestionBankApi {
                 entity.getOptionsJson(), new TypeReference<List<QuestionOption>>() {});
         resp.setOptions(options);
       }
-      // We could also deserialize answerSchema if needed, but QuestionResponse might not have it
-      // yet
-      // or it might be part of the response.
     } catch (Exception e) {
       // Log error but don't fail the request
       System.err.println("Failed to deserialize options for question " + entity.getId());
@@ -86,7 +125,7 @@ public class QuestionController implements QuestionBankApi {
   }
 
   @Override
-  public ResponseEntity<QuestionResponse> questionsQuestionIdGet(String id) {
+  public ResponseEntity<QuestionResponse> apiQuestionsQuestionIdGet(String id) {
     return questionRepository
         .findById(id)
         .map(this::convertToResponse)
@@ -95,7 +134,7 @@ public class QuestionController implements QuestionBankApi {
   }
 
   @Override
-  public ResponseEntity<Void> questionsQuestionIdDelete(String id) {
+  public ResponseEntity<Void> apiQuestionsQuestionIdDelete(String id) {
     if (questionRepository.existsById(id)) {
       questionRepository.deleteById(id);
       return ResponseEntity.noContent().build();
@@ -105,7 +144,53 @@ public class QuestionController implements QuestionBankApi {
   }
 
   @Override
-  public ResponseEntity<QuestionPage> questionsGet(
+  public ResponseEntity<Void> apiQuestionsQuestionIdPut(String id, QuestionUpdateRequest req) {
+    return questionRepository
+        .findById(id)
+        .map(
+            existing -> {
+              if (req.getStem() != null) {
+                existing.setStem(req.getStem());
+              }
+              if (req.getDifficulty() != null) {
+                existing.setDifficulty(req.getDifficulty());
+              }
+              if (req.getAnalysis() != null) {
+                existing.setAnalysis(req.getAnalysis());
+              }
+
+              try {
+                if (req.getOptions() != null) {
+                  existing.setOptionsJson(objectMapper.writeValueAsString(req.getOptions()));
+                }
+                // answerSchema 可能是字符串或对象，直接转为字符串存储
+                if (req.getAnswerSchema() != null) {
+                  Object answer = req.getAnswerSchema();
+                  if (answer instanceof String) {
+                    existing.setAnswerSchema((String) answer);
+                  } else {
+                    String answerStr = answer.toString();
+                    if (!answerStr.equals("{}") && !answerStr.isEmpty()) {
+                      existing.setAnswerSchema(answerStr);
+                    }
+                  }
+                }
+              } catch (Exception e) {
+                throw new RuntimeException("Failed to serialize options or answer schema", e);
+              }
+
+              if (req.getKnowledgePointIds() != null) {
+                existing.setKnowledgePointIds(req.getKnowledgePointIds());
+              }
+              // 保持原有状态，不修改
+              questionRepository.save(existing);
+              return ResponseEntity.noContent().<Void>build();
+            })
+        .orElse(ResponseEntity.notFound().build());
+  }
+
+  @Override
+  public ResponseEntity<QuestionPage> apiQuestionsGet(
       Integer page,
       Integer size,
       String subjectId,
@@ -130,8 +215,12 @@ public class QuestionController implements QuestionBankApi {
           if (difficulty != null && !difficulty.isEmpty()) {
             predicates.add(cb.equal(root.get("difficulty"), difficulty));
           }
+          // 状态过滤：如果没有指定状态，默认只显示已通过的题目
           if (status != null && !status.isEmpty()) {
             predicates.add(cb.equal(root.get("status"), status));
+          } else {
+            // 默认只显示 APPROVED 状态的题目（审核通过的）
+            predicates.add(root.get("status").in("APPROVED", "PUBLISHED"));
           }
           if (keywords != null && !keywords.isEmpty()) {
             String likePattern = "%" + keywords + "%";
@@ -180,6 +269,11 @@ public class QuestionController implements QuestionBankApi {
     summary.setStatus(entity.getStatus());
     summary.setTags(entity.getTags());
     summary.setKnowledgePointIds(entity.getKnowledgePointIds());
+    summary.setOptionsJson(entity.getOptionsJson());
+    summary.setAnswerSchema(entity.getAnswerSchema());
+    summary.setAnalysis(entity.getAnalysis());
+    summary.setReviewNotes(entity.getReviewNotes());
+    summary.setCreatedBy(entity.getCreatedBy());
     summary.setCreatedAt(entity.getCreatedAt());
     return summary;
   }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { paperApi } from '@/api/client'
+import axios from 'axios'
 import { useRouter } from 'vue-router'
 
 interface PaperResponse {
@@ -17,10 +17,10 @@ const router = useRouter()
 const fetchPapers = async () => {
   loading.value = true
   try {
-    const response = await paperApi.axios.get('/api/papers')
+    const response = await axios.get('/api/papers')
     papers.value = response.data
   } catch (err) {
-    error.value = 'Failed to load papers'
+    error.value = '加载试卷失败'
     console.error(err)
   } finally {
     loading.value = false
@@ -36,11 +36,11 @@ onMounted(fetchPapers)
 
 <template>
   <div class="practice-select-container container mt-4">
-    <h2 class="mb-4">Select a Paper for Practice</h2>
+    <h2 class="mb-4">选择试卷进行练习</h2>
 
     <div v-if="loading" class="text-center">
       <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
+        <span class="visually-hidden">加载中...</span>
       </div>
     </div>
 
@@ -52,10 +52,10 @@ onMounted(fetchPapers)
           <div class="card-body">
             <h5 class="card-title">{{ paper.title }}</h5>
             <p class="card-text text-muted">
-              Created: {{ new Date(paper.createdAt).toLocaleDateString() }}
+              创建时间: {{ new Date(paper.createdAt).toLocaleDateString() }}
             </p>
             <button class="btn btn-primary w-100 mt-3" @click="startPractice(paper.id)">
-              Start Practice
+              开始练习
             </button>
           </div>
         </div>

@@ -164,6 +164,12 @@ public class ExamService {
         org.springframework.data.domain.PageRequest.of(
             page, size, org.springframework.data.domain.Sort.by("startTime").descending());
 
+    // 获取所有学生用户ID（只显示学生的答卷）
+    List<String> studentUserIds = userRepository.findAll().stream()
+        .filter(u -> "USER".equals(u.getRole()) || "STUDENT".equals(u.getRole()))
+        .map(u -> u.getId())
+        .collect(Collectors.toList());
+
     Specification<ExamEntity> spec =
         (root, query, cb) -> {
           List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
@@ -172,6 +178,10 @@ public class ExamService {
           }
           if (userId != null && !userId.isEmpty()) {
             predicates.add(cb.equal(root.get("userId"), userId));
+          }
+          // 只获取学生的答卷
+          if (!studentUserIds.isEmpty()) {
+            predicates.add(root.get("userId").in(studentUserIds));
           }
           return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
         };

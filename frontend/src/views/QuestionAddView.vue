@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
@@ -11,6 +12,13 @@ import KnowledgePointDialog from '@/components/KnowledgePointDialog.vue'
 
 // Expose katex to window for Quill's formula module
 (window as any).katex = katex;
+
+const route = useRoute()
+const router = useRouter()
+
+// 编辑模式判断
+const isEditMode = computed(() => !!route.params.id)
+const questionId = computed(() => route.params.id as string)
 
 const form = ref({
   subjectId: '',
@@ -29,17 +37,17 @@ const showKPDialog = ref(false)
 const newKPName = ref('')
 
 const typeOptions = [
-  { label: 'Single Choice', value: 'SINGLE_CHOICE' },
-  { label: 'Multiple Choice', value: 'MULTIPLE_CHOICE' },
-  { label: 'True/False', value: 'TRUE_FALSE' },
-  { label: 'Fill Blank', value: 'FILL_BLANK' },
-  { label: 'Short Answer', value: 'SHORT_ANSWER' }
+  { label: '单选题', value: 'SINGLE_CHOICE' },
+  { label: '多选题', value: 'MULTIPLE_CHOICE' },
+  { label: '判断题', value: 'TRUE_FALSE' },
+  { label: '填空题', value: 'FILL_BLANK' },
+  { label: '简答题', value: 'SHORT_ANSWER' }
 ]
 
 const difficultyOptions = [
-  { label: 'Easy', value: 'EASY' },
-  { label: 'Medium', value: 'MEDIUM' },
-  { label: 'Hard', value: 'HARD' }
+  { label: '简单', value: 'EASY' },
+  { label: '中等', value: 'MEDIUM' },
+  { label: '困难', value: 'HARD' }
 ]
 
 const kpOptions = computed(() => {
@@ -89,6 +97,92 @@ const fetchKnowledgePoints = async () => {
   }
 }
 
+// 加载题目数据（编辑模式）
+const loadQuestion = async () => {
+  if (!isEditMode.value) return
+  
+  loading.value = true
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.get(`/api/questions/${questionId.value}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const question = response.data
+    
+    form.value.subjectId = question.subjectId || ''
+    form.value.type = question.type || 'SINGLE_CHOICE'
+    form.value.difficulty = question.difficulty || 'EASY'
+    form.value.stem = question.stem || ''
+    form.value.tags = question.tags ? question.tags.join(', ') : ''
+    form.value.knowledgePointIds = question.knowledgePointIds || []
+    
+    // 解析选项 - 支持多种格式
+    let parsedOptions: any[] = []
+    if (question.options && Array.isArray(question.options)) {
+      parsedOptions = question.options
+    } else if (question.optionsJson) {
+      try {
+        parsedOptions = JSON.parse(question.optionsJson)
+      } catch { parsedOptions = [] }
+    }
+    
+    // 处理选项和答案
+    if (['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(question.type)) {
+      if (parsedOptions.length > 0) {
+        form.value.options = parsedOptions.map((opt: any) => 
+          typeof opt === 'string' ? opt : (opt.text || opt.content || '')
+        )
+        // 确保至少4个选项
+        while (form.value.options.length < 4) form.value.options.push('')
+        
+        // 找到正确答案 - 支持多种格式
+        if (question.answerSchema) {
+          // 如果有 answerSchema，直接使用
+          form.value.answer = question.answerSchema
+          if (question.type === 'MULTIPLE_CHOICE') {
+            multiAnswer.value = question.answerSchema.split(',').map((a: string) => a.trim())
+          }
+        } else {
+          // 从选项中找正确答案
+          const correctOptions = parsedOptions.filter((opt: any) => opt.isCorrect)
+          if (question.type === 'SINGLE_CHOICE' && correctOptions.length > 0) {
+            const idx = parsedOptions.indexOf(correctOptions[0])
+            form.value.answer = String.fromCharCode(65 + idx)
+          } else if (question.type === 'MULTIPLE_CHOICE') {
+            multiAnswer.value = correctOptions.map((opt: any) => {
+              const idx = parsedOptions.indexOf(opt)
+              return String.fromCharCode(65 + idx)
+            })
+          }
+        }
+      } else {
+        form.value.options = ['', '', '', '']
+      }
+    } else if (question.type === 'TRUE_FALSE') {
+      form.value.answer = question.answerSchema || 'True'
+    } else if (question.type === 'FILL_BLANK') {
+      form.value.options = parsedOptions.map((opt: any) => 
+        typeof opt === 'string' ? opt : (opt.text || '')
+      )
+      if (form.value.options.length === 0) form.value.options = ['']
+    } else if (question.type === 'SHORT_ANSWER') {
+      form.value.answer = question.answerSchema || ''
+    }
+  } catch (err) {
+    console.error('加载题目失败', err)
+    showToast('加载题目失败', 'error')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 多选题答案
+const multiAnswer = ref<string[]>([])
+
+watch(multiAnswer, (val) => {
+  form.value.answer = val.join(',')
+}, { deep: true })
+
 const handleCreateKP = (name: string) => {
   newKPName.value = name
   showKPDialog.value = true
@@ -115,17 +209,38 @@ const saveNewKP = async (kpData: any) => {
     showKPDialog.value = false
   } catch (err) {
     console.error('Failed to create KP', err)
-    alert('Failed to create knowledge point')
+    alert('创建知识点失败')
   }
 }
 
-onMounted(fetchKnowledgePoints)
+onMounted(() => {
+  fetchKnowledgePoints()
+  if (isEditMode.value) {
+    loadQuestion()
+  }
+})
 
 
 const loading = ref(false)
 const message = ref('')
 const error = ref('')
 const quillEditor = ref<any>(null)
+
+// Toast 提示函数
+const showToast = (msg: string, type: 'success' | 'error') => {
+  if (type === 'success') {
+    message.value = msg
+    error.value = ''
+  } else {
+    error.value = msg
+    message.value = ''
+  }
+  // 3秒后自动消失
+  setTimeout(() => {
+    message.value = ''
+    error.value = ''
+  }, 3000)
+}
 
 const toolbarOptions = [
   ['bold', 'italic', 'underline', 'strike'],
@@ -223,10 +338,13 @@ const handleSubmit = async () => {
   try {
     let apiOptions: { text: string; isCorrect: boolean }[] = [];
 
+    // 解析答案字母列表
+    const answerLetters = form.value.answer.split(',').map(a => a.trim())
+    
     if (['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(form.value.type)) {
-        apiOptions = form.value.options.map(optText => ({
+        apiOptions = form.value.options.map((optText, idx) => ({
           text: optText,
-          isCorrect: optText === form.value.answer
+          isCorrect: answerLetters.includes(String.fromCharCode(65 + idx))
         }));
     } else if (form.value.type === 'TRUE_FALSE') {
         apiOptions = [
@@ -249,26 +367,42 @@ const handleSubmit = async () => {
       difficulty: form.value.difficulty,
       stem: form.value.stem,
       options: apiOptions,
-      answerSchema: {}, // Required by backend
-      score: 1.0, // Required by backend
+      answerSchema: form.value.answer, // 保存实际答案字母
+      score: 1.0,
       tags: form.value.tags ? form.value.tags.split(',').map(t => t.trim()) : [],
       knowledgePointIds: form.value.knowledgePointIds
     }
     const token = localStorage.getItem('token')
-    await axios.post('/api/questions', payload, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
-    message.value = 'Question added successfully!'
-    // Reset form
-    form.value.stem = ''
-    form.value.options = ['', '', '', '']
-    form.value.answer = ''
-    form.value.tags = ''
-    form.value.knowledgePointIds = []
+    
+    if (isEditMode.value) {
+      // 编辑模式 - PUT 请求
+      await axios.put(`/api/questions/${questionId.value}`, payload, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      showToast('题目更新成功！', 'success')
+      // 延迟返回列表
+      setTimeout(() => {
+        router.push('/questions')
+      }, 1500)
+    } else {
+      // 新建模式 - POST 请求
+      await axios.post('/api/questions', payload, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      showToast('题目添加成功！', 'success')
+      // Reset form
+      form.value.stem = ''
+      form.value.options = ['', '', '', '']
+      form.value.answer = ''
+      form.value.tags = ''
+      form.value.knowledgePointIds = []
+    }
   } catch (err: any) {
-    error.value = err.response?.data?.message || err.message || 'Failed to add question.'
+    showToast(err.response?.data?.message || err.message || '操作失败', 'error')
     console.error(err)
   } finally {
     loading.value = false
@@ -280,19 +414,19 @@ const handleSubmit = async () => {
   <div class="container add-question-container">
     <div class="google-card form-card">
       <div class="card-header">
-        <h1>Add New Question</h1>
-        <p class="subtitle">Create a new question for the bank</p>
+        <h1>{{ isEditMode ? '编辑题目' : '添加题目' }}</h1>
+        <p class="subtitle">{{ isEditMode ? '修改题目信息' : '创建新题目加入题库' }}</p>
       </div>
 
       <form @submit.prevent="handleSubmit">
         <div class="form-grid">
           <div class="form-group">
-            <label>Subject</label>
-            <input v-model="form.subjectId" type="text" required placeholder="e.g. Math" class="google-input" />
+            <label>科目</label>
+            <input v-model="form.subjectId" type="text" required placeholder="例如：数学" class="google-input" />
           </div>
 
           <div class="form-group">
-            <label>Type</label>
+            <label>题型</label>
             <GoogleSelect
               v-model="form.type"
               :options="typeOptions"
@@ -300,7 +434,7 @@ const handleSubmit = async () => {
           </div>
 
           <div class="form-group">
-            <label>Difficulty</label>
+            <label>难度</label>
             <GoogleSelect
               v-model="form.difficulty"
               :options="difficultyOptions"
@@ -308,20 +442,20 @@ const handleSubmit = async () => {
           </div>
 
           <div class="form-group">
-            <label>Knowledge Points</label>
+            <label>知识点</label>
             <GoogleCombobox
               v-model="form.knowledgePointIds"
               :options="kpOptions"
-              placeholder="Select or create knowledge points..."
+              placeholder="选择或创建知识点..."
               :allow-create="true"
               @create="handleCreateKP"
             />
-            <small class="helper-text">Type to search. If not found, click 'Create' to add new.</small>
+            <small class="helper-text">输入搜索，找不到可点击“创建”添加新知识点</small>
           </div>
         </div>
 
         <div class="form-group full-width">
-          <label>Question Stem</label>
+          <label>题干</label>
           <div class="editor-wrapper">
             <QuillEditor 
               ref="quillEditor"
@@ -333,46 +467,46 @@ const handleSubmit = async () => {
             />
           </div>
           <button v-if="form.type === 'FILL_BLANK'" type="button" @click="insertBlank" class="google-btn text-btn small-btn mt-2">
-            Insert Blank (_____)
+            插入空 (_____)
           </button>
         </div>
 
         <!-- Options for Choice Questions -->
         <div v-if="['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(form.type)" class="options-section">
-          <label>Options</label>
-          <div v-for="(opt, idx) in form.options" :key="idx" class="option-row">
+          <label>选项</label>
+          <div v-for="(_opt, idx) in form.options" :key="idx" class="option-row">
             <span class="option-label">{{ String.fromCharCode(65 + idx) }}.</span>
-            <input v-model="form.options[idx]" type="text" required placeholder="Option text" class="google-input" />
+            <input v-model="form.options[idx]" type="text" required placeholder="选项内容" class="google-input" />
             <button type="button" @click="removeOption(idx)" class="icon-btn remove-opt" v-if="form.options.length > 2">×</button>
           </div>
-          <button type="button" @click="addOption" class="google-btn text-btn small-btn">+ Add Option</button>
+          <button type="button" @click="addOption" class="google-btn text-btn small-btn">+ 添加选项</button>
         </div>
 
         <!-- Fill Blank Answers -->
         <div v-if="form.type === 'FILL_BLANK'" class="options-section">
-           <label>Correct Answers (in order)</label>
-           <div v-for="(opt, idx) in form.options" :key="idx" class="option-row">
+           <label>正确答案（按顺序）</label>
+           <div v-for="(_opt, idx) in form.options" :key="idx" class="option-row">
               <span class="option-label">{{ idx + 1 }}.</span>
-              <input v-model="form.options[idx]" type="text" required placeholder="Answer for blank" class="google-input" />
+              <input v-model="form.options[idx]" type="text" required placeholder="填空答案" class="google-input" />
            </div>
-           <p v-if="form.options.length === 0" class="helper-text">Type "_____" in the stem to add blanks.</p>
+           <p v-if="form.options.length === 0" class="helper-text">在题干中输入"_____"添加空</p>
         </div>
 
         <div class="form-group full-width">
-          <label>Correct Answer</label>
+          <label>正确答案</label>
           
           <!-- Single Choice Answer -->
           <div v-if="form.type === 'SINGLE_CHOICE'" class="radio-group">
-            <label v-for="(opt, idx) in form.options" :key="idx" class="radio-label">
-              <input type="radio" :value="form.options[idx]" v-model="form.answer" class="google-radio" />
+            <label v-for="(_opt, idx) in form.options" :key="idx" class="radio-label">
+              <input type="radio" :value="String.fromCharCode(65 + idx)" v-model="form.answer" name="singleAnswer" />
               <span class="radio-text">{{ String.fromCharCode(65 + idx) }}</span>
             </label>
           </div>
 
           <!-- Multiple Choice Answer -->
           <div v-else-if="form.type === 'MULTIPLE_CHOICE'" class="checkbox-group">
-            <label v-for="(opt, idx) in form.options" :key="idx" class="checkbox-label">
-              <input type="checkbox" :value="form.options[idx]" v-model="multiAnswer" class="google-checkbox" />
+            <label v-for="(_opt, idx) in form.options" :key="idx" class="checkbox-label">
+              <input type="checkbox" :value="String.fromCharCode(65 + idx)" v-model="multiAnswer" />
               <span class="checkbox-text">{{ String.fromCharCode(65 + idx) }}</span>
             </label>
           </div>
@@ -380,12 +514,12 @@ const handleSubmit = async () => {
           <!-- True/False Answer -->
           <div v-else-if="form.type === 'TRUE_FALSE'" class="radio-group">
             <label class="radio-label">
-              <input type="radio" value="True" v-model="form.answer" class="google-radio" />
-              <span class="radio-text">True</span>
+              <input type="radio" value="True" v-model="form.answer" name="tfAnswer" />
+              <span class="radio-text">正确</span>
             </label>
             <label class="radio-label">
-              <input type="radio" value="False" v-model="form.answer" class="google-radio" />
-              <span class="radio-text">False</span>
+              <input type="radio" value="False" v-model="form.answer" name="tfAnswer" />
+              <span class="radio-text">错误</span>
             </label>
           </div>
 
@@ -395,24 +529,37 @@ const handleSubmit = async () => {
           </div>
 
           <!-- Text Answer -->
-          <input v-else v-model="form.answer" type="text" required placeholder="Correct answer text" class="google-input" />
+          <input v-else v-model="form.answer" type="text" required placeholder="填写正确答案" class="google-input" />
         </div>
 
         <div class="form-group full-width">
-          <label>Tags (comma separated)</label>
-          <input v-model="form.tags" type="text" placeholder="math, algebra, year-1" class="google-input" />
+          <label>标签（用逗号分隔）</label>
+          <input v-model="form.tags" type="text" placeholder="数学, 代数, 一年级" class="google-input" />
         </div>
 
         <div class="form-actions">
           <button type="submit" class="google-btn primary-btn" :disabled="loading">
-            {{ loading ? 'Saving...' : 'Create Question' }}
+            {{ loading ? '保存中...' : (isEditMode ? '保存修改' : '创建题目') }}
           </button>
-          <button type="button" @click="$router.back()" class="google-btn text-btn">Cancel</button>
+          <button type="button" @click="$router.back()" class="google-btn text-btn">取消</button>
         </div>
-
-        <p v-if="error" class="error-text">{{ error }}</p>
-        <p v-if="message" class="success-text">{{ message }}</p>
       </form>
+
+      <!-- Toast 提示 -->
+      <Transition name="toast">
+        <div v-if="message || error" class="toast" :class="{ 'toast-error': error, 'toast-success': message }">
+          <svg v-if="message" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          <svg v-if="error" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+          <span>{{ message || error }}</span>
+        </div>
+      </Transition>
     </div>
     <KnowledgePointDialog
       :is-open="showKPDialog"
@@ -552,8 +699,49 @@ label {
   justify-content: flex-end;
 }
 
-.error-text { color: #d93025; margin-top: 16px; text-align: center; }
-.success-text { color: #188038; margin-top: 16px; text-align: center; }
+/* Toast 提示样式 */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+}
+
+.toast-success {
+  background: #e6f4ea;
+  color: #137333;
+  border: 1px solid #ceead6;
+}
+
+.toast-error {
+  background: #fce8e6;
+  color: #c5221f;
+  border: 1px solid #f5c6cb;
+}
+
+.toast svg {
+  flex-shrink: 0;
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s ease;
+}
+
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px);
+}
 
 .multi-select {
   height: 120px;
