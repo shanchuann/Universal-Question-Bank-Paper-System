@@ -118,12 +118,12 @@ const savePoint = async () => {
     fetchPoints()
   } catch (err) {
     console.error(err)
-    alert('Failed to save')
+    alert('保存失败')
   }
 }
 
 const deletePoint = async (id: string) => {
-  if (!confirm('Are you sure? This will delete the point and potentially its children.')) return
+  if (!confirm('确定要删除吗？这将删除该知识点及其子节点。')) return
   
   const token = localStorage.getItem('token')
   try {
@@ -133,7 +133,7 @@ const deletePoint = async (id: string) => {
     fetchPoints()
   } catch (err) {
     console.error(err)
-    alert('Failed to delete')
+    alert('删除失败')
   }
 }
 
@@ -144,13 +144,13 @@ onMounted(fetchPoints)
   <div class="container">
     <div class="google-card">
       <div class="header">
-        <h1>Knowledge Graph</h1>
-        <button @click="openAddDialog()" class="google-btn primary-btn">+ Add Chapter</button>
+        <h1>知识图谱</h1>
+        <button @click="openAddDialog()" class="google-btn primary-btn">+ 添加章节</button>
       </div>
       
       <div class="tree-view">
-        <div v-if="loading">Loading...</div>
-        <div v-else-if="treeData.length === 0">No knowledge points found.</div>
+        <div v-if="loading">加载中...</div>
+        <div v-else-if="treeData.length === 0">未找到知识点。</div>
         
         <ul class="tree-root">
           <li v-for="chapter in treeData" :key="chapter.id" class="tree-node chapter">
@@ -158,7 +158,7 @@ onMounted(fetchPoints)
               <span class="node-title">{{ chapter.name }}</span>
               <div class="actions">
                 <button @click="openEditDialog(chapter)" class="icon-btn">✎</button>
-                <button @click="openAddDialog(chapter)" class="icon-btn" title="Add Section">+</button>
+                <button @click="openAddDialog(chapter)" class="icon-btn" title="添加节">+</button>
                 <button @click="deletePoint(chapter.id)" class="icon-btn delete">×</button>
               </div>
             </div>
@@ -169,7 +169,7 @@ onMounted(fetchPoints)
                   <span class="node-title">{{ section.name }}</span>
                   <div class="actions">
                     <button @click="openEditDialog(section)" class="icon-btn">✎</button>
-                    <button @click="openAddDialog(section)" class="icon-btn" title="Add Point">+</button>
+                    <button @click="openAddDialog(section)" class="icon-btn" title="添加知识点">+</button>
                     <button @click="deletePoint(section.id)" class="icon-btn delete">×</button>
                   </div>
                 </div>
@@ -195,26 +195,26 @@ onMounted(fetchPoints)
     <!-- Dialog -->
     <div v-if="showDialog" class="modal-overlay">
       <div class="modal google-card">
-        <h2>{{ editingPoint ? 'Edit' : 'Add' }} Knowledge Point</h2>
+        <h2>{{ editingPoint ? '编辑' : '添加' }}知识点</h2>
         <div class="form-group">
-          <label>Name</label>
+          <label>名称</label>
           <input v-model="form.name" class="google-input" />
         </div>
         <div class="form-group">
-          <label>Level</label>
+          <label>级别</label>
           <select v-model="form.level" class="google-select" disabled>
-            <option value="CHAPTER">Chapter</option>
-            <option value="SECTION">Section</option>
-            <option value="POINT">Point</option>
+            <option value="CHAPTER">章</option>
+            <option value="SECTION">节</option>
+            <option value="POINT">知识点</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Sort Order</label>
+          <label>排序</label>
           <input type="number" v-model="form.sortOrder" class="google-input" />
         </div>
         <div class="modal-actions">
-          <button @click="showDialog = false" class="google-btn text-btn">Cancel</button>
-          <button @click="savePoint" class="google-btn primary-btn">Save</button>
+          <button @click="showDialog = false" class="google-btn text-btn">取消</button>
+          <button @click="savePoint" class="google-btn primary-btn">保存</button>
         </div>
       </div>
     </div>

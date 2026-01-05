@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequestMapping("/api/user")
 public class UserController {
 
   @Autowired private UserService userService;
@@ -23,7 +24,7 @@ public class UserController {
     return null;
   }
 
-  @GetMapping("/user/profile")
+  @GetMapping("/profile")
   public ResponseEntity<?> getProfile(@RequestHeader("Authorization") String token) {
     String userId = getUserIdFromToken(token);
     if (userId == null) {
@@ -36,7 +37,7 @@ public class UserController {
         .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
   }
 
-  @PutMapping("/user/profile")
+  @PutMapping("/profile")
   public ResponseEntity<?> updateProfile(
       @RequestHeader("Authorization") String token, @RequestBody Map<String, String> payload) {
     String userId = getUserIdFromToken(token);
@@ -60,7 +61,7 @@ public class UserController {
     }
   }
 
-  @PutMapping("/user/password")
+  @PutMapping("/password")
   public ResponseEntity<?> updatePassword(
       @RequestHeader("Authorization") String token, @RequestBody Map<String, String> payload) {
     String userId = getUserIdFromToken(token);

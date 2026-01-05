@@ -22,7 +22,7 @@ public class ExamEntity {
 
   private OffsetDateTime endTime;
 
-  @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+  @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
   @JoinColumn(name = "exam_id")
   private List<ExamRecordEntity> records;
 

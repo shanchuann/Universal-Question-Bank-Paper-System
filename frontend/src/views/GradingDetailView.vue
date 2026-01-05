@@ -19,7 +19,7 @@ const grades = ref<Record<string, { score: number | null, notes: string }>>({})
 const fetchExam = async () => {
   loading.value = true
   try {
-    const response = await examApi.examsIdGet(examId)
+    const response = await examApi.apiExamsIdGet(examId)
     exam.value = response.data
     
     // Initialize grades from existing data
@@ -34,7 +34,7 @@ const fetchExam = async () => {
       })
     }
   } catch (err) {
-    error.value = 'Failed to load exam details.'
+    error.value = '加载考试详情失败'
     console.error(err)
   } finally {
     loading.value = false
@@ -52,11 +52,11 @@ const submitGrades = async () => {
       }))
     }
     
-    await examApi.examsSessionIdGradePost(examId, request)
-    alert('Grades submitted successfully')
+    await examApi.apiExamsSessionIdGradePost(examId, request)
+    alert('评分提交成功')
     router.push('/grading')
   } catch (err) {
-    alert('Failed to submit grades')
+    alert('提交评分失败')
     console.error(err)
   } finally {
     saving.value = false
@@ -69,31 +69,31 @@ onMounted(fetchExam)
 <template>
   <div class="container">
     <div class="header-row">
-      <button @click="router.back()" class="google-btn secondary">Back</button>
-      <h1>Grading Exam: {{ examId }}</h1>
+      <button @click="router.back()" class="google-btn secondary">返回</button>
+      <h1>阅卷: 考试 {{ examId }}</h1>
       <button @click="submitGrades" class="google-btn primary" :disabled="saving">
-        {{ saving ? 'Saving...' : 'Submit Grades' }}
+        {{ saving ? '保存中...' : '提交评分' }}
       </button>
     </div>
 
-    <div v-if="loading" class="loading-state">Loading...</div>
+    <div v-if="loading" class="loading-state">加载中...</div>
     <div v-else-if="error" class="error-state">{{ error }}</div>
     
     <div v-else-if="exam" class="exam-content">
       <div class="info-card google-card">
-        <p><strong>User:</strong> {{ (exam as any).userId }}</p>
-        <p><strong>Paper:</strong> {{ exam.paperVersionId }}</p>
-        <p><strong>Total Score:</strong> {{ (exam as any).score }}%</p>
+        <p><strong>用户:</strong> {{ (exam as any).nickname || (exam as any).username || (exam as any).userId }}</p>
+        <p><strong>试卷:</strong> {{ exam.paperVersionId }}</p>
+        <p><strong>总分:</strong> {{ (exam as any).score ?? '待评分' }}</p>
       </div>
 
       <div v-for="(q, index) in exam.questions" :key="q.questionId" class="question-card google-card">
         <div class="q-header">
-          <span class="q-num">Q{{ index + 1 }}</span>
+          <span class="q-num">第{{ index + 1 }}题</span>
           <span class="q-type">{{ q.type }}</span>
-          <span class="q-score-badge">Max: {{ q.score }}</span>
+          <span class="q-score-badge">满分: {{ q.score }}</span>
         </div>
         
-        <div class="q-stem">{{ q.stem }}</div>
+        <div class="q-stem" v-html="q.stem"></div>
         
         <div class="q-options" v-if="q.options && q.options.length > 0">
           <div v-for="opt in q.options" :key="opt.text" 
@@ -103,25 +103,25 @@ onMounted(fetchExam)
                  'selected': q.userAnswer === opt.text
                }">
             {{ opt.text }}
-            <span v-if="opt.isCorrect" class="badge-correct">Correct Answer</span>
-            <span v-if="q.userAnswer === opt.text" class="badge-user">User Answer</span>
+            <span v-if="opt.isCorrect" class="badge-correct">正确答案</span>
+            <span v-if="q.userAnswer === opt.text" class="badge-user">用户答案</span>
           </div>
         </div>
         
         <div class="grading-section">
            <div class="user-answer-display" v-if="!q.options || q.options.length === 0">
-             <strong>User Answer:</strong>
-             <pre>{{ q.userAnswer || '(No Answer)' }}</pre>
+             <strong>用户答案:</strong>
+             <pre>{{ q.userAnswer || '(未作答)' }}</pre>
            </div>
            
-           <div class="grading-controls">
+           <div class="grading-controls" v-if="q.questionId && grades[q.questionId]">
              <div class="control-group">
-               <label>Score</label>
-               <input type="number" v-model.number="grades[q.questionId!].score" class="google-input" step="0.5" />
+               <label>得分</label>
+               <input type="number" v-model.number="grades[q.questionId!]!.score" class="google-input" step="0.5" />
              </div>
              <div class="control-group">
-               <label>Notes</label>
-               <textarea v-model="grades[q.questionId!].notes" class="google-input" rows="2"></textarea>
+               <label>评语</label>
+               <textarea v-model="grades[q.questionId!]!.notes" class="google-input" rows="2"></textarea>
              </div>
            </div>
         </div>

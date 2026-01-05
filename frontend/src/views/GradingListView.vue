@@ -1,10 +1,21 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { examApi } from '@/api/client'
-import type { ExamSessionResponse } from '@/api/generated'
+import axios from 'axios'
 import { useRouter } from 'vue-router'
 
-const exams = ref<ExamSessionResponse[]>([])
+interface ExamListItem {
+  sessionId: string
+  paperVersionId: string
+  userId: string
+  nickname?: string
+  username?: string
+  score?: number
+  status?: string
+  startAt?: string
+  endAt?: string
+}
+
+const exams = ref<ExamListItem[]>([])
 const loading = ref(false)
 const error = ref('')
 const page = ref(0)
@@ -15,26 +26,28 @@ const filterUserId = ref('')
 
 const router = useRouter()
 
-const isStudent = (exam: ExamSessionResponse) => {
-  // 假设学生角色为 'USER'，教师为 'ADMIN'，可根据实际后端返回字段调整
-  return (exam as any).role === 'USER' || !(exam as any).role;
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token')
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 const fetchExams = async () => {
   loading.value = true
   error.value = ''
   try {
-    const response = await examApi.examsGet(
-      filterPaperId.value || undefined,
-      filterUserId.value || undefined,
-      page.value,
-      size.value
-    )
-    // 只显示学生答卷
-    exams.value = (response.data.content || []).filter(isStudent)
-    totalElements.value = exams.value.length
+    const params = new URLSearchParams()
+    if (filterPaperId.value) params.append('paperId', filterPaperId.value)
+    if (filterUserId.value) params.append('userId', filterUserId.value)
+    params.append('page', String(page.value))
+    params.append('size', String(size.value))
+    
+    const response = await axios.get(`/api/exams?${params.toString()}`, {
+      headers: getAuthHeaders()
+    })
+    exams.value = response.data.content || []
+    totalElements.value = response.data.totalElements || 0
   } catch (err) {
-    error.value = 'Failed to load exams.'
+    error.value = '加载考试记录失败'
     console.error(err)
   } finally {
     loading.value = false
@@ -56,69 +69,67 @@ onMounted(fetchExams)
 <template>
   <div class="container">
     <div class="header-row">
-      <h1>Grading Workbench</h1>
+      <h1>阅卷管理</h1>
     </div>
 
     <div class="filter-bar google-card">
       <div class="filter-group">
-        <label>Paper ID</label>
-        <input v-model="filterPaperId" class="google-input" placeholder="Filter by Paper ID" />
+        <label>试卷ID</label>
+        <input v-model="filterPaperId" class="google-input" placeholder="输入试卷ID筛选" />
       </div>
       <div class="filter-group">
-        <label>User ID</label>
-        <input v-model="filterUserId" class="google-input" placeholder="Filter by User ID" />
+        <label>用户ID</label>
+        <input v-model="filterUserId" class="google-input" placeholder="输入用户ID筛选" />
       </div>
     </div>
 
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
-      <p>Loading exams...</p>
+      <p>加载中...</p>
     </div>
 
     <div v-else-if="error" class="error-state google-card">
       <p>{{ error }}</p>
-      <button @click="fetchExams" class="google-btn">Try Again</button>
+      <button @click="fetchExams" class="google-btn">重试</button>
     </div>
 
     <div v-else class="google-card table-card">
       <table class="question-table">
         <thead>
           <tr>
-            <th>Exam ID</th>
-            <th>Paper ID</th>
-            <th>User</th>
-            <th>Score</th>
-            <th>Status</th>
-            <th>Actions</th>
+            <th>考试ID</th>
+            <th>试卷ID</th>
+            <th>学生</th>
+            <th>得分</th>
+            <th>状态</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="exam in exams" :key="exam.sessionId">
             <td class="id-col">{{ exam.sessionId }}</td>
             <td>{{ exam.paperVersionId }}</td>
+            <td>{{ exam.nickname || exam.username || exam.userId }}</td>
+            <td>{{ exam.score ?? '-' }}</td>
             <td>
-              {{ (exam as any).nickname || (exam as any).username || (exam as any).userId }}
-            </td>
-            <td>{{ (exam as any).score }}%</td>
-            <td>
-                <span class="chip" :class="(exam as any).score !== null ? 'easy' : 'hard'">
-                    {{ (exam as any).score !== null ? 'Graded' : 'Pending' }}
+                <span class="chip" :class="exam.status === '已阅卷' ? 'easy' : 'hard'">
+                    {{ exam.status || '待阅卷' }}
                 </span>
             </td>
             <td>
-              <button @click="goToGrade(exam.sessionId!)" class="google-btn text-btn">Grade</button>
+              <button @click="goToGrade(exam.sessionId)" class="google-btn text-btn">阅卷</button>
             </td>
           </tr>
           <tr v-if="exams.length === 0">
-            <td colspan="6" class="empty-state">No exams found.</td>
+            <td colspan="6" class="empty-state">暂无学生考试记录</td>
           </tr>
         </tbody>
       </table>
 
       <div class="pagination">
-        <button :disabled="page === 0" @click="page--; fetchExams()" class="google-btn text-btn">Previous</button>
-        <span class="page-info">Page {{ page + 1 }}</span>
-        <button :disabled="(page + 1) * size >= totalElements" @click="page++; fetchExams()" class="google-btn text-btn">Next</button>
+        <button :disabled="page === 0" @click="page--; fetchExams()" class="google-btn text-btn">上一页</button>
+        <span class="page-info">第 {{ page + 1 }} 页</span>
+        <button :disabled="(page + 1) * size >= totalElements" @click="page++; fetchExams()" class="google-btn text-btn">下一页</button>
       </div>
     </div>
   </div>

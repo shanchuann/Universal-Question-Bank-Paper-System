@@ -46,8 +46,8 @@ public class UserService {
         if (nickname.length() < 2 || nickname.length() > 20) {
             throw new RuntimeException("Nickname must be between 2 and 20 characters");
         }
-        // Simple regex for special characters (allow letters, numbers, spaces, underscores, hyphens)
-        if (!nickname.matches("^[a-zA-Z0-9 _-]+$")) {
+        // Allow letters, numbers, spaces, underscores, hyphens, and Chinese characters
+        if (!nickname.matches("^[\\u4e00-\\u9fa5a-zA-Z0-9 _-]+$")) {
             throw new RuntimeException("Nickname contains invalid characters");
         }
         user.setNickname(nickname);

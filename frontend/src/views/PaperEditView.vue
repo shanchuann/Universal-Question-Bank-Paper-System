@@ -148,7 +148,7 @@ const closeQuestionModal = () => {
 const fetchAvailableQuestions = async () => {
   modalLoading.value = true;
   try {
-    const response = await questionApi.questionsGet(modalPage.value, modalSize.value);
+    const response = await questionApi.apiQuestionsGet(modalPage.value, modalSize.value);
     availableQuestions.value = response.data.content || [];
     modalTotalElements.value = response.data.totalElements || 0;
   } catch (err) {
@@ -287,33 +287,33 @@ const resetDragState = () => {
   <div class="container">
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
-      <p>Loading paper...</p>
+      <p>正在加载试卷...</p>
     </div>
     
     <div v-else-if="error" class="error-state google-card">
       <p>{{ error }}</p>
-      <button @click="router.go(0)" class="google-btn">Try Again</button>
+      <button @click="router.go(0)" class="google-btn">重试</button>
     </div>
     
     <div v-else-if="paper" class="google-card edit-card">
       <div class="card-header">
-        <h1>Edit Paper</h1>
-        <p class="subtitle">Modify paper details and questions</p>
+        <h1>编辑试卷</h1>
+        <p class="subtitle">修改试卷信息和题目</p>
       </div>
       
       <div class="form-group">
-        <label class="field-label">Paper Title</label>
+        <label class="field-label">试卷标题</label>
         <input v-model="paper.title" type="text" class="google-input" />
       </div>
 
       <div class="toolbar">
-        <span class="total-score">Total Score: {{ totalScore }}</span>
+        <span class="total-score">总分: {{ totalScore }}</span>
         <div class="toolbar-actions">
           <button @click="openQuestionModal" class="google-btn text-btn">
-            <span class="material-icon">+</span> Add Question
+            <span class="material-icon">+</span> 添加题目
           </button>
           <button @click="addSection" class="google-btn text-btn">
-            <span class="material-icon">+</span> Add Section Header
+            <span class="material-icon">+</span> 添加分区标题
           </button>
         </div>
       </div>
@@ -335,16 +335,16 @@ const resetDragState = () => {
             <div class="item-controls">
               <span 
                 class="drag-handle" 
-                title="Drag to reorder"
+                title="拖动排序"
                 draggable="true"
                 @dragstart="onDragStart($event, index)"
                 @dragend="onDragEnd"
               >⋮⋮</span>
-              <button @click="removeItem(index)" class="control-btn delete-btn" title="Remove">×</button>
+              <button @click="removeItem(index)" class="control-btn delete-btn" title="移除">×</button>
             </div>
 
             <div v-if="item.type === 'SECTION'" class="item-body section-body">
-              <input v-model="item.sectionTitle" type="text" class="section-input" placeholder="Section Title (e.g. Part I)" />
+              <input v-model="item.sectionTitle" type="text" class="section-input" placeholder="分区标题（如：第一部分）" />
             </div>
 
             <div v-else class="item-body question-body">
@@ -354,7 +354,7 @@ const resetDragState = () => {
                 <span class="chip">{{ item.data?.difficulty }}</span>
               </div>
               <div class="score-input-wrapper">
-                <label>Score:</label>
+                <label>分数:</label>
                 <input v-model.number="item.score" type="number" class="score-input" min="0" />
               </div>
             </div>
@@ -362,9 +362,9 @@ const resetDragState = () => {
       </div>
 
       <div class="form-actions">
-        <button @click="cancelEdit" class="google-btn text-btn">Cancel</button>
+        <button @click="cancelEdit" class="google-btn text-btn">取消</button>
         <button @click="savePaper" :disabled="saving" class="google-btn primary-btn">
-          {{ saving ? 'Saving...' : 'Save Changes' }}
+          {{ saving ? '保存中...' : '保存修改' }}
         </button>
       </div>
     </div>
@@ -373,22 +373,22 @@ const resetDragState = () => {
     <div v-if="showQuestionModal" class="modal-backdrop">
       <div class="question-modal">
         <div class="modal-header">
-          <h2>Select Questions</h2>
+          <h2>选择题目</h2>
           <button @click="closeQuestionModal" class="close-btn">×</button>
         </div>
         
         <div class="modal-content">
           <div class="search-bar">
-            <input type="text" placeholder="Search questions..." class="google-input" />
+            <input type="text" placeholder="搜索题目..." class="google-input" />
           </div>
           
           <div v-if="modalLoading" class="loading-state">
             <div class="spinner"></div>
-            <p>Loading questions...</p>
+            <p>正在加载题目...</p>
           </div>
           
           <div v-else-if="availableQuestions.length === 0" class="no-results">
-            <p>No questions found.</p>
+            <p>未找到题目。</p>
           </div>
           
           <div v-else class="questions-list">
@@ -413,7 +413,7 @@ const resetDragState = () => {
                   class="select-btn"
                   :class="{ 'active': selectedQuestionIds.has(question.id) }"
                 >
-                  {{ selectedQuestionIds.has(question.id) ? 'Selected' : 'Select' }}
+                  {{ selectedQuestionIds.has(question.id) ? '已选择' : '选择' }}
                 </button>
               </div>
             </div>
@@ -422,7 +422,7 @@ const resetDragState = () => {
         
         <div class="modal-footer">
           <button @click="addSelectedQuestions" class="google-btn primary-btn">
-            Add Selected Questions
+            添加选中题目
           </button>
         </div>
 
@@ -432,17 +432,17 @@ const resetDragState = () => {
             class="pagination-btn"
             :disabled="modalPage === 0 || modalLoading"
           >
-            Previous
+            上一页
           </button>
           <span class="page-info">
-            Page {{ modalPage + 1 }} of {{ Math.ceil(modalTotalElements / modalSize) }}
+            第 {{ modalPage + 1 }} 页 / 共 {{ Math.ceil(modalTotalElements / modalSize) }} 页
           </span>
           <button 
             @click="changeModalPage(modalPage + 1)" 
             class="pagination-btn"
             :disabled="modalLoading || modalPage >= Math.ceil(modalTotalElements / modalSize) - 1"
           >
-            Next
+            下一页
           </button>
         </div>
       </div>
@@ -450,13 +450,13 @@ const resetDragState = () => {
     <div v-if="showQuestionModal" class="modal-overlay">
       <div class="modal-card google-card">
         <div class="modal-header">
-          <h2>Select Questions</h2>
+          <h2>选择题目</h2>
           <button @click="closeQuestionModal" class="close-btn">×</button>
         </div>
         
         <div class="modal-body">
-          <div v-if="modalLoading" class="loading-state">Loading questions...</div>
-          <div v-else-if="availableQuestions.length === 0" class="empty-state">No questions found.</div>
+          <div v-if="modalLoading" class="loading-state">正在加载题目...</div>
+          <div v-else-if="availableQuestions.length === 0" class="empty-state">未找到题目。</div>
           <div v-else class="question-selection-list">
             <div v-for="q in availableQuestions" :key="q.id" class="question-select-item" @click="toggleQuestionSelection(q.id)">
               <div class="checkbox-wrapper">
@@ -473,16 +473,16 @@ const resetDragState = () => {
           </div>
           
           <div class="pagination-controls" v-if="modalTotalElements > modalSize">
-            <button :disabled="modalPage === 0" @click="changeModalPage(modalPage - 1)" class="google-btn text-btn">Previous</button>
-            <span>Page {{ modalPage + 1 }}</span>
-            <button :disabled="(modalPage + 1) * modalSize >= modalTotalElements" @click="changeModalPage(modalPage + 1)" class="google-btn text-btn">Next</button>
+            <button :disabled="modalPage === 0" @click="changeModalPage(modalPage - 1)" class="google-btn text-btn">上一页</button>
+            <span>第 {{ modalPage + 1 }} 页</span>
+            <button :disabled="(modalPage + 1) * modalSize >= modalTotalElements" @click="changeModalPage(modalPage + 1)" class="google-btn text-btn">下一页</button>
           </div>
         </div>
         
         <div class="modal-actions">
-          <button @click="closeQuestionModal" class="google-btn text-btn">Cancel</button>
+          <button @click="closeQuestionModal" class="google-btn text-btn">取消</button>
           <button @click="addSelectedQuestions" class="google-btn primary-btn" :disabled="selectedQuestionIds.size === 0">
-            Add {{ selectedQuestionIds.size }} Questions
+            添加 {{ selectedQuestionIds.size }} 道题目
           </button>
         </div>
       </div>

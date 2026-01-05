@@ -282,7 +282,7 @@ onMounted(() => {
   <div class="container">
     <div v-if="loading && !exam" class="text-center mt-5">
         <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
+            <span class="visually-hidden">加载中...</span>
         </div>
     </div>
     
@@ -293,11 +293,11 @@ onMounted(() => {
     <div v-else-if="exam" class="exam-screen">
       <div class="google-card exam-header-card">
         <div class="header-content">
-          <h2>{{ exam.paper.title }} (Practice Mode)</h2>
-          <p class="subtitle">Practice at your own pace. Flag questions for review.</p>
+          <h2>{{ exam.paper.title }} (练习模式)</h2>
+          <p class="subtitle">按自己的节奏练习。可以标记题目留待复习。</p>
         </div>
         <div v-if="submitted" class="score-badge">
-          <span class="score-label">Score</span>
+          <span class="score-label">得分</span>
           <span class="score-value">{{ exam.score }}</span>
           <span class="score-total">/ 100</span>
         </div>
@@ -305,23 +305,23 @@ onMounted(() => {
 
       <div class="questions-list">
         <div v-for="(section, sIndex) in displayedSections" :key="sIndex" class="section-container">
-          <div class="section-header">
+          <div class="section-header" v-if="section">
             <h3>{{ section.title }}</h3>
           </div>
           
-          <template v-for="(itemData, index) in section.items" :key="index">
+          <template v-for="(itemData, index) in section?.items" :key="index">
             <div v-if="itemData.item.type === 'QUESTION' && itemData.item.data" class="google-card question-card" :class="submitted ? getQuestionStatus(itemData.item.data.id) : ''">
               <div class="question-header">
                 <div class="q-info">
-                    <span class="q-number">Question {{ itemData.questionNumber }}</span>
+                    <span class="q-number">第 {{ itemData.questionNumber }} 题</span>
                     <span class="q-type-badge">{{ itemData.item.data.type }}</span>
                     <span v-if="submitted" class="status-badge" :class="getQuestionStatus(itemData.item.data.id)">
-                    {{ getQuestionStatus(itemData.item.data.id) === 'correct' ? 'Correct' : 'Incorrect' }}
+                    {{ getQuestionStatus(itemData.item.data.id) === 'correct' ? '正确' : '错误' }}
                     </span>
                 </div>
                 <button class="flag-btn" :class="{ 'flagged': isFlagged(itemData.item.data.id) }" @click="toggleFlag(itemData.item.data.id)" :disabled="submitted">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
-                    {{ isFlagged(itemData.item.data.id) ? 'Flagged' : 'Flag' }}
+                    {{ isFlagged(itemData.item.data.id) ? '已标记' : '标记' }}
                 </button>
               </div>
               
@@ -372,11 +372,11 @@ onMounted(() => {
                 </template>
                 <template v-else-if="itemData.item.data.type === 'FILL_BLANK'">
                    <div class="fill-blank-container">
-                     <div v-for="(ans, idx) in answers[itemData.item.data.id]" :key="idx" class="blank-input-row">
+                     <div v-for="(_ans, idx) in answers[itemData.item.data.id]" :key="idx" class="blank-input-row">
                        <span class="blank-label">{{ idx + 1 }}.</span>
                        <input 
                          type="text" 
-                         v-model="answers[itemData.item.data.id][idx]" 
+                         v-model="(answers[itemData.item.data.id] as string[])[idx]" 
                          class="google-input blank-input" 
                          :disabled="submitted"
                          placeholder="Fill in the blank"

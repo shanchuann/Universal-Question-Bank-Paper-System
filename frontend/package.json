@@ -12,7 +12,7 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
-    "generate-api": "openapi-generator-cli generate -i ../specs/001-specify-exam-platform/contracts/openapi.yaml -g typescript-axios -o src/api/generated --additional-properties=supportsES6=true,npmVersion=10.9.0,typescriptThreePlus=true"
+    "generate-api": "openapi-generator-cli generate -i ../openapi.yaml -g typescript-axios -o src/api/generated --additional-properties=supportsES6=true,npmVersion=10.9.0,typescriptThreePlus=true"
   },
   "dependencies": {
     "@vueup/vue-quill": "^1.2.0",

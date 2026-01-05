@@ -27,7 +27,7 @@ public class AuthController implements AuthApi {
     public String role;
   }
 
-  @PostMapping("/auth/register")
+  @PostMapping("/api/auth/register")
   public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
     try {
       UserEntity user = userService.register(req.username, req.password, req.role);
@@ -38,7 +38,7 @@ public class AuthController implements AuthApi {
   }
 
   @Override
-  public ResponseEntity<AuthTokenResponse> authLoginPost(LoginRequest loginRequest) {
+  public ResponseEntity<AuthTokenResponse> apiAuthLoginPost(LoginRequest loginRequest) {
     System.out.println("Login attempt: " + loginRequest.getUsername());
 
     Optional<UserEntity> user =

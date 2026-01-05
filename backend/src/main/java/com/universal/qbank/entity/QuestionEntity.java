@@ -17,9 +17,31 @@ public class QuestionEntity {
 
   private String difficulty; // EASY, MEDIUM, HARD
 
-  private String status; // DRAFT, PUBLISHED
+  /** 状态: DRAFT, PENDING_REVIEW, APPROVED, REJECTED, ARCHIVED */
+  private String status; // DRAFT, PENDING_REVIEW, APPROVED, REJECTED, ARCHIVED
 
-  @ElementCollection private List<String> tags;
+  /** 当前版本号 */
+  private Integer version = 1;
+
+  /** 创建者ID */
+  private String createdBy;
+
+  /** 审核人ID */
+  private String reviewerId;
+
+  /** 审核时间 */
+  private OffsetDateTime reviewedAt;
+
+  /** 审核意见 */
+  @Lob
+  @Column(columnDefinition = "TEXT")
+  private String reviewNotes;
+
+  /** 所属组织ID (null表示共用题库) */
+  private String organizationId;
+
+  @ElementCollection(fetch = FetchType.EAGER)
+  private List<String> tags;
 
   @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(
@@ -152,5 +174,53 @@ public class QuestionEntity {
 
   public void setKnowledgePointIds(List<String> knowledgePointIds) {
     this.knowledgePointIds = knowledgePointIds;
+  }
+
+  public Integer getVersion() {
+    return version;
+  }
+
+  public void setVersion(Integer version) {
+    this.version = version;
+  }
+
+  public String getCreatedBy() {
+    return createdBy;
+  }
+
+  public void setCreatedBy(String createdBy) {
+    this.createdBy = createdBy;
+  }
+
+  public String getReviewerId() {
+    return reviewerId;
+  }
+
+  public void setReviewerId(String reviewerId) {
+    this.reviewerId = reviewerId;
+  }
+
+  public OffsetDateTime getReviewedAt() {
+    return reviewedAt;
+  }
+
+  public void setReviewedAt(OffsetDateTime reviewedAt) {
+    this.reviewedAt = reviewedAt;
+  }
+
+  public String getReviewNotes() {
+    return reviewNotes;
+  }
+
+  public void setReviewNotes(String reviewNotes) {
+    this.reviewNotes = reviewNotes;
+  }
+
+  public String getOrganizationId() {
+    return organizationId;
+  }
+
+  public void setOrganizationId(String organizationId) {
+    this.organizationId = organizationId;
   }
 }

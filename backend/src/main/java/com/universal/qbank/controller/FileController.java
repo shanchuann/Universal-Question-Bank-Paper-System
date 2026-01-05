@@ -10,7 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
-@RequestMapping("/files")
+@RequestMapping("/api/files")
 @CrossOrigin(origins = "*")
 public class FileController {
 

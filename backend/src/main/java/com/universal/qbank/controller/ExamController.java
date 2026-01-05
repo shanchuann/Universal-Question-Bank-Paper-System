@@ -8,6 +8,7 @@ import com.universal.qbank.api.generated.model.QuestionOption;
 import com.universal.qbank.entity.ExamEntity;
 import com.universal.qbank.entity.ExamRecordEntity;
 import com.universal.qbank.entity.PaperEntity;
+import com.universal.qbank.entity.PaperItemEntity;
 import com.universal.qbank.entity.QuestionEntity;
 import com.universal.qbank.repository.PaperRepository;
 import com.universal.qbank.repository.QuestionRepository;
@@ -21,7 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/exams")
+@RequestMapping("/api/exams")
 public class ExamController {
 
   @Autowired private ExamService examService;
@@ -99,8 +100,27 @@ public class ExamController {
     return ResponseEntity.ok(toExamResponse(exam));
   }
 
+  /** 用于列表显示的简化响应DTO */
+  public static class ExamListItem {
+    public String sessionId;
+    public String paperVersionId;
+    public String userId;
+    public String nickname;
+    public String username;
+    public Integer score;
+    public String status;
+    public java.time.OffsetDateTime startAt;
+    public java.time.OffsetDateTime endAt;
+  }
+
+  public static class ExamListPage {
+    public int totalElements;
+    public int totalPages;
+    public List<ExamListItem> content;
+  }
+
   @GetMapping
-  public ResponseEntity<ExamSessionPage> listExams(
+  public ResponseEntity<ExamListPage> listExams(
       @RequestParam(required = false) Long paperId,
       @RequestParam(required = false) String userId,
       @RequestParam(defaultValue = "0") int page,
@@ -109,15 +129,67 @@ public class ExamController {
     org.springframework.data.domain.Page<ExamEntity> pageResult =
         examService.listExams(paperId, userId, page, size);
 
-    ExamSessionPage resp = new ExamSessionPage();
-    resp.setTotalElements((int) pageResult.getTotalElements());
-    resp.setTotalPages(pageResult.getTotalPages());
-    resp.setContent(
-        pageResult.getContent().stream()
-            .map(this::toExamSessionResponse)
-            .collect(Collectors.toList()));
+    ExamListPage resp = new ExamListPage();
+    resp.totalElements = (int) pageResult.getTotalElements();
+    resp.totalPages = pageResult.getTotalPages();
+    resp.content = pageResult.getContent().stream()
+        .map(this::toExamListItem)
+        .collect(Collectors.toList());
 
     return ResponseEntity.ok(resp);
+  }
+
+  /** 转换为列表显示项 */
+  private ExamListItem toExamListItem(ExamEntity exam) {
+    ExamListItem item = new ExamListItem();
+    item.sessionId = String.valueOf(exam.getId());
+    item.paperVersionId = String.valueOf(exam.getPaperId());
+    item.userId = exam.getUserId();
+    item.score = exam.getScore();
+    item.startAt = exam.getStartTime();
+    item.endAt = exam.getEndTime();
+    item.status = exam.getEndTime() != null ? "已阅卷" : "进行中";
+
+    // 查找用户信息
+    if (exam.getUserId() != null) {
+      userRepository.findById(exam.getUserId()).ifPresent(user -> {
+        item.nickname = user.getNickname();
+        item.username = user.getUsername();
+      });
+    }
+
+    return item;
+  }
+
+  /** 简化版本，用于列表查询，避免加载太多数据 */
+  private ExamSessionResponse toExamSessionResponseSimple(ExamEntity exam) {
+    ExamSessionResponse resp = new ExamSessionResponse();
+    resp.setSessionId(String.valueOf(exam.getId()));
+    resp.setPaperVersionId(String.valueOf(exam.getPaperId()));
+    resp.setUserId(exam.getUserId());
+    resp.setScore(exam.getScore());
+    resp.setStartAt(exam.getStartTime());
+    resp.setEndAt(exam.getEndTime());
+
+    // 查找用户信息
+    if (exam.getUserId() != null) {
+      try {
+        userRepository.findById(exam.getUserId()).ifPresent(user -> {
+          // 用 reflection 设置额外属性
+          try {
+            java.lang.reflect.Method setAdditionalProperties = 
+                resp.getClass().getMethod("setAdditionalProperties", String.class, Object.class);
+            setAdditionalProperties.invoke(resp, "nickname", user.getNickname());
+            setAdditionalProperties.invoke(resp, "username", user.getUsername());
+            setAdditionalProperties.invoke(resp, "role", user.getRole());
+          } catch (Exception ignore) {}
+        });
+      } catch (Exception e) {
+        // ignore
+      }
+    }
+
+    return resp;
   }
 
   @PostMapping("/{id}/grade")
@@ -152,17 +224,52 @@ public class ExamController {
         // ignore
       }
       if (user != null) {
-        // 直接通过Map扩展字段
+        // 尝试设置 nickname 和 username (如果字段存在)
         try {
-          java.lang.reflect.Method setAdditionalProperties = resp.getClass().getMethod("setAdditionalProperties", String.class, Object.class);
-          setAdditionalProperties.invoke(resp, "nickname", user.getNickname());
-          setAdditionalProperties.invoke(resp, "username", user.getUsername());
-        } catch (Exception ignore) {}
+           java.lang.reflect.Method setNickname = resp.getClass().getMethod("setNickname", String.class);
+           setNickname.invoke(resp, user.getNickname());
+        } catch (Exception ignore) {
+           // Fallback to additionalProperties if method doesn't exist
+           try {
+             java.lang.reflect.Method setAdditionalProperties = resp.getClass().getMethod("setAdditionalProperties", String.class, Object.class);
+             setAdditionalProperties.invoke(resp, "nickname", user.getNickname());
+           } catch (Exception ignore2) {}
+        }
+        
+        try {
+           java.lang.reflect.Method setUsername = resp.getClass().getMethod("setUsername", String.class);
+           setUsername.invoke(resp, user.getUsername());
+        } catch (Exception ignore) {
+           try {
+             java.lang.reflect.Method setAdditionalProperties = resp.getClass().getMethod("setAdditionalProperties", String.class, Object.class);
+             setAdditionalProperties.invoke(resp, "username", user.getUsername());
+           } catch (Exception ignore2) {}
+        }
       }
     }
 
-    PaperEntity paper = paperRepository.findById(exam.getPaperId()).orElseThrow();
-    List<QuestionEntity> questions = questionRepository.findAllById(paper.getQuestionIds());
+    PaperEntity paper = paperRepository.findById(exam.getPaperId()).orElse(null);
+    if (paper == null) {
+        // Paper deleted, return basic info
+        return resp;
+    }
+
+    List<String> qIds = paper.getQuestionIds();
+    // Fallback to items if questionIds is empty
+    if ((qIds == null || qIds.isEmpty()) && paper.getItems() != null) {
+        qIds = paper.getItems().stream()
+            .filter(i -> "QUESTION".equals(i.getItemType()))
+            .map(PaperItemEntity::getQuestionId)
+            .collect(Collectors.toList());
+    }
+
+    if (qIds == null || qIds.isEmpty()) {
+        return resp;
+    }
+
+    List<QuestionEntity> questions = questionRepository.findAllById(qIds);
+    Map<String, QuestionEntity> questionMap = questions.stream()
+        .collect(Collectors.toMap(QuestionEntity::getId, q -> q));
 
     Map<String, ExamRecordEntity> recordMap = new java.util.HashMap<>();
     if (exam.getRecords() != null) {
@@ -176,27 +283,62 @@ public class ExamController {
 
     List<ExamQuestion> examQuestions = new ArrayList<>();
 
-    for (QuestionEntity q : questions) {
-      ExamQuestion eq = new ExamQuestion();
-      eq.setQuestionId(q.getId());
-      eq.setStem(q.getStem());
-      eq.setType(q.getType());
+    if (paper.getItems() != null && !paper.getItems().isEmpty()) {
+        // Use items to drive the list (preserves order and score)
+        for (PaperItemEntity item : paper.getItems()) {
+            if ("QUESTION".equals(item.getItemType())) {
+                QuestionEntity q = questionMap.get(item.getQuestionId());
+                if (q != null) {
+                    ExamQuestion eq = new ExamQuestion();
+                    eq.setQuestionId(q.getId());
+                    eq.setStem(q.getStem());
+                    eq.setType(q.getType());
+                    eq.setScore(java.math.BigDecimal.valueOf(item.getScore()));
 
-      if (q.getOptionsJson() != null) {
-        List<QuestionOption> opts = parseOptions(q.getOptionsJson(), rng);
-        eq.setOptions(opts);
-      }
+                    if (q.getOptionsJson() != null) {
+                        List<QuestionOption> opts = parseOptions(q.getOptionsJson(), rng);
+                        eq.setOptions(opts);
+                    }
 
-      ExamRecordEntity record = recordMap.get(q.getId());
-      if (record != null) {
-        eq.setUserAnswer(record.getUserAnswer());
-        eq.setAwardedScore(
-            record.getScore() != null ? java.math.BigDecimal.valueOf(record.getScore()) : null);
-        eq.setGraderNotes(record.getNotes());
-        eq.setIsCorrect(record.getIsCorrect());
-      }
+                    ExamRecordEntity record = recordMap.get(q.getId());
+                    if (record != null) {
+                        eq.setUserAnswer(record.getUserAnswer());
+                        eq.setAwardedScore(
+                            record.getScore() != null ? java.math.BigDecimal.valueOf(record.getScore()) : null);
+                        eq.setGraderNotes(record.getNotes());
+                        eq.setIsCorrect(record.getIsCorrect());
+                    }
+                    examQuestions.add(eq);
+                }
+            }
+        }
+    } else {
+        // Use qIds order if possible, or just the list
+        for (String qId : qIds) {
+             QuestionEntity q = questionMap.get(qId);
+             if (q != null) {
+                 ExamQuestion eq = new ExamQuestion();
+                 eq.setQuestionId(q.getId());
+                 eq.setStem(q.getStem());
+                 eq.setType(q.getType());
+                 eq.setScore(java.math.BigDecimal.ONE); // Default score
 
-      examQuestions.add(eq);
+                 if (q.getOptionsJson() != null) {
+                    List<QuestionOption> opts = parseOptions(q.getOptionsJson(), rng);
+                    eq.setOptions(opts);
+                 }
+
+                 ExamRecordEntity record = recordMap.get(q.getId());
+                 if (record != null) {
+                    eq.setUserAnswer(record.getUserAnswer());
+                    eq.setAwardedScore(
+                        record.getScore() != null ? java.math.BigDecimal.valueOf(record.getScore()) : null);
+                    eq.setGraderNotes(record.getNotes());
+                    eq.setIsCorrect(record.getIsCorrect());
+                 }
+                 examQuestions.add(eq);
+             }
+        }
     }
 
     resp.setQuestions(examQuestions);
