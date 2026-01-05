@@ -6,14 +6,14 @@ info:
     REST contract for RBAC-secured question management, paper assembly, online examination,
     and analytics services powering the Universal Question Bank Paper System.
 servers:
-  - url: https://api.universalexam.local/v1
+  - url: /api
     description: Development
-  - url: https://api.universalexam.edu/v1
+  - url: /api
     description: Production
 security:
   - bearerAuth: []
 paths:
-  /auth/login:
+  /api/auth/login:
     post:
       summary: Authenticate user via username/password.
       tags: [Auth]
@@ -32,7 +32,7 @@ paths:
                 $ref: '#/components/schemas/AuthTokenResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
-  /auth/token/refresh:
+  /api/auth/token/refresh:
     post:
       summary: Refresh JWT access token.
       tags: [Auth]
@@ -51,7 +51,7 @@ paths:
                 $ref: '#/components/schemas/AuthTokenResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
-  /users:
+  /api/users:
     get:
       summary: List users with filtering options (admin only).
       tags: [Admin]
@@ -95,7 +95,7 @@ paths:
                 $ref: '#/components/schemas/UserResponse'
         '409':
           description: Duplicate username/email.
-  /questions:
+  /api/questions:
     get:
       summary: Search questions in bank with multi-criteria filters.
       tags: [QuestionBank]
@@ -157,7 +157,7 @@ paths:
                 $ref: '#/components/schemas/QuestionResponse'
         '400':
           description: Validation error.
-  /questions/import/docx:
+  /api/questions/import/docx:
     post:
       summary: Batch import questions via Word DOCX upload.
       tags: [QuestionBank]
@@ -176,7 +176,7 @@ paths:
           description: Import accepted; processing asynchronously.
         '400':
           description: Failed validation.
-  /questions/{questionId}:
+  /api/questions/{questionId}:
     get:
       summary: Fetch question by ID with revision history.
       tags: [QuestionBank]
@@ -215,7 +215,7 @@ paths:
       responses:
         '204':
           description: Question marked deleted and audit logged.
-  /questions/{questionId}/review:
+  /api/questions/{questionId}/review:
     post:
       summary: Approve or reject question during audit workflow.
       tags: [QuestionBank]
@@ -232,7 +232,7 @@ paths:
           description: Review state updated.
         '409':
           description: Invalid state transition.
-  /papers/manual:
+  /api/papers/manual:
     post:
       summary: Create manual paper draft and attach selected questions.
       tags: [Paper]
@@ -249,7 +249,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaperVersionResponse'
-  /papers/auto:
+  /api/papers/auto:
     post:
       summary: Generate paper via MT19937-driven auto assembly.
       tags: [Paper]
@@ -268,7 +268,7 @@ paths:
                 $ref: '#/components/schemas/PaperVersionResponse'
         '422':
           description: Constraints unsatisfied.
-  /papers/{paperId}/versions:
+  /api/papers/{paperId}/versions:
     get:
       summary: List versions for a paper with filters.
       tags: [Paper]
@@ -281,7 +281,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaperVersionPage'
-  /papers/{paperId}/publish:
+  /api/papers/{paperId}/publish:
     post:
       summary: Publish paper version with activation window.
       tags: [Paper]
@@ -296,7 +296,7 @@ paths:
       responses:
         '200':
           description: Paper published.
-  /exams/{accessCode}/start:
+  /api/exams/{accessCode}/start:
     post:
       summary: Validate access code and start exam session.
       tags: [Exam]
@@ -317,7 +317,7 @@ paths:
           description: Unknown or inactive access code.
         '423':
           description: Exam locked or future-dated.
-  /exams/{sessionId}/heartbeat:
+  /api/exams/{sessionId}/heartbeat:
     post:
       summary: Maintain active session and sync time remaining.
       tags: [Exam]
@@ -326,7 +326,7 @@ paths:
       responses:
         '200':
           description: Heartbeat acknowledged.
-  /exams/{sessionId}/autosave:
+  /api/exams/{sessionId}/autosave:
     post:
       summary: Persist autosave snapshot (≤30s cadence).
       tags: [Exam]
@@ -343,7 +343,7 @@ paths:
           description: Snapshot enqueued.
         '409':
           description: Sequence conflict.
-  /exams/{sessionId}/submit:
+  /api/exams/{sessionId}/submit:
     post:
       summary: Submit exam (voluntary or timeout).
       tags: [Exam]
@@ -358,7 +358,7 @@ paths:
                 $ref: '#/components/schemas/SubmissionResponse'
         '409':
           description: Session already closed.
-  /exams/{sessionId}/grade:
+  /api/exams/{sessionId}/grade:
     post:
       summary: Record manual grades for subjective questions.
       tags: [Exam]
@@ -373,7 +373,7 @@ paths:
       responses:
         '200':
           description: Manual grades saved and totals recomputed.
-  /analytics/exams/{paperVersionId}/summary:
+  /api/analytics/exams/{paperVersionId}/summary:
     get:
       summary: Fetch score distribution, pass rate, and knowledge mastery metrics.
       tags: [Analytics]
@@ -390,7 +390,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExamAnalyticsResponse'
-  /analytics/questions/error-rate:
+  /api/analytics/questions/error-rate:
     get:
       summary: Compute top N questions by error rate across selected timeframe.
       tags: [Analytics]
@@ -427,7 +427,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/QuestionErrorRate'
-  /knowledge-points:
+  /api/knowledge-points:
     get:
       summary: Get all knowledge points as a tree structure.
       tags: [KnowledgePoint]
@@ -456,7 +456,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/KnowledgePoint'
-  /knowledge-points/{id}:
+  /api/knowledge-points/{id}:
     put:
       summary: Update a knowledge point.
       tags: [KnowledgePoint]
@@ -491,7 +491,7 @@ paths:
       responses:
         '204':
           description: Deleted successfully.
-  /exams:
+  /api/exams:
     get:
       summary: List exam sessions (for grading).
       tags: [Exam]
@@ -513,7 +513,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ExamSessionPage'
-  /exams/{id}:
+  /api/exams/{id}:
     get:
       summary: Get exam session details.
       tags: [Exam]
@@ -679,6 +679,18 @@ components:
           type: array
           items:
             type: string
+        optionsJson:
+          type: string
+          description: JSON string of options array
+        answerSchema:
+          type: string
+          description: Answer (e.g., "A" or "A,B")
+        analysis:
+          type: string
+        reviewNotes:
+          type: string
+        createdBy:
+          type: string
         createdAt:
           type: string
           format: date-time
@@ -924,6 +936,10 @@ components:
           type: string
         userId:
           type: string
+        nickname:
+          type: string
+        username:
+          type: string
         score:
           type: integer
         startAt:
@@ -1037,8 +1053,14 @@ components:
       properties:
         range:
           type: string
+        rangeLabel:
+          type: string
+          description: Display label for the range
         percentage:
           type: number
+        count:
+          type: integer
+          description: Number of students in this range
     KnowledgeMetric:
       type: object
       properties:
@@ -1046,6 +1068,9 @@ components:
           type: string
         masteryPercent:
           type: number
+        masteryRate:
+          type: number
+          description: Same as masteryPercent but as decimal (0-1)
     QuestionErrorRate:
       type: object
       properties:
@@ -1057,6 +1082,12 @@ components:
           type: integer
         errorRate:
           type: number
+        errorCount:
+          type: integer
+          description: Alias for incorrect
+        totalAttempts:
+          type: integer
+          description: Alias for attempts
     KnowledgePoint:
       type: object
       properties:

@@ -40,6 +40,12 @@ const router = createRouter({
       component: QuestionAddView
     },
     {
+      path: '/questions/:id/edit',
+      name: 'edit-question',
+      component: QuestionAddView,
+      props: true
+    },
+    {
       path: '/import',
       name: 'import',
       component: () => import('../views/ImportView.vue')
@@ -130,11 +136,47 @@ const router = createRouter({
       name: 'knowledge-point-manage',
       component: () => import('../views/KnowledgePointManageView.vue'),
       meta: { roles: ['TEACHER'] }
+    },
+    {
+      path: '/admin/organizations',
+      name: 'organization-manage',
+      component: () => import('../views/OrganizationManageView.vue'),
+      meta: { roles: ['TEACHER', 'ADMIN'] }
+    },
+    {
+      path: '/admin/roles',
+      name: 'role-permission',
+      component: () => import('../views/RolePermissionView.vue'),
+      meta: { roles: ['ADMIN'] }
+    },
+    {
+      path: '/questions/review',
+      name: 'question-review',
+      component: () => import('../views/QuestionReviewView.vue'),
+      meta: { roles: ['TEACHER', 'ADMIN'] }
+    },
+    {
+      path: '/exams/manage',
+      name: 'exam-plan-manage',
+      component: () => import('../views/ExamPlanManageView.vue'),
+      meta: { roles: ['TEACHER', 'ADMIN'] }
+    },
+    {
+      path: '/exams/list',
+      name: 'student-exam-list',
+      component: () => import('../views/StudentExamListView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/my-organizations',
+      name: 'my-organizations',
+      component: () => import('../views/MyOrganizationsView.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const requiredRoles = to.meta?.roles as string[] | undefined
   if (!requiredRoles || requiredRoles.length === 0) {
     return next()
@@ -142,6 +184,11 @@ router.beforeEach((to, _from, next) => {
 
   if (!authState.isAuthenticated) {
     return next({ name: 'login', query: { redirect: to.fullPath } })
+  }
+
+  // 如果角色尚未加载，等待用户信息加载
+  if (!authState.user.role && authState.isAuthenticated) {
+    await authState.fetchUser()
   }
 
   if (!requiredRoles.includes(authState.user.role)) {

@@ -21,7 +21,7 @@ interface PaperResponse {
 
 const router = useRouter()
 const form = ref({
-  title: 'My Generated Paper',
+  title: '自动生成试卷',
   total: 5,
   difficulty: '', // Optional: EASY, MEDIUM, HARD
   typeCounts: {
@@ -70,9 +70,9 @@ const handleSubmit = async () => {
       }
     })
     generatedPaper.value = response.data
-    message.value = `Paper "${response.data.title}" generated with ${response.data.questions.length} questions!`
+    message.value = `试卷「${response.data.title}」已生成，共 ${response.data.questions.length} 道题目！`
   } catch (err) {
-    error.value = 'Failed to generate paper. Please try again.'
+    error.value = '生成试卷失败，请重试。'
     console.error(err)
   } finally {
     loading.value = false
@@ -96,57 +96,57 @@ const editPaper = () => {
   <div class="container">
     <div class="google-card generation-card">
       <div class="card-header">
-        <h1>Generate Paper</h1>
-        <p class="subtitle">Create a custom exam paper instantly</p>
+        <h1>智能组卷</h1>
+        <p class="subtitle">快速生成自定义试卷</p>
       </div>
       
       <form @submit.prevent="handleSubmit" class="generation-form">
         <div class="form-grid">
           <div class="form-group">
-            <label class="field-label">Paper Title</label>
-            <input v-model="form.title" type="text" required placeholder="Enter paper title" class="google-input" />
+            <label class="field-label">试卷标题</label>
+            <input v-model="form.title" type="text" required placeholder="请输入试卷标题" class="google-input" />
           </div>
           
           <div class="form-group">
-            <label class="field-label">Total Questions</label>
+            <label class="field-label">题目总数</label>
             <input v-model.number="form.total" type="number" min="1" max="50" required class="google-input" />
           </div>
 
           <div class="form-group">
-            <label class="field-label">Difficulty Filter</label>
+            <label class="field-label">难度筛选</label>
             <div class="select-wrapper">
               <select v-model="form.difficulty" class="google-input">
-                <option value="">Any Difficulty</option>
-                <option value="EASY">Easy</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HARD">Hard</option>
+                <option value="">全部难度</option>
+                <option value="EASY">简单</option>
+                <option value="MEDIUM">中等</option>
+                <option value="HARD">困难</option>
               </select>
             </div>
           </div>
         </div>
 
         <div class="advanced-settings">
-          <h3>Advanced: Questions by Type</h3>
-          <p class="hint">If set, "Total Questions" above is ignored.</p>
+          <h3>高级设置：按题型指定数量</h3>
+          <p class="hint">设置后将忽略上方的「题目总数」设置。</p>
           <div class="type-grid">
             <div class="form-group">
-              <label class="field-label">Single Choice</label>
+              <label class="field-label">单选题</label>
               <input v-model.number="form.typeCounts.SINGLE_CHOICE" type="number" min="0" class="google-input" />
             </div>
             <div class="form-group">
-              <label class="field-label">Multi Choice</label>
+              <label class="field-label">多选题</label>
               <input v-model.number="form.typeCounts.MULTI_CHOICE" type="number" min="0" class="google-input" />
             </div>
             <div class="form-group">
-              <label class="field-label">True/False</label>
+              <label class="field-label">判断题</label>
               <input v-model.number="form.typeCounts.TRUE_FALSE" type="number" min="0" class="google-input" />
             </div>
             <div class="form-group">
-              <label class="field-label">Fill Blank</label>
+              <label class="field-label">填空题</label>
               <input v-model.number="form.typeCounts.FILL_BLANK" type="number" min="0" class="google-input" />
             </div>
             <div class="form-group">
-              <label class="field-label">Short Answer</label>
+              <label class="field-label">简答题</label>
               <input v-model.number="form.typeCounts.SHORT_ANSWER" type="number" min="0" class="google-input" />
             </div>
           </div>
@@ -154,7 +154,7 @@ const editPaper = () => {
 
         <div class="form-actions">
           <button type="submit" :disabled="loading" class="google-btn primary-btn full-width">
-            {{ loading ? 'Generating...' : 'Generate Paper' }}
+            {{ loading ? '正在生成...' : '生成试卷' }}
           </button>
         </div>
       </form>
@@ -173,11 +173,11 @@ const editPaper = () => {
       <div class="result-header">
         <div class="header-content">
           <h2>{{ generatedPaper.title }}</h2>
-          <p class="meta">Created at: {{ new Date(generatedPaper.createdAt).toLocaleString() }}</p>
+          <p class="meta">创建时间: {{ new Date(generatedPaper.createdAt).toLocaleString() }}</p>
         </div>
         <div class="header-actions">
-          <button @click="editPaper" class="google-btn text-btn">Edit Paper</button>
-          <button @click="takeExam" class="google-btn primary-btn">Take This Exam</button>
+          <button @click="editPaper" class="google-btn text-btn">编辑试卷</button>
+          <button @click="takeExam" class="google-btn primary-btn">开始答题</button>
         </div>
       </div>
       

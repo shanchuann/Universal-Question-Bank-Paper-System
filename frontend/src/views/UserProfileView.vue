@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { authState } from '@/states/authState'
+import { authState, type UserRole } from '@/states/authState'
 import axios from 'axios'
 
 const user = ref({
   username: '',
   nickname: '',
   email: '',
-  role: '',
+  role: '' as UserRole,
   avatarUrl: ''
 })
 
@@ -50,7 +50,7 @@ onMounted(async () => {
         username: data.username || user.value.username,
         nickname: data.nickname || data.username || user.value.username,
         email: data.email || '',
-        role: data.role || user.value.role,
+        role: (data.role as UserRole) || user.value.role,
         avatarUrl: data.avatarUrl || ''
       }
       originalUser.value = { ...user.value }
@@ -67,15 +67,15 @@ const hasSensitiveChanges = computed(() => {
 
 const validateForm = () => {
   if (user.value.nickname.length < 2 || user.value.nickname.length > 20) {
-    showToast('Nickname must be between 2 and 20 characters', 'error')
+    showToast('昵称长度需在2-20个字符之间', 'error')
     return false
   }
-  if (!/^[a-zA-Z0-9 _-]+$/.test(user.value.nickname)) {
-    showToast('Nickname contains invalid characters', 'error')
+  if (!/^[\u4e00-\u9fa5a-zA-Z0-9 _-]+$/.test(user.value.nickname)) {
+    showToast('昵称只能包含中文、英文、数字、空格、下划线和短横线', 'error')
     return false
   }
   if (user.value.email && !/^[A-Za-z0-9+_.-]+@(.+)$/.test(user.value.email)) {
-    showToast('Invalid email format', 'error')
+    showToast('邮箱格式不正确', 'error')
     return false
   }
   return true
@@ -103,12 +103,12 @@ const submitProfileUpdate = async () => {
     
     authState.updateProfile(response.data)
     originalUser.value = { ...user.value }
-    showToast('Profile updated successfully')
+    showToast('个人信息已更新')
     showVerifyModal.value = false
     verifyPassword.value = ''
   } catch (e: any) {
     console.error('Failed to save profile', e)
-    showToast(e.response?.data || 'Failed to save profile', 'error')
+    showToast(e.response?.data || '保存失败', 'error')
   } finally {
     loading.value = false
   }
@@ -116,7 +116,7 @@ const submitProfileUpdate = async () => {
 
 const handleReset = () => {
   user.value = { ...originalUser.value }
-  showToast('Changes reset', 'success')
+  showToast('已重置修改', 'success')
 }
 
 const triggerFileInput = () => {
@@ -130,11 +130,11 @@ const handleFileChange = async (event: Event) => {
     
     // Client-side validation
     if (!file.type.startsWith('image/')) {
-        showToast('Only image files are allowed', 'error')
+        showToast('只能上传图片文件', 'error')
         return
     }
     if (file.size > 5 * 1024 * 1024) {
-        showToast('File size must be less than 5MB', 'error')
+        showToast('文件大小不能超过5MB', 'error')
         return
     }
 
@@ -149,10 +149,10 @@ const handleFileChange = async (event: Event) => {
         }
       })
       user.value.avatarUrl = res.data.fileUrl
-      showToast('Avatar uploaded successfully')
+      showToast('头像上传成功')
     } catch (e: any) {
       console.error('Failed to upload avatar', e)
-      showToast(e.response?.data?.error || 'Failed to upload avatar', 'error')
+      showToast(e.response?.data?.error || '头像上传失败', 'error')
     } finally {
       loading.value = false
     }
@@ -161,7 +161,7 @@ const handleFileChange = async (event: Event) => {
 
 const handlePasswordUpdate = async () => {
   if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
-    showToast('New passwords do not match', 'error')
+    showToast('两次输入的新密码不一致', 'error')
     return
   }
   
@@ -175,12 +175,12 @@ const handlePasswordUpdate = async () => {
       headers: { Authorization: `Bearer ${token}` }
     })
     
-    showToast('Password updated successfully')
+    showToast('密码已更新')
     showPasswordModal.value = false
     passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
   } catch (e: any) {
     console.error('Failed to update password', e)
-    showToast(e.response?.data || 'Failed to update password', 'error')
+    showToast(e.response?.data || '密码更新失败', 'error')
   } finally {
     loading.value = false
   }
@@ -196,15 +196,15 @@ const handlePasswordUpdate = async () => {
 
     <div class="google-card profile-card">
       <div class="card-header">
-        <h1>Personal Info</h1>
-        <p class="subtitle">Basic info, like your name and photo</p>
+        <h1>个人信息</h1>
+        <p class="subtitle">基本信息，如姓名和头像</p>
       </div>
 
       <div class="profile-section">
         <div class="section-row avatar-row">
           <div class="row-label">
-            <h3>Photo</h3>
-            <p>A photo helps personalize your account</p>
+            <h3>头像</h3>
+            <p>头像有助于个性化您的账户</p>
           </div>
           <div class="row-content" @click="triggerFileInput">
             <div class="avatar-preview" :style="{ backgroundImage: user.avatarUrl ? `url(${user.avatarUrl})` : '' }">
@@ -217,27 +217,27 @@ const handlePasswordUpdate = async () => {
         <div class="section-row">
           <div class="floating-label-group">
             <input v-model="user.username" type="text" id="username" required placeholder=" " />
-            <label for="username">Username</label>
+            <label for="username">用户名</label>
           </div>
         </div>
 
         <div class="section-row">
           <div class="floating-label-group">
             <input v-model="user.nickname" type="text" id="nickname" required placeholder=" " />
-            <label for="nickname">Nickname</label>
+            <label for="nickname">昵称</label>
           </div>
         </div>
 
         <div class="section-row">
           <div class="floating-label-group">
             <input v-model="user.email" type="email" id="email" required placeholder=" " />
-            <label for="email">Email</label>
+            <label for="email">邮箱</label>
           </div>
         </div>
 
         <div class="section-row">
           <div class="row-label">
-            <h3>Role</h3>
+            <h3>角色</h3>
           </div>
           <div class="row-content">
             <span class="read-only-text">{{ user.role }}</span>
@@ -247,13 +247,13 @@ const handlePasswordUpdate = async () => {
 
       <div class="form-actions">
         <button @click="handleSaveClick" :disabled="loading" class="google-btn primary-btn">
-          {{ loading ? 'Saving...' : 'Save' }}
+          {{ loading ? '保存中...' : '保存' }}
         </button>
         <button @click="handleReset" :disabled="loading" class="google-btn text-btn">
-          Reset
+          重置
         </button>
         <button class="google-btn text-btn" @click="showPasswordModal = true">
-          Change Password
+          修改密码
         </button>
       </div>
     </div>
@@ -261,22 +261,22 @@ const handlePasswordUpdate = async () => {
     <!-- Password Change Modal -->
     <div v-if="showPasswordModal" class="modal-overlay">
       <div class="modal-card">
-        <h2>Change Password</h2>
+        <h2>修改密码</h2>
         <div class="floating-label-group">
           <input v-model="passwordForm.oldPassword" type="password" id="oldPass" required placeholder=" " />
-          <label for="oldPass">Current Password</label>
+          <label for="oldPass">当前密码</label>
         </div>
         <div class="floating-label-group">
           <input v-model="passwordForm.newPassword" type="password" id="newPass" required placeholder=" " />
-          <label for="newPass">New Password</label>
+          <label for="newPass">新密码</label>
         </div>
         <div class="floating-label-group">
           <input v-model="passwordForm.confirmPassword" type="password" id="confirmPass" required placeholder=" " />
-          <label for="confirmPass">Confirm New Password</label>
+          <label for="confirmPass">确认新密码</label>
         </div>
         <div class="modal-actions">
-          <button @click="showPasswordModal = false" class="google-btn text-btn">Cancel</button>
-          <button @click="handlePasswordUpdate" :disabled="loading" class="google-btn primary-btn">Update</button>
+          <button @click="showPasswordModal = false" class="google-btn text-btn">取消</button>
+          <button @click="handlePasswordUpdate" :disabled="loading" class="google-btn primary-btn">更新</button>
         </div>
       </div>
     </div>
@@ -284,15 +284,15 @@ const handlePasswordUpdate = async () => {
     <!-- Verify Password Modal -->
     <div v-if="showVerifyModal" class="modal-overlay">
       <div class="modal-card">
-        <h2>Verify Identity</h2>
-        <p>Please enter your current password to confirm these changes.</p>
+        <h2>身份验证</h2>
+        <p>请输入您的当前密码以确认这些更改。</p>
         <div class="floating-label-group">
           <input v-model="verifyPassword" type="password" id="verifyPass" required placeholder=" " />
-          <label for="verifyPass">Current Password</label>
+          <label for="verifyPass">当前密码</label>
         </div>
         <div class="modal-actions">
-          <button @click="showVerifyModal = false" class="google-btn text-btn">Cancel</button>
-          <button @click="submitProfileUpdate" :disabled="loading" class="google-btn primary-btn">Confirm</button>
+          <button @click="showVerifyModal = false" class="google-btn text-btn">取消</button>
+          <button @click="submitProfileUpdate" :disabled="loading" class="google-btn primary-btn">确认</button>
         </div>
       </div>
     </div>
