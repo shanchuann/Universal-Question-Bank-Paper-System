@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/knowledge-points")
+@RequestMapping("/api/knowledge-points")
 public class KnowledgePointController {
 
   @Autowired private KnowledgePointRepository repository;

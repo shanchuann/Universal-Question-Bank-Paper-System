@@ -1,12 +1,14 @@
 import { reactive } from 'vue'
 import axios from 'axios'
 
+export type UserRole = 'TEACHER' | 'ADMIN' | 'STUDENT' | ''
+
 interface UserProfile {
   id?: string
   username: string
   nickname: string
   email: string
-  role: string
+  role: UserRole
   avatarUrl: string
 }
 
@@ -48,7 +50,7 @@ export const authState = reactive({
         username: data.username || this.user.username,
         nickname: data.nickname || data.username || this.user.username,
         email: data.email || '',
-        role: data.role || this.user.role,
+        role: (data.role as UserRole) || this.user.role,
         avatarUrl: data.avatarUrl || ''
       })
     } catch (e) {

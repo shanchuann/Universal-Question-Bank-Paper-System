@@ -13,7 +13,7 @@ public class AnalyticsController implements AnalyticsApi {
   @Autowired private AnalyticsService analyticsService;
 
   @Override
-  public ResponseEntity<ExamAnalyticsResponse> analyticsExamsPaperVersionIdSummaryGet(
+  public ResponseEntity<ExamAnalyticsResponse> apiAnalyticsExamsPaperVersionIdSummaryGet(
       String paperVersionId) {
     try {
       Long paperId = Long.parseLong(paperVersionId);

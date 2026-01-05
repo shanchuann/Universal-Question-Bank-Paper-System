@@ -11,7 +11,7 @@ const router = useRouter()
 
 const handleLogin = async () => {
   try {
-    const response = await authApi.authLoginPost({
+    const response = await authApi.apiAuthLoginPost({
       username: username.value,
       password: password.value,
     })
@@ -21,7 +21,7 @@ const handleLogin = async () => {
       router.push('/')
     }
   } catch (err) {
-    error.value = 'Login failed. Please check your credentials.'
+    error.value = '登录失败，请检查您的用户名和密码'
     console.error(err)
   }
 }
@@ -33,20 +33,20 @@ const handleLogin = async () => {
       <div class="logo-area">
         <span class="google-logo">G</span>
       </div>
-      <h1>Sign in</h1>
-      <p class="subtitle">to continue to Question Bank</p>
+      <h1>登录</h1>
+      <p class="subtitle">继续使用题库系统</p>
       
       <form @submit.prevent="handleLogin">
         <div class="form-group">
-          <input id="username" v-model="username" type="text" required placeholder="Username" class="google-input" />
+          <input id="username" v-model="username" type="text" required placeholder="用户名" class="google-input" />
         </div>
         <div class="form-group">
-          <input id="password" v-model="password" type="password" required placeholder="Password" class="google-input" />
+          <input id="password" v-model="password" type="password" required placeholder="密码" class="google-input" />
         </div>
         
         <div class="actions">
-          <router-link to="/register" class="create-account">Create account</router-link>
-          <button type="submit" class="primary-btn">Next</button>
+          <router-link to="/register" class="create-account">创建账号</router-link>
+          <button type="submit" class="primary-btn">登录</button>
         </div>
         
         <p v-if="error" class="error">{{ error }}</p>

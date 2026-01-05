@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import { authState } from '@/states/authState'
 
 interface User {
   id: string
@@ -48,7 +47,7 @@ const setTab = (tab: string) => {
 }
 
 const deleteUser = async (id: string) => {
-  if (!confirm('Are you sure you want to delete this user?')) return
+  if (!confirm('确定要删除该用户吗？')) return
   try {
     const token = localStorage.getItem('token')
     await axios.delete(`/api/admin/users/${id}`, {
@@ -57,7 +56,7 @@ const deleteUser = async (id: string) => {
     fetchUsers()
   } catch (error) {
     console.error('Failed to delete user', error)
-    alert('Failed to delete user')
+    alert('删除用户失败')
   }
 }
 
@@ -71,13 +70,13 @@ const toggleStatus = async (user: User) => {
     user.status = newStatus
   } catch (error) {
     console.error('Failed to update status', error)
-    alert('Failed to update status')
+    alert('更新状态失败')
   }
 }
 
 const toggleRole = async (user: User) => {
   const newRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN'
-  if (!confirm(`Change role to ${newRole}?`)) return
+  if (!confirm(`确定要将角色更改为 ${newRole} 吗？`)) return
   try {
     const token = localStorage.getItem('token')
     await axios.put(`/api/admin/users/${user.id}/role`, { role: newRole }, {
@@ -86,7 +85,7 @@ const toggleRole = async (user: User) => {
     user.role = newRole
   } catch (error) {
     console.error('Failed to update role', error)
-    alert('Failed to update role')
+    alert('更新角色失败')
   }
 }
 
@@ -112,26 +111,26 @@ onMounted(() => {
 <template>
   <div class="admin-container container">
     <div class="header-row">
-      <h1>User Management</h1>
+      <h1>用户管理</h1>
     </div>
 
     <div class="tabs">
-      <button :class="['tab-btn', currentTab === 'ALL' ? 'active' : '']" @click="setTab('ALL')">All Users</button>
-      <button :class="['tab-btn', currentTab === 'TEACHER' ? 'active' : '']" @click="setTab('TEACHER')">Teachers</button>
-      <button :class="['tab-btn', currentTab === 'USER' ? 'active' : '']" @click="setTab('USER')">Students</button>
-      <button :class="['tab-btn', currentTab === 'ADMIN' ? 'active' : '']" @click="setTab('ADMIN')">Admins</button>
+      <button :class="['tab-btn', currentTab === 'ALL' ? 'active' : '']" @click="setTab('ALL')">全部用户</button>
+      <button :class="['tab-btn', currentTab === 'TEACHER' ? 'active' : '']" @click="setTab('TEACHER')">教师</button>
+      <button :class="['tab-btn', currentTab === 'USER' ? 'active' : '']" @click="setTab('USER')">学生</button>
+      <button :class="['tab-btn', currentTab === 'ADMIN' ? 'active' : '']" @click="setTab('ADMIN')">管理员</button>
     </div>
 
     <div class="google-card table-card">
-      <div v-if="loading" class="loading">Loading...</div>
+      <div v-if="loading" class="loading">加载中...</div>
       <table v-else-if="users.length > 0" class="google-table">
         <thead>
           <tr>
-            <th>Username</th>
-            <th>Nickname</th>
-            <th>Role</th>
-            <th>Status</th>
-            <th>Actions</th>
+            <th>用户名</th>
+            <th>昵称</th>
+            <th>角色</th>
+            <th>状态</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -150,13 +149,13 @@ onMounted(() => {
             </td>
             <td class="actions">
               <button class="action-btn" :class="user.status === 'ACTIVE' ? 'warning' : 'success'" @click="toggleStatus(user)">
-                {{ user.status === 'ACTIVE' ? 'Ban' : 'Activate' }}
+                {{ user.status === 'ACTIVE' ? '禁用' : '启用' }}
               </button>
               <button class="action-btn primary" @click="toggleRole(user)">
-                Change Role
+                更改角色
               </button>
               <button class="action-btn danger" @click="deleteUser(user.id)">
-                Delete
+                删除
               </button>
             </td>
           </tr>
@@ -164,13 +163,13 @@ onMounted(() => {
       </table>
       <div v-else class="empty-state">
         <span class="material-icon">people_outline</span>
-        <p>No users found in the database.</p>
+        <p>未找到用户。</p>
       </div>
       
       <div class="pagination" v-if="users.length > 0">
-        <button class="google-btn text-btn" :disabled="page === 0" @click="prevPage">Previous</button>
-        <span>Page {{ page + 1 }} of {{ totalPages }}</span>
-        <button class="google-btn text-btn" :disabled="page >= totalPages - 1" @click="nextPage">Next</button>
+        <button class="google-btn text-btn" :disabled="page === 0" @click="prevPage">上一页</button>
+        <span>第 {{ page + 1 }} 页 / 共 {{ totalPages }} 页</span>
+        <button class="google-btn text-btn" :disabled="page >= totalPages - 1" @click="nextPage">下一页</button>
       </div>
     </div>
   </div>

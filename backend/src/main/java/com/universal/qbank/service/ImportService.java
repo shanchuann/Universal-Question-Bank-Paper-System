@@ -170,7 +170,7 @@ public class ImportService {
       q.setDifficulty(req.getDifficulty().getValue());
       q.setStem(req.getStem());
       q.setAnalysis(req.getAnalysis());
-      q.setStatus("ACTIVE");
+      q.setStatus("APPROVED"); // 导入的题目直接设为已通过状态
 
       try {
         if (req.getOptions() != null) {

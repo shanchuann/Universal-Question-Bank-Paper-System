@@ -48,6 +48,7 @@ type DisplayItem =
 const route = useRoute()
 const router = useRouter()
 const paperId = ref(route.query.paperId?.toString() || '')
+const planId = ref(route.query.planId?.toString() || '')
 const userId = ref(authState.isAuthenticated && authState.user.id ? authState.user.id : 'guest-' + Math.floor(Math.random() * 10000))
 
 // Update userId when profile is loaded
@@ -77,9 +78,9 @@ const handleVisibilityChange = () => {
     switchCount.value++
     if (switchCount.value >= maxSwitches) {
       submitExam()
-      alert('You have switched tabs too many times. Your exam has been automatically submitted.')
+      alert('您切换标签页次数过多，答卷已自动提交。')
     } else {
-      securityWarningMessage.value = `Warning: Tab switching is not allowed. You have ${maxSwitches - switchCount.value} attempts left.`
+      securityWarningMessage.value = `警告：考试期间禁止切换标签页。您还有 ${maxSwitches - switchCount.value} 次机会。`
       showSecurityWarning.value = true
     }
   }
@@ -172,11 +173,6 @@ const sections = computed<SectionData[]>(() => {
   return result;
 });
 
-const currentSection = computed(() => {
-    if (sections.value.length === 0) return null;
-    return sections.value[currentSectionIndex.value];
-});
-
 const displayedSections = computed(() => {
     if (submitted.value) {
         return sections.value;
@@ -230,15 +226,22 @@ const startExam = async () => {
 
     const pId = parseInt(paperId.value)
     if (isNaN(pId)) {
-      error.value = 'Invalid Paper ID. Please enter a number.'
+      error.value = '试卷ID无效，请输入有效数字'
       return
     }
 
     const token = localStorage.getItem('token')
-    const response = await axios.post('/api/exams/start', {
+    const requestBody: { paperId: number; userId: string; planId?: string } = {
       paperId: pId,
       userId: userId.value
-    }, {
+    }
+    
+    // 如果有考试计划ID，添加到请求中
+    if (planId.value) {
+      requestBody.planId = planId.value
+    }
+    
+    const response = await axios.post('/api/exams/start', requestBody, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -299,7 +302,7 @@ const submitExam = async () => {
       await document.exitFullscreen()
     }
   } catch (err) {
-    error.value = 'Failed to submit exam.'
+    error.value = '提交失败，请重试'
     console.error(err)
   } finally {
     loading.value = false
@@ -323,23 +326,32 @@ const isSelected = (qId: string, option: string) => {
   }
   return ans === option
 }
+
+const questionTypeLabels: Record<string, string> = {
+  SINGLE_CHOICE: '单选题',
+  MULTIPLE_CHOICE: '多选题',
+  TRUE_FALSE: '判断题',
+  FILL_BLANK: '填空题',
+  SHORT_ANSWER: '简答题',
+  ESSAY: '论述题'
+}
 </script>
 
 <template>
   <div class="container">
     <div v-if="!exam" class="google-card start-card">
       <div class="card-header">
-        <h1>Start Exam</h1>
-        <p class="subtitle">Enter your details to begin</p>
+        <h1>开始考试</h1>
+        <p class="subtitle">{{ planId ? '点击下方按钮开始答题' : '输入试卷编号开始考试' }}</p>
       </div>
       
       <form @submit.prevent="startExam">
-        <div class="form-group">
-          <label class="field-label">Paper ID</label>
-          <input v-model="paperId" type="text" required placeholder="Enter Paper ID" class="google-input" />
+        <div class="form-group" v-if="!planId">
+          <label class="field-label">试卷编号</label>
+          <input v-model="paperId" type="text" required placeholder="请输入试卷编号" class="google-input" />
         </div>
         <div class="form-group">
-          <label class="field-label">User</label>
+          <label class="field-label">考生</label>
           <input 
             v-if="authState.isAuthenticated"
             :value="authState.user.nickname || authState.user.username"
@@ -358,7 +370,7 @@ const isSelected = (qId: string, option: string) => {
         
         <div class="form-actions">
           <button type="submit" :disabled="loading" class="google-btn primary-btn full-width">
-            {{ loading ? 'Starting...' : 'Start Exam' }}
+            {{ loading ? '正在加载...' : '开始答题' }}
           </button>
         </div>
         
@@ -373,10 +385,10 @@ const isSelected = (qId: string, option: string) => {
       <div class="google-card exam-header-card">
         <div class="header-content">
           <h2>{{ exam.paper.title }}</h2>
-          <p class="subtitle">Answer all questions below</p>
+          <p class="subtitle">请认真作答以下所有题目</p>
         </div>
         <div v-if="submitted" class="score-badge">
-          <span class="score-label">Score</span>
+          <span class="score-label">得分</span>
           <span class="score-value">{{ exam.score }}</span>
           <span class="score-total">/ 100</span>
         </div>
@@ -384,30 +396,30 @@ const isSelected = (qId: string, option: string) => {
 
       <div class="questions-list">
         <div v-for="(section, sIndex) in displayedSections" :key="sIndex" class="section-container">
-          <div class="section-header">
+          <div class="section-header" v-if="section">
             <h3>{{ section.title }}</h3>
           </div>
           
-          <template v-for="(itemData, index) in section.items" :key="index">
+          <template v-for="(itemData, index) in section?.items" :key="index">
             <div v-if="itemData.item.type === 'QUESTION' && itemData.item.data" class="google-card question-card" :class="submitted ? getQuestionStatus(itemData.item.data.id) : ''">
               <div class="question-header">
-                <span class="q-number">Question {{ itemData.questionNumber }}</span>
-                <span class="q-type-badge">{{ itemData.item.data.type }}</span>
+                <span class="q-number">第 {{ itemData.questionNumber }} 题</span>
+                <span class="q-type-badge">{{ questionTypeLabels[itemData.item.data.type] || itemData.item.data.type }}</span>
                 <span v-if="submitted" class="status-badge" :class="getQuestionStatus(itemData.item.data.id)">
-                  {{ getQuestionStatus(itemData.item.data.id) === 'correct' ? 'Correct' : 'Incorrect' }}
+                  {{ getQuestionStatus(itemData.item.data.id) === 'correct' ? '正确' : '错误' }}
                 </span>
               </div>
               
               <div class="question-content" v-if="itemData.item.data.stem" v-html="itemData.item.data.stem"></div>
               <div class="question-content error-text" v-else>
-                <span v-if="itemData.item.data.type === 'FILL_BLANK'">[Fill in the blank question]</span>
-                <span v-else>(Error: Question content is missing)</span>
+                <span v-if="itemData.item.data.type === 'FILL_BLANK'">[填空题]</span>
+                <span v-else>(错误：题目内容缺失)</span>
               </div>
               
               <div class="options-grid">
                 <template v-if="['SINGLE_CHOICE', 'MULTIPLE_CHOICE', 'TRUE_FALSE'].includes(itemData.item.data.type)">
                   <div v-if="(!itemData.item.data.options || itemData.item.data.options.length === 0) && itemData.item.data.type !== 'TRUE_FALSE'" class="no-options-warning">
-                    (Error: No options available)
+                    (错误：没有可用选项)
                   </div>
                   <template v-else>
                       <label v-for="option in (itemData.item.data.options && itemData.item.data.options.length > 0 ? itemData.item.data.options : ['True', 'False'])" :key="option" class="option-item" :class="{ 'selected': isSelected(itemData.item.data.id, option) }">
@@ -437,14 +449,14 @@ const isSelected = (qId: string, option: string) => {
                 </template>
                 <template v-else-if="itemData.item.data.type === 'FILL_BLANK'">
                    <div class="fill-blank-container">
-                     <div v-for="(ans, idx) in answers[itemData.item.data.id]" :key="idx" class="blank-input-row">
+                     <div v-for="(_ans, idx) in answers[itemData.item.data.id]" :key="idx" class="blank-input-row">
                        <span class="blank-label">{{ idx + 1 }}.</span>
                        <input 
                          type="text" 
-                         v-model="answers[itemData.item.data.id][idx]" 
+                         v-model="(answers[itemData.item.data.id] as string[])[idx]" 
                          class="google-input blank-input" 
                          :disabled="submitted"
-                         placeholder="Fill in the blank"
+                         placeholder="请填写答案"
                        />
                      </div>
                    </div>
@@ -455,7 +467,7 @@ const isSelected = (qId: string, option: string) => {
                       class="google-input" 
                       rows="3" 
                       :disabled="submitted"
-                      placeholder="Type your answer here..."
+                      placeholder="请输入您的答案..."
                       style="width: 100%; margin-top: 10px;"
                    ></textarea>
                 </template>
@@ -466,29 +478,29 @@ const isSelected = (qId: string, option: string) => {
       </div>
 
       <div class="exam-actions">
-        <button v-if="currentSectionIndex > 0 && !submitted" @click="prevSection" class="google-btn text-btn large-btn">Previous Section</button>
+        <button v-if="currentSectionIndex > 0 && !submitted" @click="prevSection" class="google-btn text-btn large-btn">上一部分</button>
         <div class="spacer"></div>
-        <button v-if="currentSectionIndex < sections.length - 1 && !submitted" @click="nextSection" class="google-btn primary-btn large-btn">Next Section</button>
+        <button v-if="currentSectionIndex < sections.length - 1 && !submitted" @click="nextSection" class="google-btn primary-btn large-btn">下一部分</button>
         <button v-else-if="!submitted" @click="submitExam" :disabled="loading" class="google-btn primary-btn large-btn">
-          {{ loading ? 'Submitting...' : 'Submit Exam' }}
+          {{ loading ? '正在提交...' : '提交答卷' }}
         </button>
-        <button v-else @click="exitExam" class="google-btn text-btn large-btn">Exit Exam</button>
+        <button v-else @click="exitExam" class="google-btn text-btn large-btn">退出考试</button>
       </div>
 
       <!-- Security Overlays -->
       <div v-if="exam && !submitted && !isFullScreen" class="security-overlay">
         <div class="security-dialog google-card">
-          <h3>Exam Security Violation</h3>
-          <p>Full screen mode is required to continue the exam.</p>
-          <button @click="enterFullScreen" class="google-btn primary-btn">Return to Full Screen</button>
+          <h3>考试安全提示</h3>
+          <p>请保持全屏模式继续考试</p>
+          <button @click="enterFullScreen" class="google-btn primary-btn">返回全屏</button>
         </div>
       </div>
 
       <div v-if="showSecurityWarning" class="security-overlay">
         <div class="security-dialog google-card warning">
-          <h3>Security Warning</h3>
+          <h3>安全警告</h3>
           <p>{{ securityWarningMessage }}</p>
-          <button @click="showSecurityWarning = false" class="google-btn primary-btn">I Understand</button>
+          <button @click="showSecurityWarning = false" class="google-btn primary-btn">我知道了</button>
         </div>
       </div>
     </div>

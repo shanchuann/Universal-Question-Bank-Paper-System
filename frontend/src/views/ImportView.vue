@@ -51,9 +51,9 @@ const handleFileUpload = async () => {
   } catch (err: any) {
     console.error(err)
     if (err.response) {
-        error.value = `Import failed: ${err.response.status} ${err.response.statusText}. Is the backend running?`
+        error.value = `导入失败: ${err.response.status} ${err.response.statusText}。请确认后端服务已启动。`
     } else {
-        error.value = 'Failed to parse file. Please ensure it is a valid Word document and the backend is running.'
+        error.value = '解析文件失败。请确保这是一个有效的Word文档，并且后端服务已启动。'
     }
   } finally {
     loading.value = false
@@ -88,12 +88,12 @@ const importAll = async () => {
         Authorization: `Bearer ${token}`
       }
     })
-    successMessage.value = `Successfully imported ${response.data.length} questions!`
+    successMessage.value = `成功导入 ${response.data.length} 道题目！`
     parsedQuestions.value = []
     setTimeout(() => router.push('/questions'), 2000)
   } catch (err: any) {
     console.error('Failed to import questions:', err)
-    error.value = 'Failed to save questions. ' + (err.response?.data?.message || err.message)
+    error.value = '保存题目失败。' + (err.response?.data?.message || err.message)
   } finally {
     importing.value = false
   }
@@ -104,8 +104,8 @@ const importAll = async () => {
   <div class="container">
     <div class="google-card import-card">
       <div class="card-header">
-        <h1>Batch Import Questions</h1>
-        <p class="subtitle">Upload a Word document (.docx) to import questions.</p>
+        <h1>批量导入题目</h1>
+        <p class="subtitle">上传Word文档(.docx)以导入题目。</p>
       </div>
 
       <div class="upload-section">
@@ -116,7 +116,7 @@ const importAll = async () => {
           @change="handleFileUpload" 
           class="file-input"
         />
-        <div v-if="loading" class="loading-spinner">Parsing document...</div>
+        <div v-if="loading" class="loading-spinner">正在解析文档...</div>
       </div>
 
       <div v-if="error" class="message error">{{ error }}</div>
@@ -124,9 +124,9 @@ const importAll = async () => {
 
       <div v-if="parsedQuestions.length > 0" class="preview-section">
         <div class="preview-header">
-          <h2>Preview ({{ parsedQuestions.length }} questions)</h2>
+          <h2>预览 ({{ parsedQuestions.length }} 道题目)</h2>
           <button @click="importAll" :disabled="importing" class="google-btn primary-btn">
-            {{ importing ? 'Importing...' : 'Import All' }}
+            {{ importing ? '导入中...' : '全部导入' }}
           </button>
         </div>
 
@@ -134,48 +134,48 @@ const importAll = async () => {
           <div v-for="(q, index) in parsedQuestions" :key="index" class="question-preview-item">
             <div class="item-header">
               <span class="index">#{{ index + 1 }}</span>
-              <button @click="removeQuestion(index)" class="google-btn text-btn delete-btn">Remove</button>
+              <button @click="removeQuestion(index)" class="google-btn text-btn delete-btn">移除</button>
             </div>
             
             <div class="form-group">
-              <label>Stem</label>
+              <label>题干</label>
               <textarea v-model="q.stem" class="google-input" rows="2"></textarea>
             </div>
 
             <div class="form-group">
-              <label>Analysis</label>
-              <textarea v-model="q.analysis" class="google-input" rows="2" placeholder="Explanation for the answer..."></textarea>
+              <label>解析</label>
+              <textarea v-model="q.analysis" class="google-input" rows="2" placeholder="答案解析..."></textarea>
             </div>
 
             <div class="form-row">
               <div class="form-group">
-                <label>Type</label>
+                <label>题型</label>
                 <select v-model="q.type" class="google-select">
-                  <option value="SINGLE_CHOICE">Single Choice</option>
-                  <option value="MULTI_CHOICE">Multiple Choice</option>
-                  <option value="MULTIPLE_CHOICE">Multiple Choice (Legacy)</option>
-                  <option value="TRUE_FALSE">True/False</option>
-                  <option value="FILL_BLANK">Fill Blank</option>
-                  <option value="SHORT_ANSWER">Short Answer</option>
+                  <option value="SINGLE_CHOICE">单选题</option>
+                  <option value="MULTI_CHOICE">多选题</option>
+                  <option value="MULTIPLE_CHOICE">多选题(旧版)</option>
+                  <option value="TRUE_FALSE">判断题</option>
+                  <option value="FILL_BLANK">填空题</option>
+                  <option value="SHORT_ANSWER">简答题</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Difficulty</label>
+                <label>难度</label>
                 <select v-model="q.difficulty" class="google-select">
-                  <option value="EASY">Easy</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HARD">Hard</option>
+                  <option value="EASY">简单</option>
+                  <option value="MEDIUM">中等</option>
+                  <option value="HARD">困难</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Score</label>
+                <label>分数</label>
                 <input type="number" v-model="q.score" class="google-input" step="0.5" />
               </div>
             </div>
 
             <!-- Options for Choice Questions -->
             <div class="options-preview" v-if="['SINGLE_CHOICE', 'MULTI_CHOICE', 'MULTIPLE_CHOICE', 'TRUE_FALSE'].includes(q.type)">
-              <label>Options</label>
+              <label>选项</label>
               <div v-for="(opt, optIndex) in q.options" :key="optIndex" class="option-row">
                 <input 
                   :type="q.type === 'SINGLE_CHOICE' || q.type === 'TRUE_FALSE' ? 'radio' : 'checkbox'" 
@@ -184,20 +184,20 @@ const importAll = async () => {
                   @change="opt.isCorrect = ($event.target as HTMLInputElement).checked; if(q.type === 'SINGLE_CHOICE' || q.type === 'TRUE_FALSE') { q.options.forEach((o, i) => o.isCorrect = i === optIndex) }"
                   class="option-check"
                 />
-                <input type="text" v-model="opt.text" class="google-input option-input" placeholder="Option text" />
-                <button @click="removeOption(q, optIndex)" class="google-btn icon-btn" title="Remove Option">×</button>
+                <input type="text" v-model="opt.text" class="google-input option-input" placeholder="选项内容" />
+                <button @click="removeOption(q, optIndex)" class="google-btn icon-btn" title="移除选项">×</button>
               </div>
-              <button @click="addOption(q)" class="google-btn text-btn small-btn">+ Add Option</button>
+              <button @click="addOption(q)" class="google-btn text-btn small-btn">+ 添加选项</button>
             </div>
 
             <!-- Answer for Fill Blank / Short Answer -->
             <div class="answer-preview" v-if="['FILL_BLANK', 'SHORT_ANSWER'].includes(q.type)">
               <div class="form-group">
-                <label>Correct Answer</label>
+                <label>正确答案</label>
                 <textarea 
                   class="google-input" 
                   rows="2" 
-                  placeholder="Enter the correct answer here..."
+                  placeholder="在此输入正确答案..."
                   :value="q.answerSchema?.correctAnswer || (q.options.find(o => o.isCorrect)?.text || '')"
                   @input="(e) => {
                     const val = (e.target as HTMLTextAreaElement).value;

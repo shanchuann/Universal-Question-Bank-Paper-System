@@ -16,12 +16,12 @@ public class PaperEntity {
 
   private OffsetDateTime createdAt;
 
-  @ElementCollection
+  @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(name = "paper_questions", joinColumns = @JoinColumn(name = "paper_id"))
   @Column(name = "question_id")
   private List<String> questionIds;
 
-  @OneToMany(mappedBy = "paper", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(mappedBy = "paper", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
   @OrderBy("sortOrder ASC")
   private List<PaperItemEntity> items;
 

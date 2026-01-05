@@ -163,24 +163,35 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
     
     <div v-else-if="paper" class="google-card paper-card">
       <div class="paper-header">
-        <div class="header-content">
-          <h1>{{ paper.title }}</h1>
-          <p class="subtitle">{{ paper.questions.length }} Questions</p>
+        <div class="header-top">
+          <div class="header-content">
+            <h1>试卷预览</h1>
+            <div class="paper-title-row">
+              <span class="paper-title">{{ paper.title }}</span>
+              <span class="paper-count">{{ paper.questions.length }} 道题目</span>
+            </div>
+          </div>
+          <div class="header-actions">
+            <button @click="editPaper" class="google-btn text-btn">编辑试卷</button>
+            <button @click="startExam" class="google-btn primary-btn">开始考试</button>
+          </div>
         </div>
-        <div class="header-actions">
-          <div class="export-menu">
-            <button @click="download('student')" class="google-btn text-btn" title="Export Student Version">
-              <span class="material-icons">description</span> Student
+        <div class="export-bar">
+          <span class="export-label">导出试卷：</span>
+          <div class="export-buttons">
+            <button @click="download('student')" class="export-btn" title="导出学生版">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              <span>学生版</span>
             </button>
-            <button @click="download('teacher')" class="google-btn text-btn" title="Export Teacher Version">
-              <span class="material-icons">school</span> Teacher
+            <button @click="download('teacher')" class="export-btn" title="导出教师版">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+              <span>教师版</span>
             </button>
-            <button @click="download('answer-sheet')" class="google-btn text-btn" title="Export Answer Sheet">
-              <span class="material-icons">grid_on</span> Sheet
+            <button @click="download('answer-sheet')" class="export-btn" title="导出答题卡">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+              <span>答题卡</span>
             </button>
           </div>
-          <button @click="editPaper" class="google-btn text-btn">Edit Paper</button>
-          <button @click="startExam" class="google-btn primary-btn">Start Exam</button>
         </div>
       </div>
       
@@ -204,7 +215,7 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
       </div>
 
       <div class="paper-footer">
-        <button @click="startExam" class="google-btn primary-btn start-exam-btn">Start Exam</button>
+        <button @click="startExam" class="google-btn primary-btn start-exam-btn">开始考试</button>
       </div>
     </div>
   </div>
@@ -221,25 +232,92 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
 }
 
 .paper-header {
-  padding: 32px;
+  padding: 24px 32px;
   background-color: #fff;
   border-bottom: 1px solid #dadce0;
+}
+
+.header-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  margin-bottom: 20px;
 }
 
 .paper-header h1 {
   font-family: 'Google Sans', sans-serif;
-  font-size: 28px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #5f6368;
+  margin: 0 0 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.paper-title-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.paper-title {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 24px;
   font-weight: 400;
-  margin-bottom: 4px;
   color: #202124;
 }
 
-.subtitle {
+.paper-count {
+  background: #e8f0fe;
+  color: #1a73e8;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.export-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.export-label {
+  font-size: 13px;
   color: #5f6368;
-  font-size: 15px;
+  white-space: nowrap;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.export-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #fff;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #3c4043;
+  transition: all 0.2s;
+}
+
+.export-btn:hover {
+  background: #f6fafe;
+  border-color: #1a73e8;
+  color: #1a73e8;
+}
+
+.export-btn svg {
+  flex-shrink: 0;
 }
 
 .questions-list {
@@ -329,14 +407,7 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
 .header-actions {
   display: flex;
   gap: 12px;
-}
-
-.export-menu {
-  display: flex;
-  gap: 8px;
-  margin-right: 16px;
-  border-right: 1px solid #dadce0;
-  padding-right: 16px;
+  flex-shrink: 0;
 }
 
 .google-btn {
