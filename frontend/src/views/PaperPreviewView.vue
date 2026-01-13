@@ -164,16 +164,12 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
     <div v-else-if="paper" class="google-card paper-card">
       <div class="paper-header">
         <div class="header-top">
-          <div class="header-content">
-            <h1>试卷预览</h1>
-            <div class="paper-title-row">
-              <span class="paper-title">{{ paper.title }}</span>
-              <span class="paper-count">{{ paper.questions.length }} 道题目</span>
-            </div>
+          <div class="title-container">
+            <span class="paper-title">{{ paper.title }}</span>
           </div>
           <div class="header-actions">
+            <span class="paper-count">{{ paper.questions.length }} 道题目</span>
             <button @click="editPaper" class="google-btn text-btn">编辑试卷</button>
-            <button @click="startExam" class="google-btn primary-btn">开始考试</button>
           </div>
         </div>
         <div class="export-bar">
@@ -228,7 +224,6 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
   padding: 0;
   overflow: hidden;
   border: 1px solid #dadce0;
-  border-top: 8px solid #1a73e8;
 }
 
 .paper-header {
@@ -238,27 +233,25 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
 }
 
 .header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
   margin-bottom: 20px;
 }
 
-.paper-header h1 {
-  font-family: 'Google Sans', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  color: #5f6368;
-  margin: 0 0 8px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+.title-container {
+  grid-column: 2;
+  text-align: center;
 }
 
-.paper-title-row {
+.header-actions {
+  grid-column: 3;
+  justify-self: end;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
+
 
 .paper-title {
   font-family: 'Google Sans', sans-serif;
@@ -404,11 +397,6 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
   width: 100%;
 }
 
-.header-actions {
-  display: flex;
-  gap: 12px;
-  flex-shrink: 0;
-}
 
 .google-btn {
   border: none;

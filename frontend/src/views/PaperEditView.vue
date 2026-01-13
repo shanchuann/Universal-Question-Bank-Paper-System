@@ -310,10 +310,10 @@ const resetDragState = () => {
         <span class="total-score">总分: {{ totalScore }}</span>
         <div class="toolbar-actions">
           <button @click="openQuestionModal" class="google-btn text-btn">
-            <span class="material-icon">+</span> 添加题目
+            添加题目
           </button>
           <button @click="addSection" class="google-btn text-btn">
-            <span class="material-icon">+</span> 添加分区标题
+            添加分区标题
           </button>
         </div>
       </div>
@@ -495,7 +495,7 @@ const resetDragState = () => {
   max-width: 800px;
   margin: 0 auto;
   padding: 40px;
-  border-top: 8px solid #1a73e8;
+  /* border-top removed */
 }
 
 .card-header {

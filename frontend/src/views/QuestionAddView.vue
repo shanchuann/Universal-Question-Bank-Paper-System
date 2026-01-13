@@ -477,9 +477,11 @@ const handleSubmit = async () => {
           <div v-for="(_opt, idx) in form.options" :key="idx" class="option-row">
             <span class="option-label">{{ String.fromCharCode(65 + idx) }}.</span>
             <input v-model="form.options[idx]" type="text" required placeholder="选项内容" class="google-input" />
-            <button type="button" @click="removeOption(idx)" class="icon-btn remove-opt" v-if="form.options.length > 2">×</button>
+            <button type="button" @click="removeOption(idx)" class="icon-btn remove-opt" v-if="form.options.length > 2">
+              <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="#5f6368"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
           </div>
-          <button type="button" @click="addOption" class="google-btn text-btn small-btn">+ 添加选项</button>
+          <button type="button" @click="addOption" class="google-btn text-btn small-btn">添加选项</button>
         </div>
 
         <!-- Fill Blank Answers -->

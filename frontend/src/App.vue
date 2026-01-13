@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { RouterView, useRouter } from 'vue-router'
+import { RouterView, useRouter, useRoute } from 'vue-router'
 import { authState, type UserRole } from '@/states/authState'
 
 const router = useRouter()
+const route = useRoute()
 
 type NavChild = { to: string; label: string }
 type NavGroup = {
@@ -121,6 +122,24 @@ const navigateTo = (to: string) => {
   router.push(to)
   closeDropdown()
 }
+
+const isRouteActive = (path: string) => {
+  if (!path) return false
+  if (path === '/') return route.path === '/'
+  return route.path.startsWith(path)
+}
+
+const isExactActive = (path: string) => {
+  return route.path === path
+}
+
+const isGroupActive = (group: NavGroup) => {
+  if (group.to) return isRouteActive(group.to)
+  if (group.children) {
+    return group.children.some(child => isRouteActive(child.to))
+  }
+  return false
+}
 </script>
 
 <template>
@@ -154,11 +173,13 @@ const navigateTo = (to: string) => {
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
               </div>
-              <div v-show="activeDropdown === group.label" class="dropdown-menu">
+              <div
+                   v-show="activeDropdown === group.label" class="dropdown-menu">
                 <div 
                   v-for="child in group.children" 
                   :key="child.to" 
                   class="dropdown-item"
+                  :class="{ 'active-nav': isExactActive(child.to) }"
                   @click="navigateTo(child.to)"
                 >
                   {{ child.label }}
@@ -248,7 +269,13 @@ const navigateTo = (to: string) => {
   align-items: center;
   gap: 4px;
 }
+active-nav {
+  background-color: #e8f0fe !important;
+  color: #1a73e8 !important;
+  font-weight: 500;
+}
 
+.
 .nav-item:hover {
   background-color: #f1f3f4;
   color: #202124;

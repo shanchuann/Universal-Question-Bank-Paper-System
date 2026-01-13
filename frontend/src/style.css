@@ -389,22 +389,11 @@ select option, .google-select option {
   cursor: pointer;
 }
 
-/* Fix container width conflict */
-.container {
-  max-width: 1200px !important;
-}
-
-/* Utility classes */
-.text-secondary {
-    color: #5f6368;
-}
-
-
 /* Utility classes */
 .container {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 20px;
+  max-width: 1200px;
+  margin: 32px auto;
+  padding: 0 24px;
 }
 
 /* Button Variants */
