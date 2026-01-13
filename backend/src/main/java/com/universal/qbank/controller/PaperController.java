@@ -333,16 +333,64 @@ public class PaperController {
     return ResponseEntity.ok(toPaperResponse(paper));
   }
 
+  public static class ManualPaperQuestion {
+    public String questionId;
+    public Double score;
+    public Integer position;
+
+    public String getQuestionId() {
+      return questionId;
+    }
+
+    public void setQuestionId(String questionId) {
+      this.questionId = questionId;
+    }
+
+    public Double getScore() {
+      return score;
+    }
+
+    public void setScore(Double score) {
+      this.score = score;
+    }
+
+    public Integer getPosition() {
+      return position;
+    }
+
+    public void setPosition(Integer position) {
+      this.position = position;
+    }
+  }
+
   public static class ManualCreateRequest {
     public String title;
+    public String subjectId;
+    public Integer durationMinutes;
+    public Float totalScore;
     public List<String> questionIds;
     public List<PaperItemDTO> items;
+    public List<ManualPaperQuestion> questions; // OpenAPI compatible
   }
 
   @PostMapping("/manual")
   public ResponseEntity<PaperResponse> createManual(@RequestBody ManualCreateRequest req) {
     PaperEntity paper;
-    if (req.items != null && !req.items.isEmpty()) {
+    
+    // Support OpenAPI format: questions array with questionId and score
+    if (req.questions != null && !req.questions.isEmpty()) {
+      List<PaperItemEntity> entities = new java.util.ArrayList<>();
+      for (int i = 0; i < req.questions.size(); i++) {
+        ManualPaperQuestion q = req.questions.get(i);
+        PaperItemEntity item = new PaperItemEntity();
+        item.setItemType("QUESTION");
+        item.setQuestionId(q.questionId);
+        item.setScore(q.score != null ? q.score : 10.0);
+        item.setSortOrder(q.position != null ? q.position : i);
+        entities.add(item);
+      }
+      paper = paperService.createComplexPaper(req.title, entities);
+    } else if (req.items != null && !req.items.isEmpty()) {
       List<PaperItemEntity> entities =
           req.items.stream()
               .map(

@@ -195,9 +195,38 @@ public class ExamService {
             .findById(examId)
             .orElseThrow(() -> new IllegalArgumentException("Exam not found"));
 
+    PaperEntity paper = paperRepository.findById(exam.getPaperId()).orElseThrow();
+
+    // Ensure records list is initialized
+    if (exam.getRecords() == null) {
+      exam.setRecords(new java.util.ArrayList<>());
+    }
+
+    // Build recordMap, creating records if they don't exist
     Map<String, ExamRecordEntity> recordMap =
         exam.getRecords().stream()
             .collect(Collectors.toMap(ExamRecordEntity::getQuestionId, r -> r));
+
+    // Ensure all questions from paper have records
+    if (paper.getItems() != null && !paper.getItems().isEmpty()) {
+      for (PaperItemEntity item : paper.getItems()) {
+        if ("QUESTION".equals(item.getItemType()) && !recordMap.containsKey(item.getQuestionId())) {
+          ExamRecordEntity record = new ExamRecordEntity();
+          record.setQuestionId(item.getQuestionId());
+          exam.getRecords().add(record);
+          recordMap.put(item.getQuestionId(), record);
+        }
+      }
+    } else if (paper.getQuestionIds() != null) {
+      for (String qId : paper.getQuestionIds()) {
+        if (!recordMap.containsKey(qId)) {
+          ExamRecordEntity record = new ExamRecordEntity();
+          record.setQuestionId(qId);
+          exam.getRecords().add(record);
+          recordMap.put(qId, record);
+        }
+      }
+    }
 
     if (request.getGrades() != null) {
       for (ManualGradeRequestGradesInner grade : request.getGrades()) {
@@ -208,8 +237,6 @@ public class ExamService {
         }
       }
     }
-
-    PaperEntity paper = paperRepository.findById(exam.getPaperId()).orElseThrow();
 
     double totalMaxScore = 0;
     double totalUserScore = 0;
