@@ -309,7 +309,7 @@ watch(() => authState.user.id, (newId) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   max-width: 800px;
   margin: 0 auto;
 }
@@ -328,6 +328,7 @@ watch(() => authState.user.id, (newId) => {
   box-sizing: border-box;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
+  margin-bottom: 0;
 }
 
 .nav-card:hover {

@@ -199,6 +199,11 @@ onMounted(fetchExams)
   border-bottom: 1px solid #dadce0;
 }
 
+.question-table th:last-child,
+.question-table td:last-child {
+  text-align: center;
+}
+
 .question-table td {
   padding: 12px 16px;
   border-bottom: 1px solid #f1f3f4;
