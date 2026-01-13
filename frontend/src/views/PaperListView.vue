@@ -67,7 +67,7 @@ onMounted(fetchPapers)
       <h1>试卷管理</h1>
       <div class="header-actions">
         <button class="google-btn primary-btn" @click="createPaper">
-          <span class="icon-wrapper"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></span> 新建试卷
+          新建试卷
         </button>
       </div>
     </div>
@@ -176,6 +176,9 @@ onMounted(fetchPapers)
   border: 1px solid #dadce0;
   border-radius: 12px;
   overflow: hidden;
+  padding: 0; /* Override google-card padding */
+  margin: 0; /* Override google-card margin */
+  background: white;
 }
 
 .paper-card:hover {

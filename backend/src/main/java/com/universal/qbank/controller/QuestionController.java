@@ -72,11 +72,13 @@ public class QuestionController implements QuestionBankApi {
       throw new RuntimeException("Failed to serialize options or answer schema", e);
     }
 
-    // q.setTags(req.getTags());
+    if (req.getTags() != null) {
+      q.setTags(req.getTags());
+    }
     q.setKnowledgePointIds(req.getKnowledgePointIds());
     
     // 根据用户角色设置初始状态：学生创建的为待审核，教师/管理员创建的直接激活
-    String initialStatus = "ACTIVE";
+    String initialStatus = "APPROVED";
     if (userId != null) {
       var userOpt = userRepository.findById(userId);
       if (userOpt.isPresent()) {
@@ -149,6 +151,15 @@ public class QuestionController implements QuestionBankApi {
         .findById(id)
         .map(
             existing -> {
+              if (req.getSubjectId() != null) {
+                existing.setSubjectId(req.getSubjectId());
+              }
+              if (req.getType() != null) {
+                existing.setType(req.getType());
+              }
+              if (req.getTags() != null) {
+                existing.setTags(req.getTags());
+              }
               if (req.getStem() != null) {
                 existing.setStem(req.getStem());
               }
@@ -219,8 +230,8 @@ public class QuestionController implements QuestionBankApi {
           if (status != null && !status.isEmpty()) {
             predicates.add(cb.equal(root.get("status"), status));
           } else {
-            // 默认只显示 APPROVED 状态的题目（审核通过的）
-            predicates.add(root.get("status").in("APPROVED", "PUBLISHED"));
+            // 默认只显示 APPROVED 状态的题目（审核通过的）以及 ACTIVE 状态（教师直接创建）
+            predicates.add(root.get("status").in("APPROVED", "PUBLISHED", "ACTIVE"));
           }
           if (keywords != null && !keywords.isEmpty()) {
             String likePattern = "%" + keywords + "%";

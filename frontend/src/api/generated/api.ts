@@ -732,6 +732,12 @@ export interface QuestionCreateRequest {
     'type': QuestionCreateRequestTypeEnum;
     /**
      * 
+     * @type {Array<string>}
+     * @memberof QuestionCreateRequest
+     */
+    'tags'?: Array<string>;
+    /**
+     * 
      * @type {string}
      * @memberof QuestionCreateRequest
      */
@@ -783,6 +789,7 @@ export interface QuestionCreateRequest {
 export const QuestionCreateRequestTypeEnum = {
     SingleChoice: 'SINGLE_CHOICE',
     MultiChoice: 'MULTI_CHOICE',
+    MultipleChoice: 'MULTIPLE_CHOICE',
     TrueFalse: 'TRUE_FALSE',
     FillBlank: 'FILL_BLANK',
     ShortAnswer: 'SHORT_ANSWER'
@@ -1209,6 +1216,24 @@ export interface QuestionSummary {
  * @interface QuestionUpdateRequest
  */
 export interface QuestionUpdateRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof QuestionUpdateRequest
+     */
+    'subjectId'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof QuestionUpdateRequest
+     */
+    'type'?: string;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof QuestionUpdateRequest
+     */
+    'tags'?: Array<string>;
     /**
      * 
      * @type {string}
@@ -3307,14 +3332,14 @@ export const QuestionBankApiAxiosParamCreator = function (configuration?: Config
          * @param {number} [size] Page size.
          * @param {string} [subjectId] 
          * @param {Array<string>} [knowledgePointIds] 
-         * @param {'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER'} [type] 
+         * @param {'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER'} [type] 
          * @param {'EASY' | 'MEDIUM' | 'HARD'} [difficulty] 
          * @param {string} [keywords] 
          * @param {'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED'} [status] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        apiQuestionsGet: async (page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+        apiQuestionsGet: async (page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/api/questions`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3638,14 +3663,14 @@ export const QuestionBankApiFp = function(configuration?: Configuration) {
          * @param {number} [size] Page size.
          * @param {string} [subjectId] 
          * @param {Array<string>} [knowledgePointIds] 
-         * @param {'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER'} [type] 
+         * @param {'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER'} [type] 
          * @param {'EASY' | 'MEDIUM' | 'HARD'} [difficulty] 
          * @param {string} [keywords] 
          * @param {'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED'} [status] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async apiQuestionsGet(page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<QuestionPage>> {
+        async apiQuestionsGet(page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<QuestionPage>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.apiQuestionsGet(page, size, subjectId, knowledgePointIds, type, difficulty, keywords, status, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
@@ -3734,14 +3759,14 @@ export const QuestionBankApiFactory = function (configuration?: Configuration, b
          * @param {number} [size] Page size.
          * @param {string} [subjectId] 
          * @param {Array<string>} [knowledgePointIds] 
-         * @param {'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER'} [type] 
+         * @param {'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER'} [type] 
          * @param {'EASY' | 'MEDIUM' | 'HARD'} [difficulty] 
          * @param {string} [keywords] 
          * @param {'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED'} [status] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        apiQuestionsGet(page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options?: any): AxiosPromise<QuestionPage> {
+        apiQuestionsGet(page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options?: any): AxiosPromise<QuestionPage> {
             return localVarFp.apiQuestionsGet(page, size, subjectId, knowledgePointIds, type, difficulty, keywords, status, options).then((request) => request(axios, basePath));
         },
         /**
@@ -3823,7 +3848,7 @@ export class QuestionBankApi extends BaseAPI {
      * @param {number} [size] Page size.
      * @param {string} [subjectId] 
      * @param {Array<string>} [knowledgePointIds] 
-     * @param {'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER'} [type] 
+     * @param {'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER'} [type] 
      * @param {'EASY' | 'MEDIUM' | 'HARD'} [difficulty] 
      * @param {string} [keywords] 
      * @param {'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED'} [status] 
@@ -3831,7 +3856,7 @@ export class QuestionBankApi extends BaseAPI {
      * @throws {RequiredError}
      * @memberof QuestionBankApi
      */
-    public apiQuestionsGet(page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options?: AxiosRequestConfig) {
+    public apiQuestionsGet(page?: number, size?: number, subjectId?: string, knowledgePointIds?: Array<string>, type?: 'SINGLE_CHOICE' | 'MULTI_CHOICE' | 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'FILL_BLANK' | 'SHORT_ANSWER', difficulty?: 'EASY' | 'MEDIUM' | 'HARD', keywords?: string, status?: 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED', options?: AxiosRequestConfig) {
         return QuestionBankApiFp(this.configuration).apiQuestionsGet(page, size, subjectId, knowledgePointIds, type, difficulty, keywords, status, options).then((request) => request(this.axios, this.basePath));
     }
 

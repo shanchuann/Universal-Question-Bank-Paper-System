@@ -105,20 +105,20 @@ const getAllIds = (points: KnowledgePoint[]): string[] => {
 const fetchCategoryStats = async () => {
   try {
     // 获取各类型的数量 (只统计 APPROVED 状态)
-    const types = ['SINGLE_CHOICE', 'MULTI_CHOICE', 'TRUE_FALSE', 'FILL_BLANK', 'SHORT_ANSWER']
+    const types = ['SINGLE_CHOICE', 'MULTI_CHOICE', 'TRUE_FALSE', 'FILL_BLANK', 'SHORT_ANSWER', 'MULTIPLE_CHOICE']
     const responses = await Promise.all([
       // 总数
-      questionApi.apiQuestionsGet(0, 1, undefined, undefined, undefined, undefined, undefined, 'APPROVED'),
+      questionApi.apiQuestionsGet(0, 1, undefined, undefined, undefined, undefined, undefined, undefined),
       // 各类型数量
       ...types.map(type => 
-        questionApi.apiQuestionsGet(0, 1, undefined, undefined, type as any, undefined, undefined, 'APPROVED')
+        questionApi.apiQuestionsGet(0, 1, undefined, undefined, type as any, undefined, undefined, undefined)
       )
     ])
     
     categoryStats.value = {
       total: responses[0].data.totalElements || 0,
       singleChoice: responses[1].data.totalElements || 0,
-      multiChoice: responses[2].data.totalElements || 0,
+      multiChoice: (responses[2].data.totalElements || 0) + (responses[6].data.totalElements || 0),
       trueFalse: responses[3].data.totalElements || 0,
       fillBlank: responses[4].data.totalElements || 0,
       shortAnswer: responses[5].data.totalElements || 0
@@ -145,7 +145,7 @@ const fetchQuestions = async () => {
       filterType.value as any,
       filterDifficulty.value as any,
       undefined, // keywords
-      'APPROVED' // status - 只显示已通过的题目
+      undefined // status - 默认显示所有有效题目(APPROVED, PUBLISHED, ACTIVE)
     )
     questions.value = response.data.content || []
     totalElements.value = response.data.totalElements || 0
@@ -275,7 +275,7 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
         </router-link>
         <router-link to="/questions/add" class="add-btn-link">
           <button class="google-btn primary-btn">
-            <span class="material-icon"></span> 添加题目
+            添加题目
           </button>
         </router-link>
       </div>
@@ -299,8 +299,8 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
       </div>
       <div 
         class="category-tab" 
-        :class="{ active: filterType === 'MULTI_CHOICE' }"
-        @click="filterType = 'MULTI_CHOICE'"
+        :class="{ active: filterType === 'MULTIPLE_CHOICE' }"
+        @click="filterType = 'MULTIPLE_CHOICE'"
       >
         多选题 <span class="count">{{ categoryStats.multiChoice }}</span>
       </div>

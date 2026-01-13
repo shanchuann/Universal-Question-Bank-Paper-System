@@ -8,8 +8,11 @@ import com.universal.qbank.repository.PaperRepository;
 import com.universal.qbank.repository.QuestionRepository;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
@@ -92,14 +95,50 @@ public class ExamService {
                   q.getOptionsJson(),
                   new com.fasterxml.jackson.core.type.TypeReference<
                       List<com.universal.qbank.api.generated.model.QuestionOption>>() {});
-          String correctAnswer =
-              opts.stream()
+          
+          if ("MULTIPLE_CHOICE".equalsIgnoreCase(q.getType()) || "MULTI_CHOICE".equalsIgnoreCase(q.getType())) {
+              // Set based comparison
+              Set<String> correctSet = opts.stream()
                   .filter(o -> Boolean.TRUE.equals(o.getIsCorrect()))
-                  .map(com.universal.qbank.api.generated.model.QuestionOption::getText)
-                  .collect(Collectors.joining(","));
+                  .map(o -> o.getText().trim())
+                  .collect(Collectors.toSet());
+              
+              if (userAnswer != null) {
+                  Set<String> userSet = Arrays.stream(userAnswer.split(","))
+                      .map(String::trim)
+                      .collect(Collectors.toSet());
+                  isCorrect = userSet.equals(correctSet);
+              }
+          } else {
+              // Standard string comparison
+              String correctAnswer =
+                  opts.stream()
+                      .filter(o -> Boolean.TRUE.equals(o.getIsCorrect()))
+                      .map(com.universal.qbank.api.generated.model.QuestionOption::getText)
+                      .collect(Collectors.joining(","));
 
-          if (userAnswer != null) {
-            isCorrect = userAnswer.equalsIgnoreCase(correctAnswer);
+              if (userAnswer != null) {
+                // Normalize both strings
+                String normalizedUser = userAnswer.trim();
+                String normalizedCorrect = correctAnswer.trim();
+                isCorrect = normalizedUser.equalsIgnoreCase(normalizedCorrect);
+                
+                // For Short Answer, try a looser match logic if strict fails
+                if (!isCorrect && ("SHORT_ANSWER".equalsIgnoreCase(q.getType()) || "FILL_BLANK".equalsIgnoreCase(q.getType()))) {
+                     // Check if user answer is contained within correct answer or vice versa (simple fuzzy)
+                     // Or check against any of the correct options if multiple correct options exist but not combined?
+                     // Current logic assumes all correct options must be present (joining with comma).
+                     // But for fill blank / short answer, usually there is 1 correct answer, or alternatives.
+                     // If alternatives exist, they might be stored as multiple correct options.
+                     // Check if userAnswer matches ANY correct option
+                     boolean matchAny = opts.stream()
+                         .filter(o -> Boolean.TRUE.equals(o.getIsCorrect()))
+                         .anyMatch(o -> o.getText() != null && o.getText().trim().equalsIgnoreCase(normalizedUser));
+                     if (matchAny) {
+                         isCorrect = true;
+                     }
+                }
+              }
           }
         } catch (Exception e) {
           e.printStackTrace();
@@ -195,9 +234,38 @@ public class ExamService {
             .findById(examId)
             .orElseThrow(() -> new IllegalArgumentException("Exam not found"));
 
+    PaperEntity paper = paperRepository.findById(exam.getPaperId()).orElseThrow();
+
+    // Ensure records list is initialized
+    if (exam.getRecords() == null) {
+      exam.setRecords(new java.util.ArrayList<>());
+    }
+
+    // Build recordMap, creating records if they don't exist
     Map<String, ExamRecordEntity> recordMap =
         exam.getRecords().stream()
             .collect(Collectors.toMap(ExamRecordEntity::getQuestionId, r -> r));
+
+    // Ensure all questions from paper have records
+    if (paper.getItems() != null && !paper.getItems().isEmpty()) {
+      for (PaperItemEntity item : paper.getItems()) {
+        if ("QUESTION".equals(item.getItemType()) && !recordMap.containsKey(item.getQuestionId())) {
+          ExamRecordEntity record = new ExamRecordEntity();
+          record.setQuestionId(item.getQuestionId());
+          exam.getRecords().add(record);
+          recordMap.put(item.getQuestionId(), record);
+        }
+      }
+    } else if (paper.getQuestionIds() != null) {
+      for (String qId : paper.getQuestionIds()) {
+        if (!recordMap.containsKey(qId)) {
+          ExamRecordEntity record = new ExamRecordEntity();
+          record.setQuestionId(qId);
+          exam.getRecords().add(record);
+          recordMap.put(qId, record);
+        }
+      }
+    }
 
     if (request.getGrades() != null) {
       for (ManualGradeRequestGradesInner grade : request.getGrades()) {
@@ -208,8 +276,6 @@ public class ExamService {
         }
       }
     }
-
-    PaperEntity paper = paperRepository.findById(exam.getPaperId()).orElseThrow();
 
     double totalMaxScore = 0;
     double totalUserScore = 0;
