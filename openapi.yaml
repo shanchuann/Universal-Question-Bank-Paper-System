@@ -117,7 +117,7 @@ paths:
           name: type
           schema:
             type: string
-            enum: [SINGLE_CHOICE, MULTI_CHOICE, TRUE_FALSE, FILL_BLANK, SHORT_ANSWER]
+            enum: [SINGLE_CHOICE, MULTI_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE, FILL_BLANK, SHORT_ANSWER]
         - in: query
           name: difficulty
           schema:
@@ -702,7 +702,11 @@ components:
           type: string
         type:
           type: string
-          enum: [SINGLE_CHOICE, MULTI_CHOICE, TRUE_FALSE, FILL_BLANK, SHORT_ANSWER]
+          enum: [SINGLE_CHOICE, MULTI_CHOICE, MULTIPLE_CHOICE, TRUE_FALSE, FILL_BLANK, SHORT_ANSWER]
+        tags:
+          type: array
+          items:
+            type: string
         stem:
           type: string
         options:
@@ -773,6 +777,14 @@ components:
     QuestionUpdateRequest:
       type: object
       properties:
+        subjectId:
+          type: string
+        type:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
         stem:
           type: string
         options:
