@@ -249,7 +249,7 @@ const startExam = async () => {
     exam.value = response.data
     // Initialize answers
     exam.value?.paper.questions.forEach(q => {
-      if (q.type === 'MULTIPLE_CHOICE') {
+      if (q.type === 'MULTIPLE_CHOICE' || q.type === 'MULTI_CHOICE') {
         answers.value[q.id] = []
       } else if (q.type === 'FILL_BLANK') {
         // Initialize with empty strings for each blank found in stem
@@ -330,6 +330,7 @@ const isSelected = (qId: string, option: string) => {
 const questionTypeLabels: Record<string, string> = {
   SINGLE_CHOICE: '单选题',
   MULTIPLE_CHOICE: '多选题',
+  MULTI_CHOICE: '多选题',
   TRUE_FALSE: '判断题',
   FILL_BLANK: '填空题',
   SHORT_ANSWER: '简答题',
@@ -385,7 +386,6 @@ const questionTypeLabels: Record<string, string> = {
       <div class="google-card exam-header-card">
         <div class="header-content">
           <h2>{{ exam.paper.title }}</h2>
-          <p class="subtitle">请认真作答以下所有题目</p>
         </div>
         <div v-if="submitted" class="score-badge">
           <span class="score-label">得分</span>
@@ -417,7 +417,7 @@ const questionTypeLabels: Record<string, string> = {
               </div>
               
               <div class="options-grid">
-                <template v-if="['SINGLE_CHOICE', 'MULTIPLE_CHOICE', 'TRUE_FALSE'].includes(itemData.item.data.type)">
+                <template v-if="['SINGLE_CHOICE', 'MULTIPLE_CHOICE', 'MULTI_CHOICE', 'TRUE_FALSE'].includes(itemData.item.data.type)">
                   <div v-if="(!itemData.item.data.options || itemData.item.data.options.length === 0) && itemData.item.data.type !== 'TRUE_FALSE'" class="no-options-warning">
                     (错误：没有可用选项)
                   </div>
@@ -425,7 +425,7 @@ const questionTypeLabels: Record<string, string> = {
                       <label v-for="option in (itemData.item.data.options && itemData.item.data.options.length > 0 ? itemData.item.data.options : ['True', 'False'])" :key="option" class="option-item" :class="{ 'selected': isSelected(itemData.item.data.id, option) }">
                         <div class="input-wrapper">
                           <input 
-                            v-if="itemData.item.data.type === 'MULTIPLE_CHOICE'"
+                            v-if="itemData.item.data.type === 'MULTIPLE_CHOICE' || itemData.item.data.type === 'MULTI_CHOICE'"
                             type="checkbox" 
                             :name="'q-' + itemData.item.data.id" 
                             :value="option" 
@@ -512,7 +512,6 @@ const questionTypeLabels: Record<string, string> = {
   max-width: 500px;
   margin: 40px auto;
   padding: 40px;
-  border-top: 8px solid #1a73e8;
 }
 
 .card-header {
@@ -594,7 +593,6 @@ const questionTypeLabels: Record<string, string> = {
   align-items: center;
   padding: 24px 32px;
   margin-bottom: 24px;
-  border-top: 8px solid #1a73e8;
 }
 
 .exam-header-card h2 {
@@ -606,30 +604,33 @@ const questionTypeLabels: Record<string, string> = {
 }
 
 .score-badge {
-  background-color: #f8f9fa;
-  padding: 12px 20px;
-  border-radius: 8px;
+  background-color: #e8f0fe;
+  padding: 16px 24px;
+  border-radius: 12px;
   text-align: center;
-  border: 1px solid #dadce0;
+  border: none;
+  box-shadow: 0 1px 2px rgba(60,64,67,0.3);
 }
 
 .score-label {
   display: block;
-  font-size: 12px;
-  color: #5f6368;
-  text-transform: uppercase;
+  font-size: 14px;
+  color: #1a73e8;
   font-weight: 500;
+  margin-bottom: 4px;
 }
 
 .score-value {
-  font-size: 24px;
-  font-weight: 400;
+  font-size: 32px;
+  font-weight: 500;
   color: #1a73e8;
+  line-height: 1.2;
 }
 
 .score-total {
-  font-size: 14px;
-  color: #5f6368;
+  font-size: 16px;
+  color: #1a73e8;
+  opacity: 0.8;
 }
 
 .question-card {

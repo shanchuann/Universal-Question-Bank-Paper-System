@@ -119,7 +119,7 @@ onUnmounted(() => {
           class="dropdown-item create-item"
           @click.stop="handleCreate"
         >
-          <span class="plus-icon">+</span> Create "{{ searchQuery }}"
+          Create "{{ searchQuery }}"
         </div>
 
         <div v-if="filteredOptions.length === 0 && !showCreateOption" class="no-results">

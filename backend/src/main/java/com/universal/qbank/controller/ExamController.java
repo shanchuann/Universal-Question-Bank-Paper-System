@@ -249,21 +249,36 @@ public class ExamController {
     }
 
     PaperEntity paper = paperRepository.findById(exam.getPaperId()).orElse(null);
-    if (paper == null) {
-        // Paper deleted, return basic info
-        return resp;
+    
+    List<String> qIds = new ArrayList<>();
+    Map<String, Double> scoreMap = new java.util.HashMap<>();
+    
+    // Try to get question IDs from paper
+    if (paper != null) {
+        if (paper.getQuestionIds() != null && !paper.getQuestionIds().isEmpty()) {
+            qIds = new ArrayList<>(paper.getQuestionIds());
+        }
+        // Fallback to items if questionIds is empty
+        if (qIds.isEmpty() && paper.getItems() != null && !paper.getItems().isEmpty()) {
+            for (PaperItemEntity item : paper.getItems()) {
+                if ("QUESTION".equals(item.getItemType())) {
+                    qIds.add(item.getQuestionId());
+                    scoreMap.put(item.getQuestionId(), item.getScore());
+                }
+            }
+        }
     }
-
-    List<String> qIds = paper.getQuestionIds();
-    // Fallback to items if questionIds is empty
-    if ((qIds == null || qIds.isEmpty()) && paper.getItems() != null) {
-        qIds = paper.getItems().stream()
-            .filter(i -> "QUESTION".equals(i.getItemType()))
-            .map(PaperItemEntity::getQuestionId)
+    
+    // Fallback: get question IDs from exam records if paper has no questions
+    if (qIds.isEmpty() && exam.getRecords() != null && !exam.getRecords().isEmpty()) {
+        qIds = exam.getRecords().stream()
+            .map(ExamRecordEntity::getQuestionId)
+            .filter(id -> id != null)
+            .distinct()
             .collect(Collectors.toList());
     }
 
-    if (qIds == null || qIds.isEmpty()) {
+    if (qIds.isEmpty()) {
         return resp;
     }
 
@@ -283,7 +298,7 @@ public class ExamController {
 
     List<ExamQuestion> examQuestions = new ArrayList<>();
 
-    if (paper.getItems() != null && !paper.getItems().isEmpty()) {
+    if (paper != null && paper.getItems() != null && !paper.getItems().isEmpty()) {
         // Use items to drive the list (preserves order and score)
         for (PaperItemEntity item : paper.getItems()) {
             if ("QUESTION".equals(item.getItemType())) {
@@ -321,7 +336,9 @@ public class ExamController {
                  eq.setQuestionId(q.getId());
                  eq.setStem(q.getStem());
                  eq.setType(q.getType());
-                 eq.setScore(java.math.BigDecimal.ONE); // Default score
+                 // Use score from scoreMap if available
+                 Double maxScore = scoreMap.getOrDefault(qId, 1.0);
+                 eq.setScore(java.math.BigDecimal.valueOf(maxScore));
 
                  if (q.getOptionsJson() != null) {
                     List<QuestionOption> opts = parseOptions(q.getOptionsJson(), rng);

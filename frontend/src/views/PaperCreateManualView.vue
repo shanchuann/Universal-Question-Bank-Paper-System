@@ -205,7 +205,7 @@ const resetDragState = () => {
       <div class="toolbar">
         <span class="total-score">总分: {{ totalScore }}</span>
         <button @click="addSection" class="google-btn text-btn">
-          <span class="material-icon">+</span> 添加分区标题
+          添加分区标题
         </button>
       </div>
 
@@ -237,8 +237,12 @@ const resetDragState = () => {
                 draggable="true"
                 @dragstart="onDragStart($event, index)"
                 @dragend="onDragEnd"
-              >⋮⋮</span>
-              <button @click="removeItem(index)" class="control-btn delete-btn" title="移除">×</button>
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+              </span>
+              <button @click="removeItem(index)" class="control-btn delete-btn" title="移除">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
             </div>
 
             <div v-if="item.type === 'SECTION'" class="item-body section-body">
@@ -276,7 +280,7 @@ const resetDragState = () => {
   max-width: 800px;
   margin: 0 auto;
   padding: 40px;
-  border-top: 8px solid #1a73e8; /* Google Forms style top border */
+  /* border-top: 8px solid #1a73e8; Google Forms style top border */
 }
 
 .card-header {
@@ -362,6 +366,15 @@ h1 {
 .section-item {
   background-color: #f8f9fa;
   border-left: 4px solid #1a73e8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-item .item-controls {
+  position: static;
+  margin-left: 12px;
+  order: 1;
 }
 
 .item-controls {
@@ -369,7 +382,12 @@ h1 {
   right: 8px;
   top: 8px;
   display: flex;
+  align-items: center;
   gap: 4px;
+}
+
+.section-item .item-body {
+  flex: 1;
 }
 
 .control-btn {

@@ -204,7 +204,7 @@ const editPaper = () => {
   max-width: 800px;
   margin: 0 auto 32px;
   padding: 40px;
-  border-top: 8px solid #1a73e8;
+  /* border-top: 8px solid #1a73e8; */
 }
 
 .card-header {
