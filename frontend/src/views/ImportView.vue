@@ -195,7 +195,7 @@ const importAll = async () => {
             <!-- Answer for Fill Blank / Short Answer -->
             <div class="answer-preview" v-if="['FILL_BLANK', 'SHORT_ANSWER'].includes(q.type)">
               <div class="form-group">
-                <label>正确答案</label>
+                <label>参考答案（可选）</label>
                 <textarea 
                   class="google-input" 
                   rows="2" 

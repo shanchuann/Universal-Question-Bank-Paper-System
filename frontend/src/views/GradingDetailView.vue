@@ -135,11 +135,11 @@ onMounted(fetchExam)
 <template>
   <div class="grading-container">
     <div class="header-row">
-      <button @click="router.back()" class="google-btn secondary">
+      <button @click="router.back()" class="google-btn secondary-btn">
         <span class="icon">←</span> 返回
       </button>
       <h1>阅卷: 考试 #{{ examId }}</h1>
-      <button @click="submitGrades" class="google-btn primary" :disabled="saving || !exam?.questions?.length">
+      <button @click="submitGrades" class="google-btn primary-btn" :disabled="saving || !exam?.questions?.length">
         {{ saving ? '保存中...' : '提交评分' }}
       </button>
     </div>
@@ -151,7 +151,7 @@ onMounted(fetchExam)
     
     <div v-else-if="error" class="error-state">
       <p>{{ error }}</p>
-      <button @click="fetchExam" class="google-btn secondary">重试</button>
+      <button @click="fetchExam" class="google-btn secondary-btn">重试</button>
     </div>
     
     <div v-else-if="exam" class="exam-content">
@@ -218,9 +218,10 @@ onMounted(fetchExam)
         
         <!-- 非选择题答案 -->
         <div class="answer-section" v-if="!q.options || q.options.length === 0">
-          <div class="correct-answer" v-if="getCorrectAnswer(q.options)">
+          <div class="correct-answer">
             <strong>参考答案:</strong>
-            <span>{{ getCorrectAnswer(q.options) }}</span>
+            <span v-if="getCorrectAnswer(q.options)">{{ getCorrectAnswer(q.options) }}</span>
+            <span v-else class="text-gray-500 italic">（无参考答案，请根据实际情况评分）</span>
           </div>
           <div class="user-answer-box">
             <strong>学生答案:</strong>
@@ -270,7 +271,7 @@ onMounted(fetchExam)
         <div class="final-score">
           总得分: <strong>{{ totalScore.toFixed(1) }}</strong> / {{ maxTotalScore }} 分
         </div>
-        <button @click="submitGrades" class="google-btn primary large" :disabled="saving">
+        <button @click="submitGrades" class="google-btn primary-btn" :disabled="saving">
           {{ saving ? '保存中...' : '提交评分' }}
         </button>
       </div>

@@ -352,12 +352,14 @@ const handleSubmit = async () => {
             { text: 'False', isCorrect: form.value.answer === 'False' }
         ];
     } else if (form.value.type === 'FILL_BLANK') {
+        // 填空题：允许答案为空（不设标准答案）
         apiOptions = form.value.options.map(optText => ({
             text: optText,
             isCorrect: true
         }));
     } else if (form.value.type === 'SHORT_ANSWER') {
-         apiOptions = [{ text: form.value.answer, isCorrect: true }];
+         // 简答题：允许答案为空，默认为需人工判卷
+         apiOptions = [{ text: form.value.answer || '', isCorrect: true }];
     }
 
     // Construct payload strictly matching backend expectations
@@ -489,7 +491,7 @@ const handleSubmit = async () => {
            <label>正确答案（按顺序）</label>
            <div v-for="(_opt, idx) in form.options" :key="idx" class="option-row">
               <span class="option-label">{{ idx + 1 }}.</span>
-              <input v-model="form.options[idx]" type="text" required placeholder="填空答案" class="google-input" />
+              <input v-model="form.options[idx]" type="text" placeholder="填空答案（可选）" class="google-input" />
            </div>
            <p v-if="form.options.length === 0" class="helper-text">在题干中输入"_____"添加空</p>
         </div>
@@ -531,7 +533,7 @@ const handleSubmit = async () => {
           </div>
 
           <!-- Text Answer -->
-          <input v-else v-model="form.answer" type="text" required placeholder="填写正确答案" class="google-input" />
+          <input v-else v-model="form.answer" type="text" placeholder="参考答案（可选，用于自动评分或阅卷参考）" class="google-input" />
         </div>
 
         <div class="form-group full-width">
