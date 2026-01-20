@@ -277,10 +277,10 @@ const resetDragState = () => {
 
 <style scoped>
 .form-card {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 40px;
-  /* border-top: 8px solid #1a73e8; Google Forms style top border */
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .card-header {
@@ -288,16 +288,17 @@ const resetDragState = () => {
 }
 
 h1 {
-  font-family: 'Google Sans', sans-serif;
+  font-family: system-ui, -apple-system, sans-serif;
   font-size: 32px;
-  font-weight: 400;
-  color: #202124;
+  font-weight: 600;
+  color: var(--line-text-primary);
   margin-bottom: 8px;
+  letter-spacing: -0.5px;
 }
 
 .subtitle {
   font-size: 14px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .form-group {
@@ -308,39 +309,47 @@ h1 {
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #202124;
+  color: var(--line-text-primary);
   margin-bottom: 8px;
 }
 
 .google-input {
   width: 100%;
-  padding: 10px 12px;
+  padding: 12px 16px;
   font-size: 16px;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  transition: border-color 0.2s;
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-md);
+  transition: all 0.2s;
+  background: var(--line-bg-soft);
+  color: var(--line-text-primary);
 }
 
 .google-input:focus {
-  border-color: #1a73e8;
+  border-color: var(--line-primary);
+  background: var(--line-card-bg);
+  box-shadow: 0 0 0 2px var(--line-primary-10);
   outline: none;
-  border-width: 2px;
-  padding: 9px 11px;
 }
 
 .toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #dadce0;
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line-border);
 }
 
 .total-score {
-  font-weight: 500;
-  color: #1a73e8;
+  font-weight: 600;
+  color: var(--line-primary);
   font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--line-primary-10);
+  padding: 6px 16px;
+  border-radius: var(--line-radius-full);
 }
 
 .items-list {
@@ -351,21 +360,22 @@ h1 {
 }
 
 .paper-item {
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-  padding: 16px;
-  background: #fff;
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-lg);
+  padding: 20px;
+  background: var(--line-card-bg);
   position: relative;
-  transition: box-shadow 0.2s;
+  transition: all 0.2s;
 }
 
 .paper-item:hover {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+  box-shadow: var(--line-shadow-md);
+  border-color: var(--line-primary-30);
 }
 
 .section-item {
-  background-color: #f8f9fa;
-  border-left: 4px solid #1a73e8;
+  background-color: var(--line-bg-soft);
+  border-left: 4px solid var(--line-primary);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -379,11 +389,11 @@ h1 {
 
 .item-controls {
   position: absolute;
-  right: 8px;
-  top: 8px;
+  right: 12px;
+  top: 12px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
 .section-item .item-body {
@@ -393,30 +403,31 @@ h1 {
 .control-btn {
   background: transparent;
   border: none;
-  color: #5f6368;
+  color: var(--line-text-secondary);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  width: 24px;
-  height: 24px;
+  padding: 6px;
+  border-radius: var(--line-radius-md);
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s;
 }
 
 .control-btn:hover:not(:disabled) {
-  background-color: #f1f3f4;
-  color: #202124;
+  background-color: var(--line-bg-soft);
+  color: var(--line-text-primary);
 }
 
 .control-btn:disabled {
-  color: #dadce0;
-  cursor: default;
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .delete-btn:hover {
-  background-color: #fce8e6;
-  color: #d93025;
+  background-color: #fef2f2;
+  color: #dc2626;
 }
 
 .section-input {
@@ -424,63 +435,73 @@ h1 {
   border: none;
   background: transparent;
   font-size: 18px;
-  font-weight: 500;
-  color: #202124;
+  font-weight: 600;
+  color: var(--line-text-primary);
   border-bottom: 1px solid transparent;
   padding: 4px 0;
+  transition: border-color 0.2s;
 }
 
 .section-input:focus {
   outline: none;
-  border-bottom-color: #1a73e8;
+  border-bottom-color: var(--line-primary);
 }
 
 .question-preview {
-  font-size: 14px;
-  color: #202124;
-  margin-bottom: 12px;
-  padding-right: 80px; /* Space for controls */
+  font-size: 16px;
+  color: var(--line-text-primary);
+  margin-bottom: 16px;
+  padding-right: 90px;
+  line-height: 1.5;
 }
 
 .item-meta {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .chip {
-  background-color: #f1f3f4;
-  padding: 2px 8px;
-  border-radius: 12px;
+  background-color: var(--line-bg-soft);
+  padding: 4px 10px;
+  border-radius: var(--line-radius-full);
   font-size: 12px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
+  border: 1px solid var(--line-border);
 }
 
 .score-input-wrapper {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   font-size: 14px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .score-input {
-  width: 60px;
-  padding: 4px 8px;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
+  width: 70px;
+  padding: 6px 12px;
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-md);
   text-align: right;
+  background: var(--line-card-bg);
+  color: var(--line-text-primary);
+}
+
+.score-input:focus {
+  border-color: var(--line-primary);
+  outline: none;
 }
 
 .google-btn {
   border: none;
-  border-radius: 4px;
-  padding: 8px 24px;
-  font-family: 'Google Sans', sans-serif;
+  border-radius: var(--line-radius-md);
+  padding: 10px 24px;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -488,51 +509,63 @@ h1 {
 }
 
 .primary-btn {
-  background-color: #1a73e8;
+  background-color: var(--line-primary);
   color: white;
+  box-shadow: 0 2px 4px rgba(14, 165, 233, 0.2);
 }
 
 .primary-btn:hover {
-  background-color: #1557b0;
-  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+  background-color: var(--line-primary-hover);
+  transform: translateY(-1px);
 }
 
 .text-btn {
   background-color: transparent;
-  color: #1a73e8;
+  color: var(--line-text-secondary);
 }
 
 .text-btn:hover {
-  background-color: #f6fafe;
+  background-color: var(--line-bg-soft);
+  color: var(--line-primary);
 }
 
 .full-width {
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   font-size: 16px;
 }
 
 .error {
-  color: #d93025;
+  color: #dc2626;
   margin-top: 16px;
   font-size: 14px;
+  padding: 12px;
+  background: #fef2f2;
+  border-radius: var(--line-radius-md);
+  border: 1px solid #fee2e2;
 }
 
 .empty-state {
   text-align: center;
-  padding: 40px;
-  color: #5f6368;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px dashed #dadce0;
+  padding: 48px;
+  color: var(--line-text-secondary);
+  background: var(--line-bg-soft);
+  border-radius: var(--line-radius-lg);
+  border: 2px dashed var(--line-border);
 }
 
 .drag-handle {
   cursor: grab;
   font-size: 20px;
-  color: #9aa0a6;
-  margin-right: 8px;
+  color: var(--line-text-secondary);
+  margin-right: 12px;
   user-select: none;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.paper-item:hover .drag-handle {
+  opacity: 1;
 }
 
 .drag-handle:active {
@@ -541,8 +574,8 @@ h1 {
 
 .paper-item.dragging {
   opacity: 0.5;
-  background: #f1f3f4;
-  border: 2px dashed #1a73e8;
+  background: var(--line-bg-soft);
+  border: 2px dashed var(--line-primary);
 }
 
 .drop-target-top {
@@ -556,7 +589,7 @@ h1 {
   left: 0;
   right: 0;
   height: 4px;
-  background: #1a73e8;
+  background: var(--line-primary);
   border-radius: 2px;
   pointer-events: none;
   z-index: 10;
@@ -573,9 +606,14 @@ h1 {
   left: 0;
   right: 0;
   height: 4px;
-  background: #1a73e8;
+  background: var(--line-primary);
   border-radius: 2px;
   pointer-events: none;
   z-index: 10;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

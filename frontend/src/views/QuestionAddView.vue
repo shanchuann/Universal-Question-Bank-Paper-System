@@ -575,10 +575,12 @@ const handleSubmit = async () => {
   </div>
 </template>
 
+
 <style scoped>
 .add-question-container {
   max-width: 800px;
   margin: 32px auto;
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .form-card {
@@ -591,26 +593,28 @@ const handleSubmit = async () => {
 }
 
 .card-header h1 {
-  font-family: 'Google Sans', sans-serif;
+  font-family: system-ui, -apple-system, sans-serif;
   font-size: 24px;
-  color: #202124;
+  font-weight: 600;
+  color: var(--line-text-primary);
   margin-bottom: 8px;
+  letter-spacing: -0.5px;
 }
 
 .subtitle {
-  color: #5f6368;
+  color: var(--line-text-secondary);
   font-size: 14px;
 }
 
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 24px;
+  gap: 24px;
+  margin-bottom: 32px;
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .full-width {
@@ -621,83 +625,145 @@ label {
   display: block;
   margin-bottom: 8px;
   font-weight: 500;
-  color: #3c4043;
+  color: var(--line-text-primary);
   font-size: 14px;
+  transition: color 0.2s;
 }
 
 .helper-text {
   display: block;
   font-size: 12px;
-  color: #5f6368;
-  margin-top: 4px;
+  color: var(--line-text-secondary);
+  margin-top: 6px;
 }
 
 .editor-wrapper {
-  background: #fff;
-  border-radius: 4px;
+  background: var(--line-card-bg);
+  border-radius: var(--line-radius-md);
   overflow: hidden;
+  transition: box-shadow 0.2s;
+  border: 1px solid var(--line-border);
+}
+
+.editor-wrapper:focus-within {
+  border-color: var(--line-primary);
+  box-shadow: 0 0 0 2px var(--line-primary-10);
 }
 
 /* Quill Overrides */
 :deep(.ql-toolbar) {
-  border-color: #dadce0 !important;
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
-  background-color: #f8f9fa;
+  border: none !important;
+  border-bottom: 1px solid var(--line-border) !important;
+  background-color: var(--line-bg-soft);
+  font-family: inherit;
 }
 
 :deep(.ql-container) {
-  border-color: #dadce0 !important;
-  border-bottom-left-radius: 4px;
-  border-bottom-right-radius: 4px;
-  font-family: 'Roboto', sans-serif;
+  border: none !important;
+  font-family: inherit;
   font-size: 16px;
   min-height: 150px;
+  color: var(--line-text-primary);
+}
+
+:deep(.ql-editor) {
+  color: var(--line-text-primary);
+}
+
+:deep(.ql-stroke) {
+  stroke: var(--line-text-secondary) !important;
+}
+
+:deep(.ql-fill) {
+  fill: var(--line-text-secondary) !important;
+}
+
+:deep(.ql-picker-label) {
+  color: var(--line-text-secondary) !important;
 }
 
 .options-section {
-  margin-bottom: 24px;
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #dadce0;
+  margin-bottom: 32px;
+  background: var(--line-bg-soft);
+  padding: 24px;
+  border-radius: var(--line-radius-lg);
+  border: 1px dashed var(--line-border);
 }
 
 .option-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .option-label {
-  font-weight: 500;
-  color: #5f6368;
+  font-weight: 600;
+  color: var(--line-text-secondary);
   width: 24px;
 }
 
-/* .remove-opt handled globally in style.css */
-
 .radio-group, .checkbox-group {
   display: flex;
-  gap: 24px;
+  gap: 16px;
   padding: 8px 0;
+  flex-wrap: wrap;
 }
 
 .radio-label, .checkbox-label {
-  display: flex;
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
   cursor: pointer;
+  min-width: 48px;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: var(--line-radius-md);
+  border: 1px solid var(--line-border);
+  background: var(--line-bg-soft);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.radio-label:hover, .checkbox-label:hover {
+  background: var(--line-bg-hover);
+  border-color: var(--line-text-secondary);
+  color: var(--line-text-primary);
+  transform: translateY(-1px);
+}
+
+/* Hide native input but keep accessibility if possible (here mostly generic) */
+.radio-label input, .checkbox-label input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Active State */
+.radio-label:has(input:checked), 
+.checkbox-label:has(input:checked) {
+  background: var(--line-primary);
+  border-color: var(--line-primary);
+  box-shadow: var(--line-shadow-md);
 }
 
 .radio-text, .checkbox-text {
-  font-size: 14px;
-  color: #3c4043;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--line-text-secondary);
+  transition: color 0.2s;
+}
+
+.radio-label:has(input:checked) .radio-text,
+.checkbox-label:has(input:checked) .checkbox-text {
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .form-actions {
-  margin-top: 32px;
+  margin-top: 40px;
   display: flex;
   gap: 16px;
   justify-content: flex-end;
@@ -706,30 +772,34 @@ label {
 /* Toast 提示样式 */
 .toast {
   position: fixed;
-  bottom: 24px;
+  bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 24px;
-  border-radius: 8px;
+  gap: 12px;
+  padding: 12px 24px;
+  border-radius: var(--line-radius-full);
   font-size: 14px;
   font-weight: 500;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: var(--line-shadow-lg);
   z-index: 1000;
+  background: var(--line-card-bg);
+  border: 1px solid var(--line-border);
+  color: var(--line-text-primary);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .toast-success {
-  background: #e6f4ea;
-  color: #137333;
-  border: 1px solid #ceead6;
+  border-color: #10b981;
+  color: #059669;
+  background: #ecfdf5;
 }
 
 .toast-error {
-  background: #fce8e6;
-  color: #c5221f;
-  border: 1px solid #f5c6cb;
+  border-color: #ef4444;
+  color: #dc2626;
+  background: #fef2f2;
 }
 
 .toast svg {
@@ -753,4 +823,17 @@ label {
 }
 
 .mt-2 { margin-top: 8px; }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px) translateX(-50%); }
+  to { opacity: 1; transform: translateY(0) translateX(-50%); }
+}
+
+.add-question-container {
+    animation: fadeIn 0.5s ease-out;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 </style>

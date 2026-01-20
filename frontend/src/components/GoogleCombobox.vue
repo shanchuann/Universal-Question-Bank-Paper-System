@@ -134,55 +134,67 @@ onUnmounted(() => {
 .google-combobox-container {
   position: relative;
   width: 100%;
-  font-family: 'Roboto', 'Google Sans', sans-serif;
+  font-family: inherit;
 }
 
 .combo-label {
   display: block;
-  font-size: 12px;
-  color: #5f6368;
-  margin-bottom: 4px;
+  font-size: 14px;
+  color: var(--line-text-primary);
+  margin-bottom: 6px;
   font-weight: 500;
 }
 
 .combo-wrapper {
-  min-height: 40px;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  background-color: #fff;
+  min-height: 48px;
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-md);
+  background-color: var(--line-bg);
   display: flex;
-  align-items: flex-start; /* Align top for multi-line chips */
-  padding: 4px 12px; /* Changed from 4px 8px to match input/select */
+  align-items: flex-start;
+  padding: 8px 12px;
   cursor: text;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   flex-wrap: wrap;
   box-sizing: border-box;
 }
 
+.combo-wrapper:hover {
+  border-color: var(--line-primary-hover);
+  background-color: var(--line-bg-hover);
+}
+
 .combo-wrapper.is-focused {
-  border-color: #1a73e8;
-  border-width: 2px;
-  padding: 3px 11px; /* Adjust for border width */
+  border-color: var(--line-primary);
+  box-shadow: 0 0 0 2px var(--line-primary-10);
+  background-color: var(--line-bg);
 }
 
 .chips-area {
   flex: 1;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
   align-items: center;
 }
 
 .chip {
-  background-color: #e8f0fe;
-  color: #1a73e8;
-  border-radius: 16px;
+  background-color: var(--line-bg-soft);
+  color: var(--line-text-primary);
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-full);
   padding: 4px 8px 4px 12px;
   font-size: 14px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   margin: 2px 0;
+  transition: all 0.2s;
+}
+
+.chip:hover {
+  border-color: var(--line-primary);
+  background-color: var(--line-bg-hover);
 }
 
 .chip-remove {
@@ -192,72 +204,85 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
+  color: var(--line-text-secondary);
+  transition: all 0.2s;
 }
 
 .chip-remove:hover {
-  background-color: rgba(26, 115, 232, 0.1);
+  background-color: var(--line-error);
+  color: white;
 }
 
 .combo-input {
   border: none;
   outline: none;
-  font-size: 14px;
-  color: #202124;
+  font-size: 15px;
+  color: var(--line-text-primary);
   flex: 1;
-  min-width: 60px;
-  padding: 6px 0;
+  min-width: 80px;
+  padding: 4px 0;
   background: transparent;
+  font-family: inherit;
 }
 
 .combo-arrow {
-  font-size: 10px;
-  color: #5f6368;
-  padding: 10px 4px;
+  display: flex;
+  align-items: center;
+  color: var(--line-text-secondary);
+  padding: 8px 0 8px 8px; /* Visual separation */
   cursor: pointer;
 }
 
 .options-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background-color: #fff;
-  border: 1px solid #dadce0;
-  border-top: none;
-  border-bottom-left-radius: 4px;
-  border-bottom-right-radius: 4px;
-  box-shadow: 0 4px 6px rgba(32, 33, 36, 0.28);
+  background-color: var(--line-card-bg);
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-md);
+  box-shadow: var(--line-shadow-lg);
   z-index: 1000;
   max-height: 250px;
   overflow-y: auto;
-  margin-top: 1px;
+  padding: 6px;
+  animation: slideDown 0.2s ease-out;
 }
 
 .dropdown-item {
-  padding: 10px 16px;
+  padding: 10px 12px;
   font-size: 14px;
-  color: #202124;
+  color: var(--line-text-primary);
   cursor: pointer;
+  border-radius: var(--line-radius-sm);
+  transition: background-color 0.1s;
 }
 
 .dropdown-item:hover {
-  background-color: #f1f3f4;
+  background-color: var(--line-bg-soft);
 }
 
 .create-item {
-  color: #1a73e8;
+  color: var(--line-primary);
   font-weight: 500;
-  border-top: 1px solid #f1f3f4;
+  border-top: 1px solid var(--line-border);
+  margin-top: 4px;
+  padding-top: 10px;
 }
 
 .no-results {
-  padding: 10px 16px;
+  padding: 10px 12px;
   font-size: 14px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
   font-style: italic;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .fade-enter-active,

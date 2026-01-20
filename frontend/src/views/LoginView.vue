@@ -29,12 +29,12 @@ const handleLogin = async () => {
 
 <template>
   <div class="login-wrapper">
-    <div class="login-container google-card">
+    <div class="login-container line-card">
       <div class="logo-area">
-        <span class="google-logo">G</span>
+        <span class="app-logo">UQ</span>
       </div>
-      <h1>登录</h1>
-      <p class="subtitle">继续使用题库系统</p>
+      <h1>欢迎回来</h1>
+      <p class="subtitle">登录以继续</p>
       
       <form @submit.prevent="handleLogin">
         <div class="form-group">
@@ -66,95 +66,73 @@ const handleLogin = async () => {
 
 .login-container {
   width: 100%;
-  max-width: 450px;
-  padding: 48px 40px 36px;
+  max-width: 400px;
+  padding: 48px 40px;
   text-align: center;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
+  /* border & shadow handled by line-card class */
 }
 
 .logo-area {
-  margin-bottom: 10px;
+  margin-bottom: 24px;
 }
 
-.google-logo {
-  font-family: 'Product Sans', 'Google Sans', sans-serif;
-  font-size: 24px;
-  font-weight: bold;
-  color: #4285f4; /* Or multi-color if we want to get fancy */
+.app-logo {
+  font-family: inherit;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--line-primary);
+  letter-spacing: -0.05em;
+  border: 2px solid var(--line-primary);
+  padding: 8px 12px;
+  border-radius: 8px;
 }
 
 h1 {
-  font-family: 'Google Sans', sans-serif;
   font-size: 24px;
-  font-weight: 400;
-  color: #202124;
+  font-weight: 600;
+  color: var(--line-text);
   margin-bottom: 8px;
 }
 
 .subtitle {
-  font-size: 16px;
-  color: #202124;
+  font-size: 15px;
+  color: var(--line-text-secondary);
   margin-bottom: 40px;
 }
 
 .form-group {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   text-align: left;
 }
 
+/* google-input is handled globally, but ensuring specific overrides if needed */
 .google-input {
-  width: 100%;
-  padding: 13px 15px;
-  font-size: 16px;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  color: #202124;
-  transition: border-color 0.2s;
-}
-
-.google-input:focus {
-  border-color: #1a73e8;
-  outline: none;
-  border-width: 2px;
-  padding: 12px 14px; /* Adjust for border width */
+  /* Inherits from global styles */
 }
 
 .actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 40px;
+  margin-top: 32px;
 }
 
 .create-account {
-  color: #1a73e8;
+  color: var(--line-primary);
   font-weight: 500;
   text-decoration: none;
   font-size: 14px;
-  border-radius: 4px;
-  padding: 6px 8px;
+  transition: opacity 0.2s;
 }
 
 .create-account:hover {
-  background-color: #f6fafe;
+  opacity: 0.8;
+  text-decoration: underline;
+  background: none;
 }
 
 .primary-btn {
-  background-color: #1a73e8;
-  color: white;
-  border: none;
-  padding: 10px 24px;
-  border-radius: 4px;
-  font-weight: 500;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.primary-btn:hover {
-  background-color: #1557b0;
-  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+  /* Inherits from global styles */
 }
 
 .error {

@@ -200,12 +200,25 @@ const editPaper = () => {
 </template>
 
 <style scoped>
+.container {
+  padding: 32px;
+  max-width: 900px;
+  margin: 0 auto;
+  animation: fadeIn 0.5s ease-out;
+}
+
 .generation-card {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto 32px;
   padding: 40px;
-  /* border-top: 8px solid #1a73e8; */
+  background: var(--line-card-bg);
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-lg);
+  box-shadow: var(--line-shadow-sm);
+  transition: all 0.2s;
 }
+
+.generation-card:hover { box-shadow: var(--line-shadow-md); }
 
 .card-header {
   text-align: center;
@@ -213,21 +226,22 @@ const editPaper = () => {
 }
 
 .card-header h1 {
-  font-family: 'Google Sans', sans-serif;
+  font-family: system-ui, -apple-system, sans-serif;
   font-size: 28px;
-  font-weight: 400;
+  font-weight: 600;
   margin-bottom: 8px;
-  color: #202124;
+  color: var(--line-text-primary);
+  letter-spacing: -0.5px;
 }
 
 .subtitle {
-  color: #5f6368;
+  color: var(--line-text-secondary);
   font-size: 16px;
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 24px;
   margin-bottom: 32px;
 }
@@ -237,64 +251,73 @@ const editPaper = () => {
   margin-bottom: 8px;
   font-weight: 500;
   font-size: 14px;
-  color: #202124;
+  color: var(--line-text-primary);
 }
 
 .google-input {
   width: 100%;
-  padding: 10px 12px;
+  padding: 12px 16px;
   font-size: 16px;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  transition: border-color 0.2s;
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-md);
+  transition: all 0.2s;
+  background: var(--line-bg-soft);
+  color: var(--line-text-primary);
 }
 
 .google-input:focus {
-  border-color: #1a73e8;
+  border-color: var(--line-primary);
+  background: var(--line-card-bg);
+  box-shadow: 0 0 0 2px var(--line-primary-10);
   outline: none;
-  border-width: 2px;
-  padding: 9px 11px;
 }
 
 .full-width {
   width: 100%;
   justify-content: center;
-  padding: 12px;
+  padding: 14px;
   font-size: 16px;
 }
 
 .message {
-  margin-top: 20px;
-  padding: 12px;
-  border-radius: 8px;
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: var(--line-radius-md);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   font-size: 14px;
+  font-weight: 500;
 }
 
 .success {
-  background-color: #e6f4ea;
-  color: #137333;
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #d1fae5;
 }
 
 .error {
-  background-color: #fce8e6;
-  color: #c5221f;
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fee2e2;
 }
 
 .result-card {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
   padding: 0;
   overflow: hidden;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-lg);
+  background: var(--line-card-bg);
+  box-shadow: var(--line-shadow-sm);
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .result-header {
-  padding: 24px;
-  background-color: #fff;
-  border-bottom: 1px solid #dadce0;
+  padding: 24px 32px;
+  background-color: var(--line-card-bg);
+  border-bottom: 1px solid var(--line-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -306,15 +329,15 @@ const editPaper = () => {
 }
 
 .result-header h2 {
-  font-family: 'Google Sans', sans-serif;
+  font-family: system-ui, -apple-system, sans-serif;
   font-size: 20px;
-  font-weight: 400;
+  font-weight: 600;
   margin-bottom: 4px;
-  color: #202124;
+  color: var(--line-text-primary);
 }
 
 .meta {
-  color: #5f6368;
+  color: var(--line-text-secondary);
   font-size: 13px;
 }
 
@@ -324,10 +347,15 @@ const editPaper = () => {
 
 .question-item {
   display: flex;
-  gap: 16px;
-  padding: 20px 24px;
-  border-bottom: 1px solid #f1f3f4;
-  background: #fff;
+  gap: 20px;
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--line-border);
+  background: var(--line-card-bg);
+  transition: background 0.2s;
+}
+
+.question-item:hover {
+  background: var(--line-bg-soft);
 }
 
 .question-item:last-child {
@@ -335,10 +363,10 @@ const editPaper = () => {
 }
 
 .q-index {
-  font-size: 16px;
-  font-weight: 500;
-  color: #5f6368;
-  min-width: 24px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--line-text-secondary);
+  min-width: 32px;
 }
 
 .q-content {
@@ -347,69 +375,72 @@ const editPaper = () => {
 
 .q-meta {
   display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 12px;
   align-items: center;
 }
 
 .chip {
-  padding: 2px 8px;
-  border-radius: 12px;
+  padding: 4px 10px;
+  border-radius: var(--line-radius-full);
   font-size: 12px;
-  font-weight: 500;
-  background-color: #f1f3f4;
-  color: #3c4043;
+  font-weight: 600;
+  background-color: var(--line-bg-soft);
+  color: var(--line-text-secondary);
+  border: 1px solid var(--line-border);
 }
 
-.chip.difficulty.easy { background-color: #e6f4ea; color: #137333; }
-.chip.difficulty.medium { background-color: #fef7e0; color: #b06000; }
-.chip.difficulty.hard { background-color: #fce8e6; color: #c5221f; }
+.chip.difficulty.easy { background-color: #ecfdf5; color: #059669; border-color: #d1fae5; }
+.chip.difficulty.medium { background-color: #fffbeb; color: #b45309; border-color: #fef3c7; }
+.chip.difficulty.hard { background-color: #fef2f2; color: #dc2626; border-color: #fee2e2; }
 
 .subject {
-  color: #5f6368;
+  color: var(--line-text-secondary);
   font-size: 12px;
   font-weight: 500;
   margin-left: auto;
+  font-family: monospace;
 }
 
 .q-stem {
-  font-size: 15px;
-  line-height: 1.5;
-  color: #202124;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--line-text-primary);
   margin-bottom: 8px;
 }
 
 .q-id {
   font-size: 11px;
-  color: #9aa0a6;
+  color: var(--line-text-secondary);
   font-family: monospace;
+  opacity: 0.7;
 }
 
 .advanced-settings {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
   padding: 24px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #dadce0;
+  background: var(--line-bg-soft);
+  border-radius: var(--line-radius-lg);
+  border: 1px solid var(--line-border);
 }
 
 .advanced-settings h3 {
   font-size: 16px;
   margin-bottom: 4px;
-  color: #202124;
-  font-weight: 500;
+  color: var(--line-text-primary);
+  font-weight: 600;
 }
 
 .hint {
-  font-size: 12px;
-  color: #5f6368;
-  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--line-text-secondary);
+  margin-bottom: 20px;
 }
 
 .type-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 16px;
+  gap: 20px;
 }
 
 @media (max-width: 768px) {
@@ -426,32 +457,38 @@ const editPaper = () => {
 
 .google-btn {
   border: none;
-  border-radius: 4px;
-  padding: 8px 24px;
-  font-family: 'Google Sans', sans-serif;
+  border-radius: var(--line-radius-md);
+  padding: 10px 24px;
+  font-family: inherit;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .primary-btn {
-  background-color: #1a73e8;
+  background-color: var(--line-primary);
   color: white;
+  box-shadow: 0 2px 4px rgba(14, 165, 233, 0.2);
 }
 
 .primary-btn:hover {
-  background-color: #1557b0;
-  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+  background-color: var(--line-primary-hover);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+  transform: translateY(-1px);
 }
 
 .text-btn {
   background-color: transparent;
-  color: #1a73e8;
+  color: var(--line-text-secondary);
 }
 
 .text-btn:hover {
-  background-color: #f6fafe;
+  background-color: var(--line-bg-soft);
+  color: var(--line-primary);
 }
 
 @media (max-width: 768px) {
@@ -468,5 +505,15 @@ const editPaper = () => {
   .result-header button {
     width: 100%;
   }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

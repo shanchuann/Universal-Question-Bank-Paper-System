@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import GoogleSelect from '@/components/GoogleSelect.vue'
 
 interface Organization {
   id: string
@@ -66,6 +67,17 @@ const typeIcons = {
   DEPARTMENT: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2V3zM22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7V3z"/></svg>`,
   CLASS: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>`
 }
+
+const typeOptions = [
+  { label: '学校', value: 'SCHOOL' },
+  { label: '学院', value: 'DEPARTMENT' },
+  { label: '班级', value: 'CLASS' }
+]
+
+const statusOptions = [
+  { label: '启用', value: 'ACTIVE' },
+  { label: '禁用', value: 'INACTIVE' }
+]
 
 // 过滤后的高校列表
 const filteredUniversities = computed(() => {
@@ -324,135 +336,113 @@ function copyInviteCode(code: string) {
 </script>
 
 <template>
-  <div class="org-manage-view">
-    <div class="page-header">
+  <div class="line-container page-container">
+    <div class="page-header center-header">
       <h1>组织架构管理</h1>
       <p class="subtitle">管理学校、学院、班级的层级结构</p>
     </div>
 
-    <div class="toolbar">
-      <button class="google-btn primary-btn" @click="openUniversityPicker">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-          <path d="M6 12v5c0 1 2 3 6 3s6-2 6-3v-5"/>
-        </svg>
+    <div class="toolbar-actions">
+      <button class="line-btn primary-btn" @click="openUniversityPicker">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1 2 3 6 3s6-2 6-3v-5"/></svg>
         从高校模板创建
       </button>
-      <button class="google-btn secondary-btn" @click="openAddForm(null, 'SCHOOL')">
+      <button class="line-btn outline-btn" @click="openAddForm(null, 'SCHOOL')">
         手动添加学校
       </button>
     </div>
 
-    <div class="content-card">
-      <div v-if="loading" class="loading">
+    <div class="line-card table-card">
+      <div v-if="loading" class="line-loading">
         <div class="spinner"></div>
-        <p>加载中...</p>
       </div>
       
       <div v-else-if="organizations.length === 0" class="empty-state">
-        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1">
-          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-          <path d="M6 12v5c0 1 2 3 6 3s6-2 6-3v-5"/>
-        </svg>
+        <div class="empty-icon">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+            <path d="M6 12v5c0 1 2 3 6 3s6-2 6-3v-5"/>
+          </svg>
+        </div>
         <h3>暂无组织数据</h3>
         <p>您可以从高校模板快速创建组织架构，或手动添加学校</p>
         <div class="empty-actions">
-          <button class="google-btn primary-btn" @click="openUniversityPicker">从高校模板创建</button>
-          <button class="google-btn text-btn" @click="openAddForm(null, 'SCHOOL')">手动添加学校</button>
+          <button class="line-btn primary-btn" @click="openUniversityPicker">从高校模板创建</button>
+          <button class="line-btn text-btn" @click="openAddForm(null, 'SCHOOL')">手动添加学校</button>
         </div>
       </div>
 
-      <div v-else class="org-tree">
+      <div v-else class="org-tree-list">
         <template v-for="school in organizations" :key="school.id">
-          <div class="org-node school-node">
-            <div class="node-content">
-              <span class="node-icon" v-html="typeIcons.SCHOOL"></span>
-              <span class="node-name">{{ school.name }}</span>
-              <span class="node-code">{{ school.code }}</span>
-              <span :class="['node-status', school.status.toLowerCase()]">{{ school.status === 'ACTIVE' ? '启用' : '停用' }}</span>
-              <div class="node-actions">
-                <button class="icon-btn" @click="openAddForm(school.id, 'DEPARTMENT')" title="添加学院">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
+          <!-- School Row -->
+          <div class="org-row school-row">
+            <div class="row-content">
+              <span class="row-icon school-icon" v-html="typeIcons.SCHOOL"></span>
+              <div class="row-info">
+                <span class="row-name">{{ school.name }}</span>
+                <span class="row-code">{{ school.code }}</span>
+              </div>
+              <span :class="['status-badge', school.status.toLowerCase()]">{{ school.status === 'ACTIVE' ? '启用' : '停用' }}</span>
+              <div class="row-actions">
+                <button class="action-btn" @click="openAddForm(school.id, 'DEPARTMENT')" title="添加学院">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 </button>
-                <button class="icon-btn" @click="openEditForm(school)" title="编辑">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
+                <button class="action-btn" @click="openEditForm(school)" title="编辑">
+                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>
-                <button class="icon-btn danger" @click="handleDelete(school.id)" title="删除">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                  </svg>
+                <button class="action-btn danger" @click="handleDelete(school.id)" title="删除">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                 </button>
               </div>
             </div>
 
             <!-- Departments -->
-            <div v-if="school.children?.length" class="children">
+            <div v-if="school.children?.length" class="children-block">
               <template v-for="dept in school.children" :key="dept.id">
-                <div class="org-node dept-node">
-                  <div class="node-content">
-                    <span class="node-icon" v-html="typeIcons.DEPARTMENT"></span>
-                    <span class="node-name">{{ dept.name }}</span>
-                    <span class="node-code">{{ dept.code }}</span>
-                    <div class="node-actions">
-                      <button class="icon-btn" @click="openAddForm(dept.id, 'CLASS')" title="添加班级">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <line x1="12" y1="5" x2="12" y2="19"></line>
-                          <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
+                <div class="org-row dept-row">
+                  <div class="row-content">
+                    <span class="tree-line"></span>
+                    <span class="row-icon dept-icon" v-html="typeIcons.DEPARTMENT"></span>
+                    <div class="row-info">
+                      <span class="row-name">{{ dept.name }}</span>
+                      <span class="row-code">{{ dept.code }}</span>
+                    </div>
+                    <div class="row-actions">
+                      <button class="action-btn" @click="openAddForm(dept.id, 'CLASS')" title="添加班级">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                       </button>
-                      <button class="icon-btn" @click="openEditForm(dept)" title="编辑">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
+                      <button class="action-btn" @click="openEditForm(dept)" title="编辑">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       </button>
-                      <button class="icon-btn danger" @click="handleDelete(dept.id)" title="删除">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <polyline points="3 6 5 6 21 6"></polyline>
-                          <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                        </svg>
+                      <button class="action-btn danger" @click="handleDelete(dept.id)" title="删除">
+                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                       </button>
                     </div>
                   </div>
 
                   <!-- Classes -->
-                  <div v-if="dept.children?.length" class="children">
-                    <div v-for="cls in dept.children" :key="cls.id" class="org-node class-node">
-                      <div class="node-content">
-                        <span class="node-icon" v-html="typeIcons.CLASS"></span>
-                        <span class="node-name">{{ cls.name }}</span>
-                        <span class="node-code">{{ cls.code }}</span>
-                        <span v-if="cls.inviteCode" class="invite-code" @click="copyInviteCode(cls.inviteCode!)" title="点击复制邀请码">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
-                          </svg>
+                  <div v-if="dept.children?.length" class="children-block">
+                    <div v-for="cls in dept.children" :key="cls.id" class="org-row class-row">
+                      <div class="row-content">
+                        <span class="tree-line"></span>
+                        <span class="row-icon class-icon" v-html="typeIcons.CLASS"></span>
+                        <div class="row-info">
+                          <span class="row-name">{{ cls.name }}</span>
+                          <span class="row-code">{{ cls.code }}</span>
+                        </div>
+                        <span v-if="cls.inviteCode" class="invite-code-pill" @click="copyInviteCode(cls.inviteCode!)" title="点击复制">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
                           {{ cls.inviteCode }}
                         </span>
-                        <div class="node-actions">
-                          <button v-if="cls.inviteCode" class="icon-btn" @click="refreshInviteCode(cls.id)" title="刷新邀请码">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <polyline points="23 4 23 10 17 10"></polyline>
-                              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                            </svg>
+                        <div class="row-actions">
+                          <button v-if="cls.inviteCode" class="action-btn" @click="refreshInviteCode(cls.id)" title="刷新邀请码">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                           </button>
-                          <button class="icon-btn" @click="openEditForm(cls)" title="编辑">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                            </svg>
+                          <button class="action-btn" @click="openEditForm(cls)" title="编辑">
+                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                           </button>
-                          <button class="icon-btn danger" @click="handleDelete(cls.id)" title="删除">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <polyline points="3 6 5 6 21 6"></polyline>
-                              <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                            </svg>
+                          <button class="action-btn danger" @click="handleDelete(cls.id)" title="删除">
+                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                           </button>
                         </div>
                       </div>
@@ -466,179 +456,127 @@ function copyInviteCode(code: string) {
       </div>
     </div>
 
-    <!-- 手动添加/编辑表单 Modal -->
-    <div v-if="showForm" class="modal-overlay" @click.self="showForm = false">
-      <div class="modal-content">
-        <h2>{{ editingOrg ? '编辑组织' : '添加组织' }}</h2>
+    <!-- Modals (Add/Edit Form) -->
+    <div v-if="showForm" class="modal-backdrop" @click.self="showForm = false">
+      <div class="line-modal sm-modal">
+        <div class="modal-header">
+          <h2>{{ editingOrg ? '编辑组织' : '添加组织' }}</h2>
+          <button class="close-btn" @click="showForm = false">×</button>
+        </div>
         <form @submit.prevent="handleSubmit">
-          <div class="form-group">
-            <label>组织类型</label>
-            <select v-model="form.type" class="google-input" :disabled="!!editingOrg">
-              <option value="SCHOOL">学校</option>
-              <option value="DEPARTMENT">学院</option>
-              <option value="CLASS">班级</option>
-            </select>
+          <div class="modal-body">
+            <div class="form-group">
+                <GoogleSelect
+                  v-model="form.type"
+                  :options="typeOptions"
+                  label="组织类型"
+                  placeholder="请选择组织类型"
+                  :disabled="!!editingOrg"
+                />
+            </div>
+            <div class="form-group">
+                <label>名称</label>
+                <input v-model="form.name" type="text" class="line-input" required placeholder="请输入名称" />
+            </div>
+            <div class="form-group">
+                <label>编码</label>
+                <input v-model="form.code" type="text" class="line-input" required placeholder="唯一编码" />
+            </div>
+            <div class="form-group">
+                <label>排序</label>
+                <input v-model.number="form.sortOrder" type="number" class="line-input" />
+            </div>
+            <div class="form-group">
+                <GoogleSelect
+                  v-model="form.status"
+                  :options="statusOptions"
+                  label="状态"
+                  placeholder="请选择状态"
+                />
+            </div>
           </div>
-          <div class="form-group">
-            <label>名称</label>
-            <input v-model="form.name" type="text" class="google-input" required placeholder="请输入名称" />
-          </div>
-          <div class="form-group">
-            <label>编码</label>
-            <input v-model="form.code" type="text" class="google-input" required placeholder="唯一编码" />
-          </div>
-          <div class="form-group">
-            <label>排序</label>
-            <input v-model.number="form.sortOrder" type="number" class="google-input" />
-          </div>
-          <div class="form-group">
-            <label>状态</label>
-            <select v-model="form.status" class="google-input">
-              <option value="ACTIVE">启用</option>
-              <option value="INACTIVE">禁用</option>
-            </select>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="google-btn text-btn" @click="showForm = false">取消</button>
-            <button type="submit" class="google-btn primary-btn">保存</button>
+          <div class="modal-footer">
+            <button type="button" class="line-btn text-btn" @click="showForm = false">取消</button>
+            <button type="submit" class="line-btn primary-btn">保存</button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- 高校模板选择 Modal -->
-    <div v-if="showUniversityPicker" class="modal-overlay" @click.self="showUniversityPicker = false">
-      <div class="modal-content university-picker">
-        <!-- 高校列表 -->
+    <!-- University Picker Modal -->
+    <div v-if="showUniversityPicker" class="modal-backdrop" @click.self="showUniversityPicker = false">
+      <div class="line-modal lg-modal">
         <template v-if="!selectedUniversity">
-          <div class="picker-header">
-            <h2>选择高校</h2>
-            <p>从全国知名高校中选择，快速创建组织架构</p>
-          </div>
-          
-          <div class="search-box">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input 
-              v-model="searchKeyword" 
-              type="text" 
-              placeholder="搜索高校名称、代码或城市..."
-              class="search-input"
-            />
-          </div>
-
-          <div class="university-list">
-            <template v-for="(unis, province) in universitiesByProvince" :key="province">
-              <div class="province-group">
-                <div class="province-name">{{ province }}</div>
-                <div class="university-grid">
-                  <div 
-                    v-for="uni in unis" 
-                    :key="uni.code" 
-                    class="university-card"
-                    @click="selectUniversity(uni)"
-                  >
-                    <div class="uni-name">{{ uni.name }}</div>
-                    <div class="uni-info">
-                      <span class="uni-city">{{ uni.city }}</span>
-                      <span :class="['uni-type', uni.type.toLowerCase()]">{{ uni.type }}</span>
-                    </div>
-                    <div class="uni-depts">{{ uni.departments.length }} 个院系</div>
-                  </div>
+            <div class="modal-header">
+                <h2>选择高校</h2>
+            </div>
+            <div class="modal-body">
+                <div class="search-box">
+                    <input v-model="searchKeyword" type="text" placeholder="搜索高校名称、代码或城市..." class="line-input search-input" />
                 </div>
-              </div>
-            </template>
-          </div>
-
-          <div class="picker-footer">
-            <button class="google-btn text-btn" @click="showUniversityPicker = false">取消</button>
-          </div>
+                <div class="university-list">
+                     <template v-for="(unis, province) in universitiesByProvince" :key="province">
+                        <div class="province-group">
+                            <div class="province-name">{{ province }}</div>
+                            <div class="university-grid">
+                                <div v-for="uni in unis" :key="uni.code" class="university-card" @click="selectUniversity(uni)">
+                                    <div class="uni-name">{{ uni.name }}</div>
+                                    <div class="uni-info">
+                                        <span class="uni-city">{{ uni.city }}</span>
+                                        <span :class="['uni-type', uni.type.toLowerCase()]">{{ uni.type }}</span>
+                                    </div>
+                                    <div class="uni-depts">{{ uni.departments.length }} 个院系</div>
+                                </div>
+                            </div>
+                        </div>
+                     </template>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="line-btn text-btn" @click="showUniversityPicker = false">取消</button>
+            </div>
         </template>
 
-        <!-- 院系和班级配置 -->
         <template v-else>
-          <div class="picker-header">
-            <button class="back-btn" @click="backToUniversityList">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="15 18 9 12 15 6"></polyline>
-              </svg>
-              返回
-            </button>
-            <h2>{{ selectedUniversity.name }}</h2>
-            <p>选择要创建的院系和班级，每个班级将自动生成唯一识别码</p>
-          </div>
-
-          <div class="config-summary">
-            <div class="summary-item">
-              <span class="summary-label">已选院系</span>
-              <span class="summary-value">{{ selectedDeptCount }} 个</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">班级总数</span>
-              <span class="summary-value">{{ totalClassCount }} 个</span>
-            </div>
-          </div>
-
-          <div class="department-list">
-            <div 
-              v-for="dept in departmentConfigs" 
-              :key="dept.code" 
-              :class="['department-item', { selected: dept.selected }]"
-            >
-              <div class="dept-header" @click="toggleDepartment(dept.code)">
-                <div class="dept-checkbox">
-                  <svg v-if="dept.selected" width="20" height="20" viewBox="0 0 24 24" fill="#1a73e8">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
-                  </svg>
-                  <div v-else class="checkbox-empty"></div>
+            <div class="modal-header">
+                <div class="header-with-back">
+                     <button class="icon-btn" @click="backToUniversityList"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg></button> 
+                    <h2>{{ selectedUniversity.name }}</h2>
                 </div>
-                <span class="dept-name">{{ dept.name }}</span>
-                <span class="dept-class-count">{{ dept.classes.length }} 个班级</span>
-              </div>
-
-              <div v-if="dept.selected" class="class-list">
-                <div v-for="(cls, index) in dept.classes" :key="index" class="class-item">
-                  <input 
-                    :value="cls.name" 
-                    @input="updateClassName(dept.code, index, ($event.target as HTMLInputElement).value)"
-                    class="class-input"
-                    placeholder="班级名称"
-                  />
-                  <button 
-                    v-if="dept.classes.length > 1"
-                    class="remove-class-btn" 
-                    @click="removeClass(dept.code, index)"
-                    title="删除班级"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="config-summary">
+                     <div class="summary-item"><span class="label">已选院系</span> <span class="val">{{ selectedDeptCount }}</span></div>
+                     <div class="summary-item"><span class="label">班级总数</span> <span class="val">{{ totalClassCount }}</span></div>
                 </div>
-                <button class="add-class-btn" @click="addClass(dept.code)">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                  添加班级
+
+                <div class="department-list">
+                    <div v-for="dept in departmentConfigs" :key="dept.code" :class="['department-item', { selected: dept.selected }]">
+                         <div class="dept-header" @click="toggleDepartment(dept.code)">
+                            <div class="checkbox-wrapper">
+                                <div v-if="dept.selected" class="line-checkbox checked">✓</div>
+                                <div v-else class="line-checkbox"></div>
+                            </div>
+                            <span class="dept-name">{{ dept.name }}</span>
+                            <span class="dept-count">{{ dept.classes.length }} 班</span>
+                         </div>
+                         <div v-if="dept.selected" class="class-list">
+                            <div v-for="(cls, index) in dept.classes" :key="index" class="class-item">
+                                <input :value="cls.name" @input="updateClassName(dept.code, index, ($event.target as HTMLInputElement).value)" class="line-input sm-input" />
+                                <button v-if="dept.classes.length > 1" class="icon-btn danger sm" @click="removeClass(dept.code, index)">×</button>
+                            </div>
+                            <button class="line-btn outline-btn sm-btn full-width" @click="addClass(dept.code)">+ 添加班级</button>
+                         </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="line-btn text-btn" @click="showUniversityPicker = false">取消</button>
+                <button class="line-btn primary-btn" @click="createFromTemplate" :disabled="creatingFromTemplate || selectedDeptCount === 0">
+                    {{ creatingFromTemplate ? '创建中...' : '创建组织架构' }}
                 </button>
-              </div>
             </div>
-          </div>
-
-          <div class="picker-footer">
-            <button class="google-btn text-btn" @click="showUniversityPicker = false">取消</button>
-            <button 
-              class="google-btn primary-btn" 
-              @click="createFromTemplate"
-              :disabled="creatingFromTemplate || selectedDeptCount === 0"
-            >
-              {{ creatingFromTemplate ? '创建中...' : '创建组织架构' }}
-            </button>
-          </div>
         </template>
       </div>
     </div>
@@ -646,494 +584,478 @@ function copyInviteCode(code: string) {
 </template>
 
 <style scoped>
-.org-manage-view {
-  padding: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-header h1 {
-  font-size: 24px;
-  font-weight: 400;
-  color: #202124;
-  margin: 0 0 8px 0;
-}
-
-.subtitle {
-  color: #5f6368;
-  margin: 0;
-}
-
-.toolbar {
+/* Page Layout */
+.toolbar-actions {
   display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 16px;
+  margin-bottom: 32px;
 }
 
-.content-card {
-  background: #fff;
-  border-radius: 8px;
-  border: 1px solid #dadce0;
-  padding: 24px;
+/* Table / Tree */
+.table-card {
+  padding: 0;
+  overflow: hidden;
   min-height: 400px;
 }
 
-.loading {
+.line-loading {
+  padding: 64px;
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  padding: 48px;
-  color: #5f6368;
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #dadce0;
-  border-top-color: #1a73e8;
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--line-border);
+  border-top-color: var(--line-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin-bottom: 16px;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 
+/* Empty State */
 .empty-state {
+  padding: 64px 20px;
   text-align: center;
-  padding: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.empty-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--line-bg-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--line-text-secondary);
+  margin-bottom: 24px;
 }
 
 .empty-state h3 {
-  margin: 16px 0 8px;
-  color: #202124;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--line-text);
 }
 
 .empty-state p {
-  color: #5f6368;
-  margin: 0 0 24px;
+  color: var(--line-text-secondary);
+  margin: 0 0 32px;
+  max-width: 400px;
+  line-height: 1.5;
 }
 
 .empty-actions {
   display: flex;
   gap: 12px;
-  justify-content: center;
 }
 
-.org-tree {
+/* Org Tree */
+.org-tree-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
-.org-node {
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-  overflow: hidden;
+.org-row {
+  border-bottom: 1px solid var(--line-border);
 }
 
-.school-node { border-color: #4285f4; }
-.dept-node { border-color: #34a853; margin-left: 24px; }
-.class-node { border-color: #fbbc04; margin-left: 24px; }
+.org-row:last-child { border-bottom: none; }
 
-.node-content {
+.row-content {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: #f8f9fa;
+  padding: 16px 24px;
+  gap: 16px;
+  transition: background-color 0.2s;
+  background: var(--line-card-bg);
 }
 
-.school-node > .node-content { background: #e8f0fe; }
-.dept-node > .node-content { background: #e6f4ea; }
-.class-node > .node-content { background: #fef7e0; }
-
-.node-icon { display: flex; align-items: center; color: #5f6368; }
-.node-name { font-weight: 500; color: #202124; }
-.node-code { color: #5f6368; font-size: 13px; }
-
-.node-status {
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 12px;
+.row-content:hover {
+  background-color: var(--line-bg-soft);
 }
 
-.node-status.active { background: #e6f4ea; color: #1e8e3e; }
-.node-status.inactive { background: #fce8e6; color: #d93025; }
-
-.node-actions {
-  margin-left: auto;
+/* Indentation via Blocks */
+.children-block {
   display: flex;
-  gap: 4px;
+  flex-direction: column;
 }
 
-.icon-btn {
+.dept-row .row-content {
+  padding-left: 48px;
+  background: #fafafa;
+}
+:root[class~="dark"] .dept-row .row-content { background: rgba(255,255,255,0.02); }
+
+.class-row .row-content {
+  padding-left: 72px;
+  background: #fcfcfc;
+}
+:root[class~="dark"] .class-row .row-content { background: rgba(255,255,255,0.01); }
+
+
+.tree-line {
+  width: 12px;
+  height: 1px;
+  background: var(--line-border);
+  margin-right: -8px;
+}
+
+/* Icons */
+.row-icon {
   width: 32px;
   height: 32px;
-  border: none;
-  background: transparent;
-  border-radius: 50%;
-  cursor: pointer;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #5f6368;
-  transition: background 0.2s;
-}
-
-.icon-btn:hover { background: rgba(0,0,0,0.08); }
-.icon-btn.danger:hover { background: #fce8e6; color: #d93025; }
-
-.children {
-  padding: 8px 0 8px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.invite-code {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: monospace;
-  font-size: 13px;
-  background: #e8f0fe;
-  color: #1a73e8;
-  padding: 4px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s;
-  font-weight: 500;
-}
-
-.invite-code svg {
   flex-shrink: 0;
 }
+.row-icon svg { width: 18px; height: 18px; stroke-width: 2px; }
 
-.invite-code:hover { background: #d2e3fc; }
+.school-icon { background: #e0f2fe; color: #0284c7; }
+.dept-icon { background: #dcfce7; color: #059669; }
+.class-icon { background: #fef3c7; color: #d97706; }
 
-/* Modal styles */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
+.row-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.row-name {
+  font-weight: 600;
+  color: var(--line-text);
+  font-size: 0.95rem;
+}
+
+.row-code {
+  font-size: 0.8rem;
+  color: var(--line-text-secondary);
+  font-family: 'SF Mono', Consolas, monospace;
+}
+
+.status-badge {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-weight: 600;
+}
+.status-badge.active { background: #dcfce7; color: #166534; }
+.status-badge.inactive { background: #fef2f2; color: #991b1b; }
+
+.invite-code-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--line-bg-soft);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-family: monospace;
+  color: var(--line-text-secondary);
+  border: 1px solid var(--line-border);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-right: 16px;
+}
+.invite-code-pill svg { width: 12px; height: 12px; }
+
+.invite-code-pill:hover {
+  background: var(--line-bg);
+  border-color: var(--line-primary);
+  color: var(--line-primary);
+}
+
+.row-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.action-btn {
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: #fff;
-  border-radius: 8px;
-  padding: 24px;
-  width: 100%;
-  max-width: 480px;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-content h2 {
-  margin: 0 0 8px 0;
-  font-size: 20px;
-  font-weight: 500;
-}
-
-/* University Picker specific styles */
-.university-picker {
-  max-width: 800px;
-}
-
-.picker-header {
-  margin-bottom: 20px;
-}
-
-.picker-header p {
-  color: #5f6368;
-  margin: 0;
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  color: #1a73e8;
+  border: 1px solid var(--line-border);
+  background: var(--line-bg);
+  color: var(--line-text-secondary);
+  border-radius: 6px;
   cursor: pointer;
-  padding: 0;
-  margin-bottom: 12px;
-  font-size: 14px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  opacity: 1;
+  padding: 0; /* Clear padding to center SVG perfect */
 }
 
-.back-btn:hover { text-decoration: underline; }
+/* Explicitly style SVGs to ensure visibility with super high specificity and force important props */
+.action-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+  stroke: var(--line-text-secondary);
+  stroke-width: 2px;
+  fill: none !important;
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
 
-.search-box {
+.action-btn:hover {
+  background: var(--line-bg-soft);
+  color: var(--line-primary);
+  border-color: var(--line-text-secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.action-btn:hover svg {
+  stroke: var(--line-primary);
+}
+
+.action-btn.danger {
+  color: #ef4444;
+  border-color: #fee2e2;
+  background: #fffafa;
+}
+
+.action-btn.danger svg {
+  stroke: #ef4444;
+}
+
+.action-btn.danger:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+.action-btn.danger:hover svg {
+  stroke: #b91c1c;
+}
+
+/* Modal tweaks specific to this page */
+.header-with-back {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
-  border: 1px solid #dadce0;
-  border-radius: 24px;
-  margin-bottom: 20px;
 }
+.header-with-back h2 { margin: 0; font-size: 1.1rem; display: flex; align-items: center; }
 
-.search-input {
-  flex: 1;
-  border: none;
-  outline: none;
-  font-size: 14px;
-}
-
-.university-list {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.province-group {
-  margin-bottom: 20px;
-}
-
-.province-name {
-  font-weight: 500;
-  color: #5f6368;
-  margin-bottom: 12px;
-  padding-left: 4px;
-}
+/* University Picker List */
+.province-group { margin-bottom: 24px; }
+.province-name { font-size: 0.85rem; font-weight: 600; color: var(--line-text-secondary); margin-bottom: 12px; }
 
 .university-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
 }
 
 .university-card {
+  background: var(--line-card-bg);
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-md);
   padding: 16px;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.university-card:hover {
-  border-color: #1a73e8;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
+.university-card:hover { border-color: var(--line-primary); box-shadow: var(--line-shadow-md); transform: translateY(-2px); }
 
-.uni-name {
-  font-weight: 500;
-  margin-bottom: 8px;
-  color: #202124;
-}
+.uni-name { font-weight: 600; margin-bottom: 6px; color: var(--line-text); }
+.uni-info { display: flex; gap: 8px; font-size: 0.8rem; color: var(--line-text-secondary); margin-bottom: 8px; }
+.uni-type { padding: 2px 6px; background: var(--line-bg-soft); border-radius: 4px; font-weight: 500; }
+.uni-depts { font-size: 0.8rem; color: var(--line-text-secondary); }
 
-.uni-info {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.uni-city { color: #5f6368; font-size: 13px; }
-
-.uni-type {
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-.uni-type.985 { background: #fce8e6; color: #d93025; }
-.uni-type.211 { background: #e8f0fe; color: #1a73e8; }
-
-.uni-depts { font-size: 12px; color: #5f6368; }
-
-/* Config styles */
+/* Picker Config */
 .config-summary {
-  display: flex;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
   padding: 16px;
-  background: #f8f9fa;
-  border-radius: 8px;
+  background: var(--line-bg-soft);
+  border-radius: var(--line-radius-md);
+  margin-bottom: 24px;
+}
+
+.summary-item { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.summary-item .label { font-size: 0.8rem; color: var(--line-text-secondary); margin-bottom: 4px; }
+.summary-item .val { font-size: 1.5rem; font-weight: 600; color: var(--line-primary); }
+
+.department-list { display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto; padding-right: 8px; }
+
+.department-item {
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-md);
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.department-item.selected { border-color: var(--line-primary); background: #f0f9ff; } /* Light blue tint for selected */
+:root[class~="dark"] .department-item.selected { background: rgba(14, 165, 233, 0.1); }
+
+.dept-header {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-wrapper { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; }
+.line-checkbox {
+  width: 18px; height: 18px;
+  border: 2px solid var(--line-border);
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 12px;
+}
+.department-item.selected .line-checkbox { background: var(--line-primary); border-color: var(--line-primary); }
+
+.dept-name { flex: 1; font-weight: 500; font-size: 0.95rem; }
+.dept-count { font-size: 0.8rem; color: var(--line-text-secondary); }
+
+.class-list {
+  padding: 16px;
+  background: rgba(255,255,255,0.5);
+  border-top: 1px solid var(--line-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.class-item { display: flex; align-items: center; gap: 8px; }
+.sm { width: 28px; height: 28px; }
+
+.sm-btn { padding: 6px 12px; font-size: 0.8rem; }
+.full-width { width: 100%; margin-top: 8px; border-style: dashed; }
+
+/* Modal Styles */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease;
+}
+
+.line-modal {
+  background: var(--line-bg);
+  width: 100%;
+  max-width: 500px;
+  border-radius: var(--line-radius-lg);
+  box-shadow: var(--line-shadow-xl);
+  border: 1px solid var(--line-border);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.line-modal.lg-modal {
+  max-width: 800px;
+}
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--line-text);
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--line-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: var(--line-bg-soft);
+  color: var(--line-error);
+}
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--line-border);
+  background: var(--line-bg-soft);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-bottom-left-radius: var(--line-radius-lg);
+  border-bottom-right-radius: var(--line-radius-lg);
+}
+
+/* Modal Form Elements */
+.modal-body .form-group {
   margin-bottom: 20px;
 }
 
-.summary-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.summary-label { font-size: 12px; color: #5f6368; }
-.summary-value { font-size: 20px; font-weight: 500; color: #1a73e8; }
-
-.department-list {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.department-item {
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  overflow: hidden;
-}
-
-.department-item.selected { border-color: #1a73e8; }
-
-.dept-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  cursor: pointer;
-  background: #f8f9fa;
-}
-
-.department-item.selected .dept-header { background: #e8f0fe; }
-
-.dept-checkbox {
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.checkbox-empty {
-  width: 18px;
-  height: 18px;
-  border: 2px solid #5f6368;
-  border-radius: 3px;
-}
-
-.dept-name { flex: 1; font-weight: 500; }
-.dept-class-count { font-size: 13px; color: #5f6368; }
-
-.class-list {
-  padding: 12px 16px;
-  background: #fff;
-}
-
-.class-item {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.class-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.class-input:focus {
-  outline: none;
-  border-color: #1a73e8;
-}
-
-.remove-class-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  color: #5f6368;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.remove-class-btn:hover { background: #fce8e6; color: #d93025; }
-
-.add-class-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border: 1px dashed #dadce0;
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  color: #1a73e8;
-  font-size: 13px;
-}
-
-.add-class-btn:hover { background: #e8f0fe; }
-
-.picker-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid #dadce0;
-}
-
-/* Form styles */
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group label {
+.modal-body .form-group label {
   display: block;
-  margin-bottom: 8px;
   font-size: 14px;
-  color: #5f6368;
-}
-
-.google-input {
-  width: 100%;
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  font-size: 14px;
-  box-sizing: border-box;
-}
-
-.google-input:focus {
-  outline: none;
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
-}
-
-/* Button styles */
-.google-btn {
-  padding: 8px 24px;
-  border-radius: 4px;
-  font-size: 14px;
+  color: var(--line-text);
+  margin-bottom: 6px;
   font-weight: 500;
-  cursor: pointer;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.2s;
 }
 
-.primary-btn { background: #1a73e8; color: #fff; }
-.primary-btn:hover { background: #1557b0; }
-.primary-btn:disabled { background: #dadce0; cursor: not-allowed; }
+.modal-body .form-group:last-child {
+  margin-bottom: 0;
+}
 
-.secondary-btn { background: #fff; color: #1a73e8; border: 1px solid #dadce0; }
-.secondary-btn:hover { background: #f8f9fa; }
+/* Custom Select Style */
+select.line-select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background-color: var(--line-bg) !important;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+  background-size: 16px !important;
+  padding: 12px 40px 12px 16px !important;
+  border: 1px solid var(--line-border) !important;
+  border-radius: var(--radius) !important;
+  color: var(--line-text) !important;
+  cursor: pointer;
+  line-height: normal;
+}
 
-.text-btn { background: transparent; color: #1a73e8; }
-.text-btn:hover { background: #e8f0fe; }
+select.line-select:focus {
+  border-color: var(--line-primary) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--line-primary-10) !important;
+}
 </style>

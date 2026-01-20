@@ -11,6 +11,7 @@ const props = defineProps<{
   options: Option[]
   label?: string
   placeholder?: string
+  disabled?: boolean
 }>()
 
 const emit = defineEmits(['update:modelValue'])
@@ -24,6 +25,7 @@ const selectedLabel = computed(() => {
 })
 
 const toggleDropdown = () => {
+  if (props.disabled) return
   isOpen.value = !isOpen.value
 }
 
@@ -52,7 +54,7 @@ onUnmounted(() => {
     <label v-if="label" class="select-label">{{ label }}</label>
     <div 
       class="select-trigger" 
-      :class="{ 'is-open': isOpen, 'has-value': !!modelValue }"
+      :class="{ 'is-open': isOpen, 'has-value': !!modelValue, 'is-disabled': disabled }"
       @click="toggleDropdown"
     >
       <span class="selected-text">{{ selectedLabel }}</span>
@@ -89,14 +91,14 @@ onUnmounted(() => {
 .google-select-container {
   position: relative;
   width: 100%;
-  font-family: 'Roboto', 'Google Sans', sans-serif;
+  font-family: inherit;
 }
 
 .select-label {
   display: block;
-  font-size: 12px;
-  color: #5f6368;
-  margin-bottom: 4px;
+  font-size: 14px;
+  color: var(--line-text-primary);
+  margin-bottom: 6px;
   font-weight: 500;
 }
 
@@ -104,103 +106,117 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  background-color: #fff;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
+  padding: 12px 16px;
+  background-color: var(--line-bg);
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-md);
   cursor: pointer;
-  transition: all 0.2s;
-  min-height: 40px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 48px;
   box-sizing: border-box;
+  color: var(--line-text-primary);
 }
 
 .select-trigger:hover {
-  border-color: #202124;
+  border-color: var(--line-primary-hover);
+  background-color: var(--line-bg-hover);
+}
+
+.select-trigger.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+  background-color: var(--line-bg-soft);
 }
 
 .select-trigger.is-open {
-  border-color: #1a73e8;
-  border-width: 2px;
-  padding: 9px 11px; /* Adjust for border width */
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+  border-color: var(--line-primary);
+  box-shadow: 0 0 0 2px var(--line-primary-10);
+  background-color: var(--line-bg);
 }
 
 .selected-text {
-  font-size: 14px;
-  color: #202124;
+  font-size: 15px;
+  color: var(--line-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .arrow-icon {
-  font-size: 10px;
-  color: #5f6368;
+  display: flex;
+  align-items: center;
+  color: var(--line-text-secondary);
   transition: transform 0.2s;
 }
 
 .select-trigger.is-open .arrow-icon {
   transform: rotate(180deg);
-  color: #1a73e8;
+  color: var(--line-primary);
 }
 
 .options-list {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background-color: #fff;
-  border: 1px solid #dadce0;
-  border-top: none;
-  border-bottom-left-radius: 4px;
-  border-bottom-right-radius: 4px;
-  box-shadow: 0 4px 6px rgba(32, 33, 36, 0.28);
+  background-color: var(--line-card-bg);
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-md);
+  box-shadow: var(--line-shadow-lg);
   z-index: 1000;
   max-height: 300px;
   overflow-y: auto;
-  padding: 4px 0;
+  padding: 6px;
+  animation: slideDown 0.2s ease-out;
 }
 
 .option-item {
-  padding: 10px 16px;
+  padding: 10px 12px;
   font-size: 14px;
-  color: #202124;
+  color: var(--line-text-primary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-radius: var(--line-radius-sm);
   transition: background-color 0.1s;
 }
 
 .option-item:hover {
-  background-color: #f1f3f4;
+  background-color: var(--line-bg-soft);
 }
 
 .option-item.is-selected {
-  background-color: #e8f0fe;
-  color: #1a73e8;
-  font-weight: 500;
+  background-color: var(--line-bg-hover);
+  color: var(--line-primary);
+  font-weight: 600;
 }
 
 .check-icon {
-  font-size: 14px;
-  color: #1a73e8;
+  color: var(--line-primary);
+  display: flex;
+  align-items: center;
 }
 
 /* Scrollbar styling */
 .options-list::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 .options-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: transparent;
 }
 .options-list::-webkit-scrollbar-thumb {
-  background: #dadce0;
+  background: var(--line-border);
   border-radius: 4px;
 }
 .options-list::-webkit-scrollbar-thumb:hover {
-  background: #bdc1c6;
+  background: var(--line-text-secondary);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .fade-enter-active,

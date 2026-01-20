@@ -26,6 +26,13 @@ const passwordForm = ref({
   confirmPassword: ''
 })
 
+const preferences = ref({
+  emailNotification: true,
+  systemNotification: true,
+  publicProfile: false,
+  showActivity: true
+})
+
 const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
   toastMessage.value = msg
   toastType.value = type
@@ -188,111 +195,177 @@ const handlePasswordUpdate = async () => {
 </script>
 
 <template>
-  <div class="container">
+  <div class="line-container page-container">
     <!-- Toast Notification -->
-    <div v-if="toastMessage" :class="['toast', toastType]">
+    <div v-if="toastMessage" :class="['line-toast', toastType]">
+      <span class="toast-icon">{{ toastType === 'success' ? '✓' : '!' }}</span>
       {{ toastMessage }}
     </div>
 
-    <div class="google-card profile-card">
-      <div class="card-header">
-        <h1>个人信息</h1>
-        <p class="subtitle">基本信息，如姓名和头像</p>
-      </div>
+    <!-- Page Header -->
+    <div class="page-header center-header">
+      <h1>个人信息</h1>
+      <p class="subtitle">管理您的个人资料、密码和隐私设置</p>
+    </div>
 
-      <div class="profile-section">
-        <div class="section-row avatar-row">
-          <div class="row-label">
-            <h3>头像</h3>
-            <p>头像有助于个性化您的账户</p>
-          </div>
-          <div class="row-content" @click="triggerFileInput">
-            <div class="avatar-preview" :style="{ backgroundImage: user.avatarUrl ? `url(${user.avatarUrl})` : '' }">
-              <span v-if="!user.avatarUrl" class="avatar-placeholder">{{ user.username.charAt(0).toUpperCase() }}</span>
+    <div class="profile-layout">
+      <!-- Left Column: Avatar & Basic Info -->
+      <div class="line-card profile-main-card">
+        <div class="avatar-section">
+          <div class="avatar-large" :style="{ backgroundImage: user.avatarUrl ? `url(${user.avatarUrl})` : '' }" @click="triggerFileInput">
+            <span v-if="!user.avatarUrl">{{ user.username.charAt(0).toUpperCase() }}</span>
+            <div class="avatar-overlay">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
             </div>
-            <input type="file" id="avatar-input" @change="handleFileChange" accept="image/*" style="display: none" />
           </div>
+          <input type="file" id="avatar-input" @change="handleFileChange" accept="image/*" style="display: none" />
+          <h2 class="profile-name">{{ user.nickname || user.username }}</h2>
+          <span class="role-badge">{{ user.role }}</span>
         </div>
 
-        <div class="section-row">
-          <div class="floating-label-group">
-            <input v-model="user.username" type="text" id="username" required placeholder=" " />
+        <div class="form-grid">
+          <div class="form-group">
             <label for="username">用户名</label>
+            <input v-model="user.username" type="text" id="username" class="line-input" required />
           </div>
-        </div>
 
-        <div class="section-row">
-          <div class="floating-label-group">
-            <input v-model="user.nickname" type="text" id="nickname" required placeholder=" " />
+          <div class="form-group">
             <label for="nickname">昵称</label>
+            <input v-model="user.nickname" type="text" id="nickname" class="line-input" required />
+            <span class="input-hint">显示给他人的名称</span>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="email">邮箱地址</label>
+            <input v-model="user.email" type="email" id="email" class="line-input" required />
           </div>
         </div>
 
-        <div class="section-row">
-          <div class="floating-label-group">
-            <input v-model="user.email" type="email" id="email" required placeholder=" " />
-            <label for="email">邮箱</label>
-          </div>
-        </div>
-
-        <div class="section-row">
-          <div class="row-label">
-            <h3>角色</h3>
-          </div>
-          <div class="row-content">
-            <span class="read-only-text">{{ user.role }}</span>
-          </div>
+        <div class="card-actions">
+          <button @click="handleReset" :disabled="loading" class="line-btn text-btn">重置更改</button>
+          <button @click="handleSaveClick" :disabled="loading" class="line-btn primary-btn">
+            {{ loading ? '保存中...' : '保存更改' }}
+          </button>
         </div>
       </div>
 
-      <div class="form-actions">
-        <button @click="handleSaveClick" :disabled="loading" class="google-btn primary-btn">
-          {{ loading ? '保存中...' : '保存' }}
-        </button>
-        <button @click="handleReset" :disabled="loading" class="google-btn text-btn">
-          重置
-        </button>
-        <button class="google-btn text-btn" @click="showPasswordModal = true">
-          修改密码
-        </button>
+      <!-- Right Column: Settings & Security -->
+      <div class="side-column">
+        <!-- Security -->
+        <div class="line-card side-card">
+          <div class="card-title">
+            <h3>安全设置</h3>
+          </div>
+          <div class="action-item">
+            <div class="item-text">
+              <h4>登录密码</h4>
+              <p>定期修改密码以保护账号安全</p>
+            </div>
+            <button class="line-btn outline-btn sm-btn" @click="showPasswordModal = true">修改</button>
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="line-card side-card">
+          <div class="card-title">
+            <h3>通知偏好</h3>
+          </div>
+          <div class="action-item">
+            <div class="item-text">
+              <h4>邮件通知</h4>
+              <p>接收考试提醒和成绩通知</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="preferences.emailNotification">
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div class="action-item">
+            <div class="item-text">
+              <h4>系统消息</h4>
+              <p>接收系统维护和更新公告</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="preferences.systemNotification">
+              <span class="slider round"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Privacy -->
+        <div class="line-card side-card">
+          <div class="card-title">
+            <h3>隐私设置</h3>
+          </div>
+          <div class="action-item">
+            <div class="item-text">
+              <h4>公开资料</h4>
+              <p>允许其他用户查看您的基本信息</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="preferences.publicProfile">
+              <span class="slider round"></span>
+            </label>
+          </div>
+          <div class="action-item">
+            <div class="item-text">
+              <h4>在线状态</h4>
+              <p>显示您的在线状态</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" v-model="preferences.showActivity">
+              <span class="slider round"></span>
+            </label>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Password Change Modal -->
-    <div v-if="showPasswordModal" class="modal-overlay">
-      <div class="modal-card">
-        <h2>修改密码</h2>
-        <div class="floating-label-group">
-          <input v-model="passwordForm.oldPassword" type="password" id="oldPass" required placeholder=" " />
-          <label for="oldPass">当前密码</label>
+    <div v-if="showPasswordModal" class="modal-backdrop" @click="showPasswordModal = false">
+      <div class="line-modal" @click.stop>
+        <div class="modal-header">
+          <h2>修改密码</h2>
+          <button class="close-btn" @click="showPasswordModal = false">×</button>
         </div>
-        <div class="floating-label-group">
-          <input v-model="passwordForm.newPassword" type="password" id="newPass" required placeholder=" " />
-          <label for="newPass">新密码</label>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="oldPass">当前密码</label>
+            <input v-model="passwordForm.oldPassword" type="password" id="oldPass" class="line-input" required />
+          </div>
+          <div class="form-group">
+            <label for="newPass">新密码</label>
+            <input v-model="passwordForm.newPassword" type="password" id="newPass" class="line-input" required />
+          </div>
+          <div class="form-group">
+            <label for="confirmPass">确认新密码</label>
+            <input v-model="passwordForm.confirmPassword" type="password" id="confirmPass" class="line-input" required />
+          </div>
         </div>
-        <div class="floating-label-group">
-          <input v-model="passwordForm.confirmPassword" type="password" id="confirmPass" required placeholder=" " />
-          <label for="confirmPass">确认新密码</label>
-        </div>
-        <div class="modal-actions">
-          <button @click="showPasswordModal = false" class="google-btn text-btn">取消</button>
-          <button @click="handlePasswordUpdate" :disabled="loading" class="google-btn primary-btn">更新</button>
+        <div class="modal-footer">
+          <button @click="showPasswordModal = false" class="line-btn text-btn">取消</button>
+          <button @click="handlePasswordUpdate" :disabled="loading" class="line-btn primary-btn">更新密码</button>
         </div>
       </div>
     </div>
 
     <!-- Verify Password Modal -->
-    <div v-if="showVerifyModal" class="modal-overlay">
-      <div class="modal-card">
-        <h2>身份验证</h2>
-        <p>请输入您的当前密码以确认这些更改。</p>
-        <div class="floating-label-group">
-          <input v-model="verifyPassword" type="password" id="verifyPass" required placeholder=" " />
-          <label for="verifyPass">当前密码</label>
+    <div v-if="showVerifyModal" class="modal-backdrop" @click="showVerifyModal = false">
+      <div class="line-modal" @click.stop>
+        <div class="modal-header">
+          <h2>身份验证</h2>
+          <button class="close-btn" @click="showVerifyModal = false">×</button>
         </div>
-        <div class="modal-actions">
-          <button @click="showVerifyModal = false" class="google-btn text-btn">取消</button>
-          <button @click="submitProfileUpdate" :disabled="loading" class="google-btn primary-btn">确认</button>
+        <div class="modal-body">
+          <p class="modal-desc">您正在修改敏感信息，请输入当前密码以确认。</p>
+          <div class="form-group">
+            <label for="verifyPass">当前密码</label>
+            <input v-model="verifyPassword" type="password" id="verifyPass" class="line-input" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button @click="showVerifyModal = false" class="line-btn text-btn">取消</button>
+          <button @click="submitProfileUpdate" :disabled="loading" class="line-btn primary-btn">确认修改</button>
         </div>
       </div>
     </div>
@@ -300,250 +373,362 @@ const handlePasswordUpdate = async () => {
 </template>
 
 <style scoped>
-.container {
-  display: flex;
-  justify-content: center;
-  padding: 2rem;
-  background-color: #f0f2f5;
-  min-height: 100vh;
+.page-container {
+  padding: 40px 24px;
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
-.google-card {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
-  width: 100%;
-  max-width: 700px;
-  padding: 2rem;
+.center-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.center-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--line-text);
+  margin-bottom: 8px;
+}
+
+.center-header .subtitle {
+  color: var(--line-text-secondary);
+  font-size: 1rem;
+}
+
+.profile-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+/* Main Profile Card */
+.profile-main-card {
+  padding: 32px;
+}
+
+.avatar-section {
   display: flex;
   flex-direction: column;
-}
-
-.card-header {
-  margin-bottom: 2rem;
-  text-align: center;
-}
-
-.card-header h1 {
-  font-size: 1.75rem;
-  font-weight: 400;
-  color: #202124;
-  margin: 0;
-}
-
-.subtitle {
-  color: #5f6368;
-  margin-top: 0.5rem;
-}
-
-.profile-section {
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.section-row {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #dadce0;
+  margin-bottom: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--line-border);
 }
 
-.section-row:last-child {
-  border-bottom: none;
+.avatar-large {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background-color: var(--line-bg-soft);
+  color: var(--line-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  font-weight: 600;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  border: 2px solid var(--line-bg);
+  box-shadow: 0 0 0 2px var(--line-border);
+  transition: all 0.2s;
 }
 
-.row-label h3 {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #5f6368;
-  margin: 0;
+.avatar-large:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.avatar-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: white;
+}
+
+.profile-name {
+  margin: 16px 0 8px;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.role-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background-color: var(--line-bg-soft);
+  color: var(--line-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-.row-label p {
-  font-size: 0.8rem;
-  color: #80868b;
-  margin: 0.25rem 0 0 0;
+/* Form Styles */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 32px;
 }
 
-.row-content {
-  flex: 1;
+.full-width {
+  grid-column: span 2;
+}
+
+.form-group {
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  margin-left: 2rem;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.avatar-preview {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background-color: #e8eaed;
-  background-size: cover;
-  background-position: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 1.5rem;
-  color: #5f6368;
-}
-
-/* Floating Labels */
-.floating-label-group {
-  position: relative;
-  width: 100%;
-  margin-bottom: 0; /* Adjusted for row layout */
-}
-
-.floating-label-group input {
-  width: 100%;
-  padding: 12px 12px 12px 12px;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  font-size: 1rem;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.floating-label-group input:focus {
-  border-color: #1a73e8;
-  border-width: 2px;
-  padding: 11px 11px 11px 11px; /* Adjust for border width */
-}
-
-.floating-label-group label {
-  position: absolute;
-  left: 12px;
-  top: 12px;
-  color: #5f6368;
-  font-size: 1rem;
-  pointer-events: none;
-  transition: 0.2s ease all;
-  background-color: white;
-  padding: 0 4px;
-}
-
-.floating-label-group input:focus ~ label,
-.floating-label-group input:not(:placeholder-shown) ~ label {
-  top: -10px;
-  font-size: 0.75rem;
-  color: #1a73e8;
-}
-
-.read-only-text {
-  font-size: 1rem;
-  color: #202124;
-}
-
-.form-actions {
-  margin-top: 2rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-}
-
-.google-btn {
-  border: none;
-  border-radius: 4px;
-  padding: 0.5rem 1.5rem;
+.form-group label {
   font-size: 0.875rem;
   font-weight: 500;
+  color: var(--line-text);
+}
+
+.input-hint {
+  font-size: 0.75rem;
+  color: var(--line-text-secondary);
+  margin-top: 4px;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line-border);
+}
+
+/* Security Connect & Side Cards */
+.side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.side-card {
+  padding: 0;
+  overflow: hidden;
+  height: fit-content;
+}
+
+/* Toggle Switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
   cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.primary-btn {
-  background-color: #1a73e8;
-  color: white;
-}
-
-.primary-btn:hover {
-  background-color: #1557b0;
-}
-
-.primary-btn:disabled {
-  background-color: #80868b;
-  cursor: not-allowed;
-}
-
-.text-btn {
-  background-color: transparent;
-  color: #1a73e8;
-}
-
-.text-btn:hover {
-  background-color: #f6fafe;
-}
-
-/* Toast */
-.toast {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 12px 24px;
-  border-radius: 4px;
-  color: white;
-  font-weight: 500;
-  z-index: 1000;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  animation: slideDown 0.3s ease-out;
-}
-
-.toast.success {
-  background-color: #34a853;
-}
-
-.toast.error {
-  background-color: #d93025;
-}
-
-@keyframes slideDown {
-  from { top: -50px; opacity: 0; }
-  to { top: 20px; opacity: 1; }
-}
-
-/* Modal */
-.modal-overlay {
-  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.5);
+  background-color: var(--line-bg-soft);
+  border: 1px solid var(--line-border);
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 2px;
+  bottom: 2px;
+  background-color: var(--line-text-secondary);
+  transition: .4s;
+}
+
+.slider.round {
+  border-radius: 24px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--line-primary);
+  border-color: var(--line-primary);
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
+  background-color: white;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px var(--line-primary);
+}
+
+.card-title {
+  padding: 16px 20px;
+  background-color: var(--line-bg-soft);
+  border-bottom: 1px solid var(--line-border);
+}
+
+.card-title h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--line-text);
+}
+
+.action-item {
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.item-text h4 {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.item-text p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--line-text-secondary);
+}
+
+.sm-btn {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 999;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease;
 }
 
-.modal-card {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
+.line-modal {
+  background: var(--line-bg);
+  border-radius: var(--line-radius-lg);
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  box-shadow: var(--line-shadow-xl);
+  border: 1px solid var(--line-border);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.modal-card h2 {
-  margin-top: 0;
-  color: #202124;
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.modal-card .floating-label-group {
-  margin-bottom: 1.5rem;
-  margin-top: 1.5rem;
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
-.modal-actions {
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--line-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-desc {
+  font-size: 0.9rem;
+  color: var(--line-text-secondary);
+  margin: 0 0 8px;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  background-color: var(--line-bg-soft);
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 2rem;
+  gap: 12px;
+  border-top: 1px solid var(--line-border);
+  border-bottom-left-radius: var(--line-radius-lg);
+  border-bottom-right-radius: var(--line-radius-lg);
+}
+
+/* Toast */
+.line-toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 16px;
+  border-radius: 99px;
+  color: white;
+  font-weight: 500;
+  font-size: 0.9rem;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: var(--line-shadow-lg);
+  animation: slideDownToast 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.line-toast.success { background-color: #10B981; }
+.line-toast.error { background-color: #EF4444; }
+
+.toast-icon {
+  width: 18px;
+  height: 18px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDownToast { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+@media (max-width: 768px) {
+  .profile-layout { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .full-width { grid-column: auto; }
 }
 </style>
