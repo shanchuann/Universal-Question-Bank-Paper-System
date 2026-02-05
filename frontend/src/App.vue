@@ -1,13 +1,63 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { authState, type UserRole } from '@/states/authState'
+import { ChevronDown, LogOut } from 'lucide-vue-next'
+import GlobalToast from '@/components/GlobalToast.vue'
+import AnnouncementModal from '@/components/AnnouncementModal.vue'
+import Breadcrumb from '@/components/Breadcrumb.vue'
+import axios from 'axios'
 
 const router = useRouter()
 const route = useRoute()
 
+// 站点名称
+const siteName = ref('UQBank')
+
+// 公告弹窗引用
+const announcementModalRef = ref<InstanceType<typeof AnnouncementModal> | null>(null)
+
+const fetchSiteName = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    if (token) {
+      const response = await axios.get('/api/admin/system/settings', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.data.siteName) {
+        siteName.value = response.data.siteName
+        document.title = response.data.siteName
+      }
+    }
+  } catch (error) {
+    // 如果获取失败，使用默认值
+  }
+}
+
+// 检查并显示公告
+const checkAnnouncements = () => {
+  if (announcementModalRef.value) {
+    announcementModalRef.value.checkAnnouncements()
+  }
+}
+
 onMounted(() => {
-  if (authState.isAuthenticated) authState.fetchUser()
+  if (authState.isAuthenticated) {
+    authState.fetchUser()
+    fetchSiteName()
+    // 登录后检查公告
+    checkAnnouncements()
+  }
+})
+
+// 监听登录状态变化，登录后显示公告
+watch(() => authState.isAuthenticated, (isAuth) => {
+  if (isAuth) {
+    // 延迟一点点确保路由跳转完成
+    setTimeout(() => {
+      checkAnnouncements()
+    }, 500)
+  }
 })
 
 type NavChild = { to: string; label: string }
@@ -28,9 +78,10 @@ const navGroups = computed<NavGroup[]>(() => {
 
   const groups: NavGroup[] = [
     { to: '/', label: '首页' },
+    // 教师专属业务菜单
     {
       label: '题库管理',
-      roles: ['TEACHER', 'ADMIN'],
+      roles: ['TEACHER'],
       children: [
         { to: '/questions', label: '题目列表' },
         { to: '/questions/add', label: '添加题目' },
@@ -41,7 +92,7 @@ const navGroups = computed<NavGroup[]>(() => {
     },
     {
       label: '试卷管理',
-      roles: ['TEACHER', 'ADMIN'],
+      roles: ['TEACHER'],
       children: [
         { to: '/papers', label: '试卷列表' },
         { to: '/papers/manual', label: '手动组卷' },
@@ -51,16 +102,17 @@ const navGroups = computed<NavGroup[]>(() => {
     {
       label: '考试管理',
       to: '/exams/manage',
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['TEACHER']
     },
     {
       label: '阅卷评分',
       to: '/grading',
-      roles: ['TEACHER', 'ADMIN']
+      roles: ['TEACHER']
     },
     // 学生专属菜单
     ...(isStudent ? [
       { to: '/exams/list', label: '我的考试' },
+      { to: '/my-scores', label: '我的成绩' },
       { to: '/practice', label: '练习模式' },
       { to: '/leaderboard', label: '排行榜' },
       { to: '/questions/add', label: '我要出题' },
@@ -74,31 +126,31 @@ const navGroups = computed<NavGroup[]>(() => {
         { to: '/leaderboard', label: '排行榜' }
       ]
     }] : []),
-    // 管理员的系统管理
-    ...(isAdmin ? [{
-      label: '系统管理',
-      children: [
-        { to: '/admin/organizations', label: '组织架构' },
-        { to: '/admin/roles', label: '角色权限' },
-        { to: '/admin/users', label: '用户管理' },
-        { to: '/admin/system', label: '系统设置' }
-      ]
-    }] : [])
+    // 管理员的系统管理 - 直接展示在导航栏
+    ...(isAdmin ? [
+      { to: '/admin/users', label: '用户管理' },
+      { to: '/admin/organizations', label: '组织架构' },
+      { to: '/admin/statistics', label: '数据统计' },
+      { to: '/admin/system', label: '系统设置' },
+      { to: '/admin/logs', label: '操作日志' },
+      { to: '/admin/monitor', label: '系统监控' },
+      { to: '/admin/announcements', label: '公告管理' }
+    ] : [])
   ]
 
   return groups
 })
 
+const avatarUrl = computed(() => authState.user.avatarUrl || '')
+const avatarError = ref(false)
+
+watch(avatarUrl, () => {
+  avatarError.value = false
+})
+
 const initial = computed(() => {
   const name = authState.user.nickname || authState.user.username || ''
   return name.length > 0 ? name.charAt(0).toUpperCase() : 'U'
-})
-
-const avatarStyle = computed(() => {
-  if (authState.user.avatarUrl) {
-    return { backgroundImage: `url(${authState.user.avatarUrl})` }
-  }
-  return { backgroundColor: 'var(--line-primary)' }
 })
 
 onMounted(() => {
@@ -168,7 +220,7 @@ const isExactActive = (path: string) => {
     <div class="header-content">
       <!-- Logo -->
       <div class="logo" @click="$router.push('/')">
-        <span class="logo-primary">UQ</span><span class="logo-sub">Bank</span>
+        <span class="logo-text">{{ siteName }}</span>
       </div>
 
       <!-- Navigation Links -->
@@ -194,10 +246,7 @@ const isExactActive = (path: string) => {
                 @mouseenter="openDropdown(group.label)"
               >
                 {{ group.label }}
-                <!-- SVG Chevron Down -->
-                <svg class="dropdown-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
+                <ChevronDown class="dropdown-arrow" :size="16" />
               </div>
               <div v-show="activeDropdown === group.label" class="dropdown-menu">
                 <div 
@@ -223,11 +272,22 @@ const isExactActive = (path: string) => {
         </template>
         <template v-else>
           <div class="user-profile">
-            <div class="avatar" :style="avatarStyle" @click="goProfile" title="个人设置">
-              <span v-if="!authState.user.avatarUrl">{{ initial }}</span>
+            <div
+              class="avatar"
+              :style="{ backgroundColor: avatarUrl && !avatarError ? 'transparent' : 'var(--line-primary)' }"
+              @click="goProfile"
+              title="个人设置"
+            >
+              <img
+                v-if="avatarUrl && !avatarError"
+                :src="avatarUrl"
+                alt="avatar"
+                @error="avatarError = true"
+              />
+              <span v-else>{{ initial }}</span>
             </div>
             <button @click="handleLogout" class="logout-btn" title="退出登录">
-               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+               <LogOut :size="16" />
                <span>退出</span>
             </button>
           </div>
@@ -236,9 +296,18 @@ const isExactActive = (path: string) => {
     </div>
   </header>
 
+  <!-- 面包屑导航 -->
+  <Breadcrumb v-if="authState.isAuthenticated" />
+
   <main class="main-container">
     <RouterView />
   </main>
+
+  <!-- 全局 Toast 通知 -->
+  <GlobalToast />
+  
+  <!-- 公告弹窗 -->
+  <AnnouncementModal ref="announcementModalRef" />
 </template>
 
 <style scoped>
@@ -344,8 +413,13 @@ const isExactActive = (path: string) => {
   gap: 2px;
 }
 
-.logo-primary { color: var(--line-primary); }
-.logo-sub { color: var(--line-text-secondary); font-weight: 400; }
+.logo-text { 
+  color: var(--line-primary); 
+  background: linear-gradient(135deg, var(--line-primary) 0%, #4a90d9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 
 .nav-links {
   display: flex;
@@ -478,6 +552,14 @@ const isExactActive = (path: string) => {
   cursor: pointer;
   box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 2px 5px rgba(0,0,0,0.1);
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
 }
 
 .avatar:hover {

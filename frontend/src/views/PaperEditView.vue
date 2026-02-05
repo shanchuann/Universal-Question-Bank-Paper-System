@@ -2,6 +2,7 @@
 import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import { useToast } from '@/composables/useToast'
 import 'katex/dist/katex.min.css';
 import katex from 'katex';
 import { questionApi } from '@/api/client'
@@ -36,6 +37,7 @@ interface Paper {
 
 const route = useRoute()
 const router = useRouter()
+const { showToast } = useToast()
 const paper = ref<Paper | null>(null)
 const items = ref<PaperItem[]>([])
 const loading = ref(true)
@@ -130,7 +132,7 @@ const addSection = () => {
   items.value.push({
     uuid: generateUuid(),
     type: 'SECTION',
-    sectionTitle: 'New Section',
+    sectionTitle: '新分区',
     score: 0
   });
 };
@@ -217,7 +219,7 @@ const savePaper = async () => {
     })
     router.push(`/papers/${paper.value.id}/preview`)
   } catch (err) {
-    alert('Failed to save paper.')
+    showToast({ message: '保存试卷失败', type: 'error' })
     console.error(err)
   } finally {
     saving.value = false
@@ -297,7 +299,7 @@ const resetDragState = () => {
     
     <div v-else-if="paper" class="google-card edit-card">
       <div class="card-header">
-        <h1>编辑试卷</h1>
+        <h1 class="page-title">编辑试卷</h1>
         <p class="subtitle">修改试卷信息和题目</p>
       </div>
       
@@ -508,11 +510,11 @@ const resetDragState = () => {
   font-size: 28px;
   font-weight: 400;
   margin-bottom: 8px;
-  color: #202124;
+  color: var(--line-text);
 }
 
 .subtitle {
-  color: #5f6368;
+  color: var(--line-text-secondary);
   font-size: 16px;
 }
 
@@ -524,7 +526,7 @@ const resetDragState = () => {
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #202124;
+  color: var(--line-text);
   margin-bottom: 8px;
 }
 
@@ -532,13 +534,13 @@ const resetDragState = () => {
   width: 100%;
   padding: 10px 12px;
   font-size: 16px;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--line-border);
   border-radius: 4px;
   transition: border-color 0.2s;
 }
 
 .google-input:focus {
-  border-color: #1a73e8;
+  border-color: var(--line-primary);
   outline: none;
   border-width: 2px;
   padding: 9px 11px;
@@ -550,12 +552,12 @@ const resetDragState = () => {
   align-items: center;
   margin-bottom: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #dadce0;
+  border-bottom: 1px solid var(--line-border);
 }
 
 .total-score {
   font-weight: 500;
-  color: #1a73e8;
+  color: var(--line-primary);
   font-size: 16px;
 }
 
@@ -567,10 +569,10 @@ const resetDragState = () => {
 }
 
 .paper-item {
-  border: 1px solid #dadce0;
+  border: 1px solid var(--line-border);
   border-radius: 8px;
   padding: 16px;
-  background: #fff;
+  background: var(--line-bg);
   position: relative;
   transition: box-shadow 0.2s;
 }
@@ -580,8 +582,8 @@ const resetDragState = () => {
 }
 
 .section-item {
-  background-color: #f8f9fa;
-  border-left: 4px solid #1a73e8;
+  background-color: var(--line-bg-soft);
+  border-left: 4px solid var(--line-primary);
 }
 
 .item-controls {
@@ -595,7 +597,7 @@ const resetDragState = () => {
 .control-btn {
   background: transparent;
   border: none;
-  color: #5f6368;
+  color: var(--line-text-secondary);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -607,8 +609,8 @@ const resetDragState = () => {
 }
 
 .control-btn:hover:not(:disabled) {
-  background-color: #f1f3f4;
-  color: #202124;
+  background-color: var(--line-bg-soft);
+  color: var(--line-text);
 }
 
 .delete-btn:hover {
@@ -622,19 +624,19 @@ const resetDragState = () => {
   background: transparent;
   font-size: 18px;
   font-weight: 500;
-  color: #202124;
+  color: var(--line-text);
   border-bottom: 1px solid transparent;
   padding: 4px 0;
 }
 
 .section-input:focus {
   outline: none;
-  border-bottom-color: #1a73e8;
+  border-bottom-color: var(--line-primary);
 }
 
 .question-preview {
   font-size: 14px;
-  color: #202124;
+  color: var(--line-text);
   margin-bottom: 12px;
   padding-right: 80px;
 }
@@ -646,11 +648,11 @@ const resetDragState = () => {
 }
 
 .chip {
-  background-color: #f1f3f4;
+  background-color: var(--line-bg-soft);
   padding: 2px 8px;
   border-radius: 12px;
   font-size: 12px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .score-input-wrapper {
@@ -658,13 +660,13 @@ const resetDragState = () => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .score-input {
   width: 60px;
   padding: 4px 8px;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--line-border);
   border-radius: 4px;
   text-align: right;
 }
@@ -675,13 +677,13 @@ const resetDragState = () => {
   gap: 16px;
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid #dadce0;
+  border-top: 1px solid var(--line-border);
 }
 
 .loading-state, .error-state {
   text-align: center;
   padding: 40px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .google-btn {
@@ -696,7 +698,7 @@ const resetDragState = () => {
 }
 
 .primary-btn {
-  background-color: #1a73e8;
+  background-color: var(--line-primary);
   color: white;
 }
 
@@ -707,7 +709,7 @@ const resetDragState = () => {
 
 .text-btn {
   background-color: transparent;
-  color: #1a73e8;
+  color: var(--line-primary);
 }
 
 .text-btn:hover {
@@ -728,17 +730,17 @@ const resetDragState = () => {
 
 .paper-item.dragging {
   opacity: 0.5;
-  background: #f1f3f4;
-  border: 2px dashed #1a73e8;
+  background: var(--line-bg-soft);
+  border: 2px dashed var(--line-primary);
 }
 
 .drop-target-top {
-  border-top: 2px solid #1a73e8;
+  border-top: 2px solid var(--line-primary);
   margin-top: -2px;
 }
 
 .drop-target-bottom {
-  border-bottom: 2px solid #1a73e8;
+  border-bottom: 2px solid var(--line-primary);
   margin-bottom: -2px;
 }
 
@@ -749,14 +751,16 @@ const resetDragState = () => {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease-out;
 }
 
 .question-modal {
-  background: #fff;
+  background: var(--line-bg);
   border-radius: 8px;
   overflow: hidden;
   width: 90%;
@@ -765,7 +769,7 @@ const resetDragState = () => {
 }
 
 .modal-header {
-  background: #f1f3f4;
+  background: var(--line-bg-soft);
   padding: 16px;
   display: flex;
   justify-content: space-between;
@@ -776,20 +780,20 @@ const resetDragState = () => {
   font-size: 18px;
   font-weight: 500;
   margin: 0;
-  color: #202124;
+  color: var(--line-text);
 }
 
 .close-btn {
   background: transparent;
   border: none;
-  color: #5f6368;
+  color: var(--line-text-secondary);
   font-size: 18px;
   cursor: pointer;
 }
 
 .search-bar {
   padding: 16px;
-  border-bottom: 1px solid #dadce0;
+  border-bottom: 1px solid var(--line-border);
 }
 
 .questions-list {
@@ -800,7 +804,7 @@ const resetDragState = () => {
 
 .question-item {
   padding: 12px 16px;
-  border-bottom: 1px solid #dadce0;
+  border-bottom: 1px solid var(--line-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -809,7 +813,7 @@ const resetDragState = () => {
 }
 
 .question-item:hover {
-  background: #f1f3f4;
+  background: var(--line-bg-soft);
 }
 
 .question-info {
@@ -818,7 +822,7 @@ const resetDragState = () => {
 
 .question-stem {
   font-size: 14px;
-  color: #202124;
+  color: var(--line-text);
   margin-bottom: 4px;
 }
 
@@ -828,7 +832,7 @@ const resetDragState = () => {
 }
 
 .select-btn {
-  background: #1a73e8;
+  background: var(--line-primary);
   color: white;
   border: none;
   border-radius: 4px;
@@ -841,16 +845,25 @@ const resetDragState = () => {
   background: #1557b0;
 }
 
+.select-btn.active {
+  background: #1e8e3e;
+  color: white;
+}
+
+.select-btn.active:hover {
+  background: #1a7a35;
+}
+
 .selected {
-  background: #e8f0fe;
-  color: #1a73e8;
+  background: rgba(30, 142, 62, 0.1);
+  border-left: 3px solid #1e8e3e;
 }
 
 .modal-footer {
   padding: 16px;
   display: flex;
   justify-content: flex-end;
-  border-top: 1px solid #dadce0;
+  border-top: 1px solid var(--line-border);
 }
 
 .pagination-controls {
@@ -858,12 +871,12 @@ const resetDragState = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid #dadce0;
+  border-top: 1px solid var(--line-border);
 }
 
 .pagination-btn {
-  background: #f1f3f4;
-  color: #202124;
+  background: var(--line-bg-soft);
+  color: var(--line-text);
   border: none;
   border-radius: 4px;
   padding: 8px 16px;
@@ -872,12 +885,12 @@ const resetDragState = () => {
 }
 
 .pagination-btn:hover {
-  background: #e8f0fe;
+  background: rgba(26, 115, 232, 0.1);
 }
 
 .page-info {
   font-size: 14px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .modal-overlay {
@@ -887,10 +900,12 @@ const resetDragState = () => {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease-out;
 }
 
 .modal-card {
@@ -904,7 +919,7 @@ const resetDragState = () => {
 
 .modal-header {
   padding: 24px;
-  border-bottom: 1px solid #dadce0;
+  border-bottom: 1px solid var(--line-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -921,7 +936,7 @@ const resetDragState = () => {
   border: none;
   font-size: 24px;
   cursor: pointer;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .modal-body {
@@ -938,14 +953,14 @@ const resetDragState = () => {
 .question-select-item {
   display: flex;
   padding: 16px 24px;
-  border-bottom: 1px solid #f1f3f4;
+  border-bottom: 1px solid var(--line-bg-soft);
   cursor: pointer;
   align-items: flex-start;
   gap: 16px;
 }
 
 .question-select-item:hover {
-  background-color: #f8f9fa;
+  background-color: var(--line-bg-soft);
 }
 
 .checkbox-wrapper input {
@@ -960,7 +975,7 @@ const resetDragState = () => {
 
 .q-stem {
   margin-bottom: 8px;
-  color: #202124;
+  color: var(--line-text);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -972,15 +987,20 @@ const resetDragState = () => {
 
 .modal-actions {
   padding: 16px 24px;
-  border-top: 1px solid #dadce0;
+  border-top: 1px solid var(--line-border);
   display: flex;
   justify-content: flex-end;
   gap: 16px;
-  background: #fff;
+  background: var(--line-bg);
 }
 
 .toolbar-actions {
   display: flex;
   gap: 8px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 </style>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ChevronDown, X, Plus, Search } from 'lucide-vue-next'
 
 interface Option {
   label: string
@@ -89,7 +90,9 @@ onUnmounted(() => {
       <div class="chips-area">
         <div v-for="opt in selectedOptions" :key="opt.value" class="chip">
           <span>{{ opt.label }}</span>
-          <span class="chip-remove" @click.stop="removeOption(opt.value)">×</span>
+          <span class="chip-remove" @click.stop="removeOption(opt.value)">
+            <X :size="14" />
+          </span>
         </div>
         <input 
           ref="inputRef"
@@ -100,7 +103,9 @@ onUnmounted(() => {
           @focus="isOpen = true"
         />
       </div>
-      <div class="combo-arrow">▼</div>
+      <div class="combo-arrow" :class="{ 'is-open': isOpen }">
+        <ChevronDown :size="20" />
+      </div>
     </div>
 
     <transition name="fade">
@@ -119,11 +124,13 @@ onUnmounted(() => {
           class="dropdown-item create-item"
           @click.stop="handleCreate"
         >
-          Create "{{ searchQuery }}"
+          <Plus :size="16" class="create-icon" />
+          创建 "{{ searchQuery }}"
         </div>
 
         <div v-if="filteredOptions.length === 0 && !showCreateOption" class="no-results">
-          No options found
+          <Search :size="16" class="search-icon" />
+          未找到匹配选项
         </div>
       </div>
     </transition>
@@ -151,11 +158,10 @@ onUnmounted(() => {
   border-radius: var(--line-radius-md);
   background-color: var(--line-bg);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   padding: 8px 12px;
   cursor: text;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-wrap: wrap;
   box-sizing: border-box;
 }
 
@@ -165,8 +171,7 @@ onUnmounted(() => {
 }
 
 .combo-wrapper.is-focused {
-  border-color: var(--line-primary);
-  box-shadow: 0 0 0 2px var(--line-primary-10);
+  border-color: var(--line-border);
   background-color: var(--line-bg);
 }
 
@@ -231,9 +236,17 @@ onUnmounted(() => {
 .combo-arrow {
   display: flex;
   align-items: center;
+  justify-content: center;
   color: var(--line-text-secondary);
-  padding: 8px 0 8px 8px; /* Visual separation */
+  margin-left: 8px;
   cursor: pointer;
+  transition: transform 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.combo-arrow.is-open {
+  transform: rotate(180deg);
+  color: var(--line-primary);
 }
 
 .options-dropdown {
@@ -245,7 +258,7 @@ onUnmounted(() => {
   border: 1px solid var(--line-border);
   border-radius: var(--line-radius-md);
   box-shadow: var(--line-shadow-lg);
-  z-index: 1000;
+  z-index: 10001;
   max-height: 250px;
   overflow-y: auto;
   padding: 6px;
@@ -271,13 +284,31 @@ onUnmounted(() => {
   border-top: 1px solid var(--line-border);
   margin-top: 4px;
   padding-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.create-item:hover {
+  background-color: rgba(26, 115, 232, 0.1);
+}
+
+.create-icon {
+  flex-shrink: 0;
 }
 
 .no-results {
-  padding: 10px 12px;
+  padding: 16px 12px;
   font-size: 14px;
   color: var(--line-text-secondary);
-  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.search-icon {
+  opacity: 0.5;
 }
 
 @keyframes slideDown {

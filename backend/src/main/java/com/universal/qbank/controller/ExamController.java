@@ -104,9 +104,11 @@ public class ExamController {
   public static class ExamListItem {
     public String sessionId;
     public String paperVersionId;
+    public String paperTitle;
     public String userId;
     public String nickname;
     public String username;
+    public String avatarUrl;
     public Integer score;
     public String status;
     public java.time.OffsetDateTime startAt;
@@ -148,13 +150,32 @@ public class ExamController {
     item.score = exam.getScore();
     item.startAt = exam.getStartTime();
     item.endAt = exam.getEndTime();
-    item.status = exam.getEndTime() != null ? "已阅卷" : "进行中";
+    
+    // 使用阅卷状态
+    String gradingStatus = exam.getGradingStatus();
+    if (gradingStatus == null) {
+      gradingStatus = exam.getEndTime() != null ? "PENDING" : "IN_PROGRESS";
+    }
+    switch (gradingStatus) {
+      case "GRADED":
+        item.status = "已阅卷";
+        break;
+      case "GRADING":
+        item.status = "阅卷中";
+        break;
+      case "PENDING":
+        item.status = "待阅卷";
+        break;
+      default:
+        item.status = exam.getEndTime() != null ? "待阅卷" : "进行中";
+    }
 
     // 查找用户信息
     if (exam.getUserId() != null) {
       userRepository.findById(exam.getUserId()).ifPresent(user -> {
         item.nickname = user.getNickname();
         item.username = user.getUsername();
+        item.avatarUrl = user.getAvatarUrl();
       });
     }
 
@@ -198,6 +219,131 @@ public class ExamController {
       @PathVariable Long id, @RequestBody ManualGradeRequest request) {
     ExamEntity exam = examService.gradeExam(id, request);
     return ResponseEntity.ok(toExamResponse(exam));
+  }
+
+  /** 学生成绩详情响应 */
+  public static class StudentScoreDetail {
+    public String examId;
+    public String paperId;
+    public String paperTitle;
+    public Integer score;
+    public String gradingStatus;
+    public java.time.OffsetDateTime startTime;
+    public java.time.OffsetDateTime endTime;
+    public List<QuestionScoreDetail> questionScores;
+  }
+
+  public static class QuestionScoreDetail {
+    public String questionId;
+    public String stem;
+    public String type;
+    public String userAnswer;
+    public Boolean isCorrect;
+    public Double score;
+    public Double maxScore;
+    public String notes;
+  }
+
+  /** 学生查询自己的成绩列表 */
+  @GetMapping("/my-scores")
+  public ResponseEntity<ExamListPage> getMyScores(
+      @RequestParam String userId,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "10") int size) {
+    
+    org.springframework.data.domain.Pageable pageable =
+        org.springframework.data.domain.PageRequest.of(
+            page, size, org.springframework.data.domain.Sort.by("startTime").descending());
+
+    org.springframework.data.domain.Page<ExamEntity> pageResult =
+        examService.getStudentExams(userId, pageable);
+
+    ExamListPage resp = new ExamListPage();
+    resp.totalElements = (int) pageResult.getTotalElements();
+    resp.totalPages = pageResult.getTotalPages();
+    resp.content = pageResult.getContent().stream()
+        .map(exam -> {
+          ExamListItem item = toExamListItem(exam);
+          // 添加试卷标题
+          PaperEntity paper = paperRepository.findById(exam.getPaperId()).orElse(null);
+          if (paper != null) {
+            item.paperTitle = paper.getTitle();
+          }
+          return item;
+        })
+        .collect(Collectors.toList());
+
+    return ResponseEntity.ok(resp);
+  }
+
+  /** 学生查询某次考试的成绩详情 */
+  @GetMapping("/{id}/my-score")
+  public ResponseEntity<StudentScoreDetail> getMyScoreDetail(
+      @PathVariable Long id,
+      @RequestParam String userId) {
+    
+    ExamEntity exam = examService.getExam(id);
+    
+    // 验证是否为当前学生的考试
+    if (!userId.equals(exam.getUserId())) {
+      return ResponseEntity.status(403).build();
+    }
+
+    StudentScoreDetail detail = new StudentScoreDetail();
+    detail.examId = String.valueOf(exam.getId());
+    detail.paperId = String.valueOf(exam.getPaperId());
+    detail.score = exam.getScore();
+    detail.gradingStatus = exam.getGradingStatus();
+    detail.startTime = exam.getStartTime();
+    detail.endTime = exam.getEndTime();
+
+    // 获取试卷信息
+    PaperEntity paper = paperRepository.findById(exam.getPaperId()).orElse(null);
+    if (paper != null) {
+      detail.paperTitle = paper.getTitle();
+    }
+
+    // 获取题目得分详情
+    detail.questionScores = new ArrayList<>();
+    if (exam.getRecords() != null) {
+      List<String> qIds = exam.getRecords().stream()
+          .map(ExamRecordEntity::getQuestionId)
+          .collect(Collectors.toList());
+      
+      List<QuestionEntity> questions = questionRepository.findAllById(qIds);
+      Map<String, QuestionEntity> questionMap = questions.stream()
+          .collect(Collectors.toMap(QuestionEntity::getId, q -> q));
+      
+      // 获取每题分值
+      Map<String, Double> maxScoreMap = new java.util.HashMap<>();
+      if (paper != null && paper.getItems() != null) {
+        for (PaperItemEntity item : paper.getItems()) {
+          if ("QUESTION".equals(item.getItemType())) {
+            maxScoreMap.put(item.getQuestionId(), item.getScore());
+          }
+        }
+      }
+
+      for (ExamRecordEntity record : exam.getRecords()) {
+        QuestionScoreDetail qDetail = new QuestionScoreDetail();
+        qDetail.questionId = record.getQuestionId();
+        qDetail.userAnswer = record.getUserAnswer();
+        qDetail.isCorrect = record.getIsCorrect();
+        qDetail.score = record.getScore();
+        qDetail.maxScore = maxScoreMap.getOrDefault(record.getQuestionId(), 1.0);
+        qDetail.notes = record.getNotes();
+
+        QuestionEntity q = questionMap.get(record.getQuestionId());
+        if (q != null) {
+          qDetail.stem = q.getStem();
+          qDetail.type = q.getType();
+        }
+
+        detail.questionScores.add(qDetail);
+      }
+    }
+
+    return ResponseEntity.ok(detail);
   }
 
   @GetMapping("/{id}")

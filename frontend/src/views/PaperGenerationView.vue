@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import GoogleSelect from '@/components/GoogleSelect.vue'
 
 interface QuestionSummary {
   id: string
@@ -20,6 +21,15 @@ interface PaperResponse {
 }
 
 const router = useRouter()
+
+// 难度选项
+const difficultyOptions = [
+  { label: '全部难度', value: '' },
+  { label: '简单', value: 'EASY' },
+  { label: '中等', value: 'MEDIUM' },
+  { label: '困难', value: 'HARD' }
+]
+
 const form = ref({
   title: '自动生成试卷',
   total: 5,
@@ -96,7 +106,7 @@ const editPaper = () => {
   <div class="container">
     <div class="google-card generation-card">
       <div class="card-header">
-        <h1>智能组卷</h1>
+        <h1 class="page-title">智能组卷</h1>
         <p class="subtitle">快速生成自定义试卷</p>
       </div>
       
@@ -114,14 +124,11 @@ const editPaper = () => {
 
           <div class="form-group">
             <label class="field-label">难度筛选</label>
-            <div class="select-wrapper">
-              <select v-model="form.difficulty" class="google-input">
-                <option value="">全部难度</option>
-                <option value="EASY">简单</option>
-                <option value="MEDIUM">中等</option>
-                <option value="HARD">困难</option>
-              </select>
-            </div>
+            <GoogleSelect
+              v-model="form.difficulty"
+              :options="difficultyOptions"
+              placeholder="全部难度"
+            />
           </div>
         </div>
 
@@ -226,9 +233,6 @@ const editPaper = () => {
 }
 
 .card-header h1 {
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 28px;
-  font-weight: 600;
   margin-bottom: 8px;
   color: var(--line-text-primary);
   letter-spacing: -0.5px;

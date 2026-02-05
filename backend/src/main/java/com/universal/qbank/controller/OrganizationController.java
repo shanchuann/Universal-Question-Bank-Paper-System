@@ -1,7 +1,9 @@
 package com.universal.qbank.controller;
 
 import com.universal.qbank.entity.OrganizationEntity;
+import com.universal.qbank.service.ExamPlanService;
 import com.universal.qbank.service.OrganizationService;
+import com.universal.qbank.service.StudentStatsService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +18,8 @@ import org.springframework.web.bind.annotation.*;
 public class OrganizationController {
 
   @Autowired private OrganizationService organizationService;
+  @Autowired private ExamPlanService examPlanService;
+  @Autowired private StudentStatsService studentStatsService;
 
   /** 获取组织树 */
   @GetMapping
@@ -95,6 +99,13 @@ public class OrganizationController {
     
     try {
       OrganizationEntity org = organizationService.joinByInviteCode(userId, inviteCode.trim());
+      
+      // 自动将学生报名到班级关联的已发布考试
+      examPlanService.enrollStudentToClassExams(userId, org.getId());
+      
+      // 初始化学生统计记录（确保出现在排行榜）
+      studentStatsService.initializeStudentStats(userId);
+      
       return ResponseEntity.ok(org);
     } catch (RuntimeException e) {
       Map<String, String> error = new HashMap<>();

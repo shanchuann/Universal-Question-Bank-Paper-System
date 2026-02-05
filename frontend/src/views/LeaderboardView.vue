@@ -196,8 +196,8 @@ onMounted(() => {
           <!-- First Place -->
           <div class="podium-item first">
             <div class="rank-medal gold">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
               </svg>
             </div>
             <div class="avatar gold">
@@ -292,8 +292,6 @@ onMounted(() => {
 }
 
 .page-title {
-  font-size: 24px;
-  font-weight: 600;
   color: var(--line-text);
   margin: 0 0 8px 0;
 }
@@ -456,7 +454,7 @@ onMounted(() => {
 }
 
 .podium-item:hover .avatar {
-  background: #fff;
+  background: var(--line-bg);
 }
 
 .avatar.gold {

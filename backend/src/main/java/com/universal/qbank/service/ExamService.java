@@ -31,6 +31,8 @@ public class ExamService {
 
   @Autowired private com.universal.qbank.repository.StudentStatsRepository studentStatsRepository;
 
+  @Autowired private EmailService emailService;
+
   private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
       new com.fasterxml.jackson.databind.ObjectMapper();
 
@@ -48,6 +50,14 @@ public class ExamService {
     exam.setRandomSeed(System.currentTimeMillis());
 
     return examRepository.save(exam);
+  }
+
+  // 判断是否为客观题（可自动评分）
+  private boolean isObjectiveQuestion(String type) {
+    if (type == null) return false;
+    String t = type.toUpperCase();
+    return t.equals("SINGLE_CHOICE") || t.equals("MULTIPLE_CHOICE") || 
+           t.equals("MULTI_CHOICE") || t.equals("TRUE_FALSE");
   }
 
   public ExamEntity submitExam(
@@ -71,7 +81,9 @@ public class ExamService {
         questions.stream().collect(Collectors.toMap(QuestionEntity::getId, q -> q));
 
     List<ExamRecordEntity> records = new ArrayList<>();
-    int correctCount = 0;
+    int objectiveCorrectCount = 0;
+    int objectiveTotal = 0;
+    boolean hasSubjectiveQuestions = false;
 
     for (Map.Entry<String, String> entry : answers.entrySet()) {
       String qId = entry.getKey();
@@ -87,6 +99,16 @@ public class ExamService {
         record.setIsFlagged(true);
       }
 
+      // 主观题不自动评分，留给老师阅卷
+      if (!isObjectiveQuestion(q.getType())) {
+        hasSubjectiveQuestions = true;
+        record.setIsCorrect(null); // 待评分
+        record.setScore(null);
+        records.add(record);
+        continue;
+      }
+
+      objectiveTotal++;
       boolean isCorrect = false;
       if (q.getOptionsJson() != null) {
         try {
@@ -110,7 +132,7 @@ public class ExamService {
                   isCorrect = userSet.equals(correctSet);
               }
           } else {
-              // Standard string comparison
+              // Standard string comparison (SINGLE_CHOICE, TRUE_FALSE)
               String correctAnswer =
                   opts.stream()
                       .filter(o -> Boolean.TRUE.equals(o.getIsCorrect()))
@@ -118,26 +140,9 @@ public class ExamService {
                       .collect(Collectors.joining(","));
 
               if (userAnswer != null) {
-                // Normalize both strings
                 String normalizedUser = userAnswer.trim();
                 String normalizedCorrect = correctAnswer.trim();
                 isCorrect = normalizedUser.equalsIgnoreCase(normalizedCorrect);
-                
-                // For Short Answer, try a looser match logic if strict fails
-                if (!isCorrect && ("SHORT_ANSWER".equalsIgnoreCase(q.getType()) || "FILL_BLANK".equalsIgnoreCase(q.getType()))) {
-                     // Check if user answer is contained within correct answer or vice versa (simple fuzzy)
-                     // Or check against any of the correct options if multiple correct options exist but not combined?
-                     // Current logic assumes all correct options must be present (joining with comma).
-                     // But for fill blank / short answer, usually there is 1 correct answer, or alternatives.
-                     // If alternatives exist, they might be stored as multiple correct options.
-                     // Check if userAnswer matches ANY correct option
-                     boolean matchAny = opts.stream()
-                         .filter(o -> Boolean.TRUE.equals(o.getIsCorrect()))
-                         .anyMatch(o -> o.getText() != null && o.getText().trim().equalsIgnoreCase(normalizedUser));
-                     if (matchAny) {
-                         isCorrect = true;
-                     }
-                }
               }
           }
         } catch (Exception e) {
@@ -146,7 +151,7 @@ public class ExamService {
       }
 
       record.setIsCorrect(isCorrect);
-      if (isCorrect) correctCount++;
+      if (isCorrect) objectiveCorrectCount++;
 
       records.add(record);
     }
@@ -154,15 +159,21 @@ public class ExamService {
     exam.setRecords(records);
     exam.setEndTime(OffsetDateTime.now());
 
-    // Simple scoring: 100 * (correct / total)
-    int total = questions.size();
-    int score = total == 0 ? 0 : (correctCount * 100 / total);
-    exam.setScore(score);
+    // 如果有主观题，设置为待阅卷状态，暂不计算总分
+    if (hasSubjectiveQuestions) {
+      exam.setGradingStatus("PENDING");
+      exam.setScore(null); // 总分待阅卷后确定
+    } else {
+      // 纯客观题试卷，直接计算分数
+      int score = objectiveTotal == 0 ? 0 : (objectiveCorrectCount * 100 / objectiveTotal);
+      exam.setScore(score);
+      exam.setGradingStatus("GRADED");
+    }
 
     ExamEntity savedExam = examRepository.save(exam);
 
-    // Update Student Stats
-    if (exam.getUserId() != null) {
+    // Update Student Stats (只统计客观题，主观题待阅卷后再统计)
+    if (exam.getUserId() != null && objectiveTotal > 0) {
       StudentStatsEntity stats =
           studentStatsRepository.findByUserId(exam.getUserId()).orElse(new StudentStatsEntity());
       stats.setUserId(exam.getUserId());
@@ -175,8 +186,8 @@ public class ExamService {
                 stats.setNickname(u.getNickname() != null ? u.getNickname() : u.getUsername());
               });
 
-      stats.setTotalQuestionsAnswered(stats.getTotalQuestionsAnswered() + total);
-      stats.setCorrectAnswers(stats.getCorrectAnswers() + correctCount);
+      stats.setTotalQuestionsAnswered(stats.getTotalQuestionsAnswered() + objectiveTotal);
+      stats.setCorrectAnswers(stats.getCorrectAnswers() + objectiveCorrectCount);
 
       java.time.LocalDate today = java.time.LocalDate.now();
       java.time.LocalDate lastDate = stats.getLastPracticeDate();
@@ -307,13 +318,74 @@ public class ExamService {
 
     int percentage = totalMaxScore == 0 ? 0 : (int) ((totalUserScore / totalMaxScore) * 100);
     exam.setScore(percentage);
+    exam.setGradingStatus("GRADED");
 
-    return examRepository.save(exam);
+    ExamEntity savedExam = examRepository.save(exam);
+
+    // 发送成绩通知邮件
+    sendScoreNotificationEmail(savedExam, paper);
+
+    return savedExam;
+  }
+
+  /** 发送成绩通知邮件给学生 */
+  private void sendScoreNotificationEmail(ExamEntity exam, PaperEntity paper) {
+    if (exam.getScoreNotified() != null && exam.getScoreNotified()) {
+      return; // 已经发送过通知
+    }
+
+    if (exam.getUserId() == null) {
+      return;
+    }
+
+    userRepository.findById(exam.getUserId()).ifPresent(user -> {
+      if (user.getEmail() != null && !user.getEmail().isEmpty()) {
+        String studentName = user.getNickname() != null ? user.getNickname() : user.getUsername();
+        String examTitle = paper.getTitle() != null ? paper.getTitle() : "考试 #" + exam.getId();
+        
+        // 收集教师评语
+        StringBuilder comments = new StringBuilder();
+        if (exam.getRecords() != null) {
+          for (ExamRecordEntity record : exam.getRecords()) {
+            if (record.getNotes() != null && !record.getNotes().isEmpty()) {
+              comments.append("- ").append(record.getNotes()).append("\n");
+            }
+          }
+        }
+
+        emailService.sendScoreNotification(
+            user.getEmail(),
+            studentName,
+            examTitle,
+            exam.getScore() != null ? exam.getScore() : 0,
+            comments.toString()
+        );
+
+        // 标记已发送
+        exam.setScoreNotified(true);
+        examRepository.save(exam);
+      }
+    });
   }
 
   public ExamEntity getExam(Long examId) {
     return examRepository
         .findById(examId)
         .orElseThrow(() -> new IllegalArgumentException("Exam not found"));
+  }
+
+  /** 获取学生自己的考试记录 */
+  public org.springframework.data.domain.Page<ExamEntity> getStudentExams(
+      String userId, org.springframework.data.domain.Pageable pageable) {
+    
+    Specification<ExamEntity> spec = (root, query, cb) -> {
+      List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+      predicates.add(cb.equal(root.get("userId"), userId));
+      // 只获取已提交的考试
+      predicates.add(cb.isNotNull(root.get("endTime")));
+      return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+    };
+
+    return examRepository.findAll(spec, pageable);
   }
 }

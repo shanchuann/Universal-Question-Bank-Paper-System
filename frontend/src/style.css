@@ -61,6 +61,38 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.025em;
 }
 
+/* Page Title - 统一的页面主标题样式 */
+.page-title, 
+h1.page-title,
+.header-row h1,
+.page-header h1,
+.view-header h1,
+.center-header h1,
+.card-header h1 {
+  font-size: 28px !important;
+  font-weight: 600 !important;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  color: var(--line-text);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+/* 页面头部容器样式 */
+.page-header,
+.header-row {
+  margin-bottom: 32px;
+}
+
+/* 副标题样式 */
+.page-subtitle,
+.subtitle {
+  color: var(--line-text-secondary);
+  font-size: 15px;
+  font-weight: 400;
+  margin-top: 8px;
+  letter-spacing: 0;
+}
+
 /* --- Components Mapping (Mapping old Google names to new Line styles) --- */
 
 /* Cards */
@@ -88,10 +120,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Inputs */
-input, textarea, select, 
-.form-control, .form-select, 
-.google-input, .line-input, 
-.google-select, .line-select {
+input, textarea, 
+.form-control, 
+.google-input, .line-input {
   width: 100%;
   padding: 12px 16px;
   background: var(--line-bg);
@@ -103,6 +134,61 @@ input, textarea, select,
   outline: none;
   box-sizing: border-box;
   font-family: inherit;
+}
+
+/* Select Inputs - Custom Styled */
+select, .form-select, 
+.google-select, .line-select {
+  width: 100%;
+  padding: 12px 40px 12px 16px;
+  background: var(--line-bg);
+  border: 1px solid var(--line-border);
+  border-radius: var(--radius);
+  color: var(--line-text);
+  font-size: 15px;
+  transition: var(--transition);
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+  cursor: pointer;
+  /* Custom arrow */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+
+select:hover, .form-select:hover, 
+.google-select:hover, .line-select:hover {
+  border-color: var(--line-text-secondary);
+}
+
+select:focus, .form-select:focus, 
+.google-select:focus, .line-select:focus {
+  border-color: var(--line-primary);
+  box-shadow: 0 0 0 1px var(--line-primary);
+}
+
+/* Select dropdown option styling */
+select option, .form-select option,
+.google-select option, .line-select option {
+  padding: 12px 16px;
+  background: var(--line-bg);
+  color: var(--line-text);
+}
+
+select option:hover, .form-select option:hover,
+.google-select option:hover, .line-select option:hover {
+  background: var(--line-bg-soft);
+}
+
+select option:checked, .form-select option:checked,
+.google-select option:checked, .line-select option:checked {
+  background: rgba(26, 115, 232, 0.1);
+  color: var(--line-primary);
 }
 
 input:focus, textarea:focus, select:focus, 
@@ -191,7 +277,7 @@ button, .btn, .google-btn, .line-btn {
 }
 
 /* Table */
-.table, .question-table {
+.table, .question-table, table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -201,10 +287,10 @@ button, .btn, .google-btn, .line-btn {
   margin-bottom: 24px;
 }
 
-.table th, .question-table th {
+.table th, .question-table th, table th {
   background: var(--line-bg-soft);
   padding: 16px;
-  text-align: left;
+  text-align: center;
   font-weight: 600;
   color: var(--line-text-secondary);
   border-bottom: 1px solid var(--line-border);
@@ -213,45 +299,57 @@ button, .btn, .google-btn, .line-btn {
   letter-spacing: 0.05em;
 }
 
-.table td, .question-table td {
+.table td, .question-table td, table td {
   padding: 16px;
   border-bottom: 1px solid var(--line-border);
   background: var(--line-bg);
   color: var(--line-text);
   font-size: 14px;
+  text-align: center;
+  vertical-align: middle;
 }
 
-.table tr:last-child td, .question-table tr:last-child td {
+.table tr:last-child td, .question-table tr:last-child td, table tr:last-child td {
   border-bottom: none;
 }
 
-.table tr:hover td, .question-table tr:hover td {
+.table tr:hover td, .question-table tr:hover td, table tr:hover td {
   background-color: var(--line-bg-hover);
 }
 
 /* Checkbox & Radio - Custom Line Style */
 input[type="checkbox"], .google-checkbox {
   appearance: none;
-  background-color: #fff;
+  -webkit-appearance: none;
+  background-color: var(--line-bg);
   margin: 0;
   font: inherit;
   color: currentColor;
-  width: 1.15em;
-  height: 1.15em;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
   border: 1.5px solid var(--line-text-secondary);
-  border-radius: 4px; /* Slight radius */
-  display: grid;
+  border-radius: 4px;
+  display: inline-grid;
   place-content: center;
-  transition: var(--transition);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  padding: 0;
+  vertical-align: middle;
+}
+
+input[type="checkbox"]:hover, .google-checkbox:hover {
+  border-color: var(--line-primary);
+  background-color: rgba(26, 115, 232, 0.04);
 }
 
 input[type="checkbox"]::before, .google-checkbox::before {
   content: "";
-  width: 0.65em;
-  height: 0.65em;
+  width: 10px;
+  height: 10px;
   transform: scale(0);
   transition: 120ms transform ease-in-out;
-  box-shadow: inset 1em 1em white;
   background-color: white;
   transform-origin: center;
   clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
@@ -462,3 +560,98 @@ nav a:hover, nav a.router-link-active {
   padding: 64px 0;
   color: var(--line-text-secondary);
 }
+
+/* ===== 全局弹窗样式 ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 24px;
+  backdrop-filter: blur(2px);
+  animation: modalFadeIn 0.15s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  background: var(--line-bg);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.25);
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-content.large { max-width: 700px; }
+.modal-content.edit-modal { max-width: 720px; }
+.modal-content.preview-modal { max-width: 640px; }
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line-border);
+  position: sticky;
+  top: 0;
+  background: var(--line-bg);
+  z-index: 1;
+  border-radius: 16px 16px 0 0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--line-text);
+}
+
+.close-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--line-text-secondary);
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: var(--line-bg-soft);
+  color: var(--line-text);
+}
+
+.modal-body,
+.modal-content form {
+  padding: 24px;
+}
+
+.modal-footer,
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--line-border);
+  background: var(--line-bg-soft);
+  border-radius: 0 0 16px 16px;
+}
+

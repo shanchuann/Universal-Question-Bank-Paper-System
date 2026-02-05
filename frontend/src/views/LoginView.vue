@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { authApi } from '@/api/client'
 import { authState } from '@/states/authState'
+import axios from 'axios'
 
 const username = ref('')
 const password = ref('')
@@ -10,6 +11,7 @@ const error = ref('')
 const router = useRouter()
 
 const handleLogin = async () => {
+  error.value = ''
   try {
     const response = await authApi.apiAuthLoginPost({
       username: username.value,
@@ -21,7 +23,19 @@ const handleLogin = async () => {
       router.push('/')
     }
   } catch (err) {
-    error.value = '登录失败，请检查您的用户名和密码'
+    if (axios.isAxiosError(err)) {
+      if (err.response?.status === 429) {
+        error.value = '登录失败次数过多，账号已被临时锁定15分钟'
+      } else if (err.response?.status === 503) {
+        error.value = '系统维护中，请稍后再试'
+      } else if (err.response?.status === 401) {
+        error.value = '用户名或密码错误'
+      } else {
+        error.value = '登录失败，请稍后再试'
+      }
+    } else {
+      error.value = '网络连接失败，请检查网络'
+    }
     console.error(err)
   }
 }
@@ -33,7 +47,7 @@ const handleLogin = async () => {
       <div class="logo-area">
         <span class="app-logo">UQ</span>
       </div>
-      <h1>欢迎回来</h1>
+      <h1 class="page-title">欢迎回来</h1>
       <p class="subtitle">登录以继续</p>
       
       <form @submit.prevent="handleLogin">
@@ -42,6 +56,10 @@ const handleLogin = async () => {
         </div>
         <div class="form-group">
           <input id="password" v-model="password" type="password" required placeholder="密码" class="google-input" />
+        </div>
+        
+        <div class="forgot-password">
+          <router-link to="/forgot-password">忘记密码？</router-link>
         </div>
         
         <div class="actions">
@@ -88,8 +106,6 @@ const handleLogin = async () => {
 }
 
 h1 {
-  font-size: 24px;
-  font-weight: 600;
   color: var(--line-text);
   margin-bottom: 8px;
 }
@@ -115,6 +131,22 @@ h1 {
   justify-content: space-between;
   align-items: center;
   margin-top: 32px;
+}
+
+.forgot-password {
+  text-align: right;
+  margin-top: 8px;
+}
+
+.forgot-password a {
+  color: var(--line-text-secondary);
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.forgot-password a:hover {
+  color: var(--line-primary);
 }
 
 .create-account {

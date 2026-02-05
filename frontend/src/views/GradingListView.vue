@@ -9,6 +9,7 @@ interface ExamListItem {
   userId: string
   nickname?: string
   username?: string
+  avatarUrl?: string
   score?: number
   status?: string
   startAt?: string
@@ -128,8 +129,14 @@ onMounted(fetchExams)
             <td class="col-id font-mono">{{ exam.paperVersionId }}</td>
             <td class="col-user">
               <div class="user-info">
-                <div class="avatar-sm">
-                  <span>{{ (exam.nickname || exam.username || exam.userId || 'U')[0].toUpperCase() }}</span>
+                <div class="avatar-sm" :class="{ 'has-img': exam.avatarUrl }">
+                  <img 
+                    v-if="exam.avatarUrl" 
+                    :src="exam.avatarUrl" 
+                    :alt="exam.nickname || exam.username || ''"
+                    @error="($event.target as HTMLImageElement).style.display = 'none'"
+                  />
+                  <span v-else>{{ (exam.nickname || exam.username || exam.userId || 'U')[0].toUpperCase() }}</span>
                 </div>
                 <span>{{ exam.nickname || exam.username || exam.userId }}</span>
               </div>
@@ -171,7 +178,7 @@ onMounted(fetchExams)
         >
           上一页
         </button>
-        <span class="page-info">第 {{ page + 1 }} 页</span>
+        <span class="page-info">第 {{ page + 1 }} 页 / 共 {{ Math.ceil(totalElements / size) || 1 }} 页</span>
         <button 
           :disabled="(page + 1) * size >= totalElements" 
           @click="page++; fetchExams()" 
@@ -196,8 +203,6 @@ onMounted(fetchExams)
 }
 
 .page-title {
-  font-size: 24px;
-  font-weight: 600;
   color: var(--line-text);
   margin: 0 0 8px 0;
 }
@@ -245,7 +250,7 @@ onMounted(fetchExams)
 
 .line-table th {
   padding: 16px;
-  text-align: left;
+  text-align: center;
   font-weight: 600;
   font-size: 13px;
   color: var(--line-text-secondary);
@@ -261,6 +266,7 @@ onMounted(fetchExams)
   color: var(--line-text);
   border-bottom: 1px solid var(--line-border);
   vertical-align: middle;
+  text-align: center;
 }
 
 .line-table tr:hover td {
@@ -274,8 +280,7 @@ onMounted(fetchExams)
 .col-id { width: 100px; color: var(--line-text-secondary); }
 .col-score { width: 100px; font-weight: 600; }
 .col-status { width: 120px; }
-.col-action { width: 100px; text-align: right; }
-.line-table th.col-action { text-align: right; }
+.col-action { width: 100px; }
 
 .font-mono {
   font-family: 'SF Mono', 'Roboto Mono', Menlo, monospace;
@@ -283,23 +288,36 @@ onMounted(fetchExams)
 }
 
 .user-info {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 12px;
+  justify-content: center;
 }
 
 .avatar-sm {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--line-bg-soft);
+  background: var(--line-primary);
   border: 1px solid var(--line-border);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
   font-weight: 600;
-  color: var(--line-text-secondary);
+  color: white;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.avatar-sm.has-img {
+  background: transparent;
+}
+
+.avatar-sm img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .status-badge {

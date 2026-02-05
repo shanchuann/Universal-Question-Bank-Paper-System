@@ -22,9 +22,9 @@ public interface StudentStatsRepository extends JpaRepository<StudentStatsEntity
          "ORDER BY s.correctAnswers DESC, s.totalQuestionsAnswered DESC")
   List<StudentStatsEntity> findStudentLeaderboard(Pageable pageable);
 
-  /** 获取指定班级的学生排行榜 */
-  @Query("SELECT s FROM StudentStatsEntity s WHERE s.totalQuestionsAnswered > 0 " +
-         "AND s.userId IN (SELECT uo.userId FROM UserOrganizationEntity uo WHERE uo.organizationId = :orgId) " +
+  /** 获取指定班级的学生排行榜（包含所有班级成员，即使未答题） */
+  @Query("SELECT s FROM StudentStatsEntity s WHERE " +
+         "s.userId IN (SELECT uo.userId FROM UserOrganizationEntity uo WHERE uo.organizationId = :orgId) " +
          "AND s.userId IN (SELECT u.id FROM UserEntity u WHERE u.role = 'USER' OR u.role = 'STUDENT') " +
          "ORDER BY s.correctAnswers DESC, s.totalQuestionsAnswered DESC")
   List<StudentStatsEntity> findStudentLeaderboardByOrganization(@Param("orgId") String orgId, Pageable pageable);

@@ -1,8 +1,17 @@
 package com.universal.qbank.controller;
 
+import com.universal.qbank.entity.AnnouncementEntity;
+import com.universal.qbank.entity.OperationLogEntity;
 import com.universal.qbank.entity.UserEntity;
+import com.universal.qbank.service.AnnouncementService;
+import com.universal.qbank.service.OperationLogService;
+import com.universal.qbank.service.StatisticsService;
 import com.universal.qbank.service.SystemConfigService;
+import com.universal.qbank.service.SystemMonitorService;
 import com.universal.qbank.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +28,14 @@ public class AdminController {
   @Autowired private UserService userService;
 
   @Autowired private SystemConfigService systemConfigService;
+
+  @Autowired private OperationLogService operationLogService;
+
+  @Autowired private AnnouncementService announcementService;
+
+  @Autowired private StatisticsService statisticsService;
+
+  @Autowired private SystemMonitorService systemMonitorService;
 
   private boolean isAdmin(String token) {
     String userId = getUserIdFromToken(token);
@@ -116,5 +133,219 @@ public class AdminController {
     Boolean enabled = payload.get("enabled");
     systemConfigService.setSystemEnabled(enabled);
     return ResponseEntity.ok(Map.of("enabled", enabled));
+  }
+
+  // ==================== 系统设置 API ====================
+
+  @GetMapping("/system/settings")
+  public ResponseEntity<?> getSystemSettings(@RequestHeader("Authorization") String token) {
+    if (!isAdmin(token)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+    Map<String, Object> settings = systemConfigService.getAllSettings();
+    return ResponseEntity.ok(settings);
+  }
+
+  @PutMapping("/system/settings")
+  public ResponseEntity<?> updateSystemSettings(
+      @RequestHeader("Authorization") String token,
+      @RequestBody Map<String, Object> settings,
+      HttpServletRequest request) {
+    if (!isAdmin(token)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+    systemConfigService.updateAllSettings(settings);
+    
+    String userId = getUserIdFromToken(token);
+    operationLogService.log(userId, "UPDATE", "系统设置", null, 
+        "更新系统设置", request);
+    
+    return ResponseEntity.ok(systemConfigService.getAllSettings());
+  }
+
+  // ==================== 操作日志 API ====================
+  
+  @GetMapping("/logs")
+  public ResponseEntity<?> getLogs(
+      @RequestHeader("Authorization") String token,
+      @RequestParam(required = false) String keyword,
+      @RequestParam(required = false) String action,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size) {
+    if (!isAdmin(token)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+    Page<OperationLogEntity> logs = operationLogService.searchLogs(keyword, action, page, size);
+    return ResponseEntity.ok(logs);
+  }
+
+  // ==================== 数据统计 API ====================
+  
+  @GetMapping("/statistics")
+  public ResponseEntity<?> getStatistics(@RequestHeader("Authorization") String token) {
+    if (!isAdmin(token)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+    Map<String, Object> stats = statisticsService.getOverviewStats();
+    return ResponseEntity.ok(stats);
+  }
+
+  @GetMapping("/statistics/trends")
+  public ResponseEntity<?> getStatisticsTrends(@RequestHeader("Authorization") String token) {
+    if (!isAdmin(token)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+    Map<String, Object> trends = new HashMap<>();
+    trends.put("userTrend", statisticsService.getUserActivityTrend());
+    trends.put("questionTrend", statisticsService.getQuestionGrowthTrend());
+    trends.put("examTrend", statisticsService.getExamTrend());
+    return ResponseEntity.ok(trends);
+  }
+
+  // ==================== 系统监控 API ====================
+  
+  @GetMapping("/monitor")
+  public ResponseEntity<?> getSystemMonitor(@RequestHeader("Authorization") String token) {
+    if (!isAdmin(token)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+    Map<String, Object> monitorData = new HashMap<>();
+    monitorData.put("metrics", systemMonitorService.getSystemMetrics());
+    monitorData.put("services", systemMonitorService.getServicesStatus());
+    return ResponseEntity.ok(monitorData);
+  }
+
+  // ==================== 公告管理 API ====================
+  
+  @GetMapping("/announcements")
+  public ResponseEntity<?> getAnnouncements(
+      @RequestHeader("Authorization") String token,
+      @RequestParam(required = false) String status,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size) {
+    if (!isAdmin(token)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+    Page<AnnouncementEntity> announcements = announcementService.getAnnouncements(status, page, size);
+    return ResponseEntity.ok(announcements);
+  }
+
+  @PostMapping("/announcements")
+  public ResponseEntity<?> createAnnouncement(
+      @RequestHeader("Authorization") String token,
+      @RequestBody Map<String, String> payload,
+      HttpServletRequest request) {
+    if (!isAdmin(token)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+    String userId = getUserIdFromToken(token);
+    AnnouncementEntity announcement = announcementService.createAnnouncement(
+        payload.get("title"),
+        payload.get("content"),
+        payload.get("priority"),
+        userId
+    );
+    
+    // 如果指定发布，则立即发布
+    if ("PUBLISHED".equals(payload.get("status"))) {
+      announcement = announcementService.publishAnnouncement(announcement.getId());
+    }
+    
+    // 记录操作日志
+    operationLogService.log(userId, "CREATE", "公告", announcement.getId(), 
+        "创建公告: " + announcement.getTitle(), request);
+    
+    return ResponseEntity.ok(announcement);
+  }
+
+  @PutMapping("/announcements/{id}")
+  public ResponseEntity<?> updateAnnouncement(
+      @RequestHeader("Authorization") String token,
+      @PathVariable String id,
+      @RequestBody Map<String, String> payload,
+      HttpServletRequest request) {
+    if (!isAdmin(token)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+    AnnouncementEntity announcement = announcementService.updateAnnouncement(
+        id,
+        payload.get("title"),
+        payload.get("content"),
+        payload.get("priority")
+    );
+    
+    // 如果指定发布，则发布
+    if ("PUBLISHED".equals(payload.get("status"))) {
+      announcement = announcementService.publishAnnouncement(id);
+    }
+    
+    String userId = getUserIdFromToken(token);
+    operationLogService.log(userId, "UPDATE", "公告", id, 
+        "更新公告: " + announcement.getTitle(), request);
+    
+    return ResponseEntity.ok(announcement);
+  }
+
+  @PutMapping("/announcements/{id}/publish")
+  public ResponseEntity<?> publishAnnouncement(
+      @RequestHeader("Authorization") String token,
+      @PathVariable String id,
+      HttpServletRequest request) {
+    if (!isAdmin(token)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+    AnnouncementEntity announcement = announcementService.publishAnnouncement(id);
+    
+    String userId = getUserIdFromToken(token);
+    operationLogService.log(userId, "UPDATE", "公告", id, 
+        "发布公告: " + announcement.getTitle(), request);
+    
+    return ResponseEntity.ok(announcement);
+  }
+
+  @PutMapping("/announcements/{id}/archive")
+  public ResponseEntity<?> archiveAnnouncement(
+      @RequestHeader("Authorization") String token,
+      @PathVariable String id,
+      HttpServletRequest request) {
+    if (!isAdmin(token)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+    AnnouncementEntity announcement = announcementService.archiveAnnouncement(id);
+    
+    String userId = getUserIdFromToken(token);
+    operationLogService.log(userId, "UPDATE", "公告", id, 
+        "归档公告: " + announcement.getTitle(), request);
+    
+    return ResponseEntity.ok(announcement);
+  }
+
+  @DeleteMapping("/announcements/{id}")
+  public ResponseEntity<?> deleteAnnouncement(
+      @RequestHeader("Authorization") String token,
+      @PathVariable String id,
+      HttpServletRequest request) {
+    if (!isAdmin(token)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+    
+    Optional<AnnouncementEntity> optional = announcementService.getAnnouncementById(id);
+    String title = optional.map(AnnouncementEntity::getTitle).orElse("未知");
+    
+    announcementService.deleteAnnouncement(id);
+    
+    String userId = getUserIdFromToken(token);
+    operationLogService.log(userId, "DELETE", "公告", id, 
+        "删除公告: " + title, request);
+    
+    return ResponseEntity.ok().build();
+  }
+
+  // ==================== 公告前台展示 API（无需登录） ====================
+  
+  @GetMapping("/announcements/public")
+  public ResponseEntity<?> getPublicAnnouncements() {
+    List<AnnouncementEntity> announcements = announcementService.getPublishedAnnouncements();
+    return ResponseEntity.ok(announcements);
   }
 }

@@ -3,7 +3,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { examApi, paperApi } from '@/api/client'
 import type { ExamSessionResponse, ManualGradeRequest } from '@/api/generated'
+import { useToast } from '@/composables/useToast'
 
+const { showToast } = useToast()
 const route = useRoute()
 const router = useRouter()
 const examId = route.params.id as string
@@ -119,10 +121,10 @@ const submitGrades = async () => {
     }
     
     await examApi.apiExamsSessionIdGradePost(examId, request)
-    alert('评分提交成功！')
+    showToast({ message: '评分提交成功！', type: 'success' })
     router.push('/grading')
   } catch (err) {
-    alert('提交评分失败')
+    showToast({ message: '提交评分失败', type: 'error' })
     console.error(err)
   } finally {
     saving.value = false
@@ -138,7 +140,7 @@ onMounted(fetchExam)
       <button @click="router.back()" class="google-btn secondary-btn">
         <span class="icon">←</span> 返回
       </button>
-      <h1>阅卷: 考试 #{{ examId }}</h1>
+      <h1 class="page-title">阅卷: 考试 #{{ examId }}</h1>
       <button @click="submitGrades" class="google-btn primary-btn" :disabled="saving || !exam?.questions?.length">
         {{ saving ? '保存中...' : '提交评分' }}
       </button>
@@ -297,8 +299,7 @@ onMounted(fetchExam)
 
 .header-row h1 {
   margin: 0;
-  font-size: 1.5em;
-  color: #202124;
+  color: var(--line-text);
 }
 
 .google-card { 
@@ -323,13 +324,13 @@ onMounted(fetchExam)
 
 .info-item .label {
   font-size: 0.85em;
-  color: #5f6368;
+  color: var(--line-text-secondary);
   margin-bottom: 4px;
 }
 
 .info-item .value {
   font-weight: 500;
-  color: #202124;
+  color: var(--line-text);
 }
 
 .score-summary {
@@ -339,12 +340,12 @@ onMounted(fetchExam)
 }
 
 .current-score strong {
-  color: #1a73e8;
+  color: var(--line-primary);
   font-size: 1.3em;
 }
 
 .max-score {
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .q-header { 
@@ -357,7 +358,7 @@ onMounted(fetchExam)
 
 .q-num {
   font-weight: bold;
-  color: #202124;
+  color: var(--line-text);
   font-size: 1.1em;
 }
 
@@ -365,11 +366,11 @@ onMounted(fetchExam)
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 0.85em;
-  background: #e8f0fe;
-  color: #1a73e8;
+  background: rgba(26, 115, 232, 0.1);
+  color: var(--line-primary);
 }
 
-.q-type.single_choice { background: #e8f0fe; color: #1a73e8; }
+.q-type.single_choice { background: rgba(26, 115, 232, 0.1); color: var(--line-primary); }
 .q-type.multi_choice { background: #fce8e6; color: #d93025; }
 .q-type.true_false { background: #e6f4ea; color: #34a853; }
 .q-type.fill_blank { background: #fef7e0; color: #f9ab00; }
@@ -379,8 +380,8 @@ onMounted(fetchExam)
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 0.85em;
-  background: #f1f3f4;
-  color: #5f6368;
+  background: var(--line-bg-soft);
+  color: var(--line-text-secondary);
 }
 
 .q-result {
@@ -398,7 +399,7 @@ onMounted(fetchExam)
   font-size: 1.05em; 
   margin-bottom: 15px;
   line-height: 1.6;
-  color: #202124;
+  color: var(--line-text);
 }
 
 .q-options {
@@ -407,7 +408,7 @@ onMounted(fetchExam)
 
 .option-item { 
   padding: 12px 15px; 
-  border: 1px solid #dadce0; 
+  border: 1px solid var(--line-border); 
   border-radius: 8px; 
   margin-bottom: 8px; 
   display: flex; 
@@ -418,7 +419,7 @@ onMounted(fetchExam)
 
 .option-key {
   font-weight: bold;
-  color: #5f6368;
+  color: var(--line-text-secondary);
   min-width: 24px;
 }
 
@@ -432,8 +433,8 @@ onMounted(fetchExam)
 }
 
 .option-item.selected { 
-  border-color: #1a73e8; 
-  background-color: #e8f0fe; 
+  border-color: var(--line-primary); 
+  background-color: rgba(26, 115, 232, 0.1); 
 }
 
 .option-item.wrong-selected {
@@ -449,7 +450,7 @@ onMounted(fetchExam)
 }
 
 .badge-user { 
-  color: #1a73e8; 
+  color: var(--line-primary); 
   font-size: 0.8em; 
   font-weight: bold; 
 }
@@ -467,9 +468,9 @@ onMounted(fetchExam)
 
 .user-answer-box {
   padding: 10px 15px;
-  background: #f8f9fa;
+  background: var(--line-bg-soft);
   border-radius: 6px;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--line-border);
 }
 
 .user-answer-content {
@@ -486,7 +487,7 @@ onMounted(fetchExam)
 .grading-section { 
   margin-top: 15px; 
   padding: 15px; 
-  background: #f8f9fa; 
+  background: var(--line-bg-soft); 
   border-radius: 8px;
   border: 1px solid #e0e0e0;
 }
@@ -497,7 +498,7 @@ onMounted(fetchExam)
   align-items: center;
   margin-bottom: 12px;
   font-weight: 500;
-  color: #202124;
+  color: var(--line-text);
 }
 
 .quick-actions {
@@ -561,7 +562,7 @@ onMounted(fetchExam)
   margin-bottom: 6px; 
   font-weight: 500;
   font-size: 0.9em;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .score-wrapper {
@@ -575,14 +576,14 @@ onMounted(fetchExam)
 }
 
 .score-max {
-  color: #5f6368;
+  color: var(--line-text-secondary);
   font-size: 0.9em;
 }
 
 .google-input { 
   width: 100%; 
   padding: 10px 12px; 
-  border: 1px solid #dadce0; 
+  border: 1px solid var(--line-border); 
   border-radius: 4px;
   font-size: 1em;
   transition: border-color 0.2s;
@@ -590,7 +591,7 @@ onMounted(fetchExam)
 
 .google-input:focus {
   outline: none;
-  border-color: #1a73e8;
+  border-color: var(--line-primary);
 }
 
 .google-btn { 
@@ -607,7 +608,7 @@ onMounted(fetchExam)
 }
 
 .google-btn.primary { 
-  background: #1a73e8; 
+  background: var(--line-primary); 
   color: white; 
 }
 
@@ -621,12 +622,12 @@ onMounted(fetchExam)
 }
 
 .google-btn.secondary { 
-  background: #f1f3f4; 
-  color: #3c4043; 
+  background: var(--line-bg-soft); 
+  color: var(--line-text); 
 }
 
 .google-btn.secondary:hover {
-  background: #e8eaed;
+  background: var(--line-bg-soft);
 }
 
 .google-btn.large {
@@ -637,14 +638,14 @@ onMounted(fetchExam)
 .loading-state { 
   text-align: center; 
   padding: 60px 20px; 
-  color: #5f6368; 
+  color: var(--line-text-secondary); 
 }
 
 .spinner {
   width: 40px;
   height: 40px;
   border: 3px solid #f3f3f3;
-  border-top: 3px solid #1a73e8;
+  border-top: 3px solid var(--line-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto 15px;
@@ -670,7 +671,7 @@ onMounted(fetchExam)
 .empty-state {
   text-align: center;
   padding: 40px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .empty-state p {
@@ -699,7 +700,7 @@ onMounted(fetchExam)
 }
 
 .final-score strong {
-  color: #1a73e8;
+  color: var(--line-primary);
   font-size: 1.3em;
 }
 

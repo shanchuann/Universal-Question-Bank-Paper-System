@@ -12,11 +12,25 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
   @Autowired private UserRepository userRepository;
+  
+  @Autowired private SystemConfigService systemConfigService;
 
   public UserEntity register(String username, String password, String role) {
-    if (userRepository.findByUsername(username).isPresent()) {
-      throw new RuntimeException("Username already exists");
+    // 检查是否允许注册
+    if (!systemConfigService.getBooleanConfig(SystemConfigService.ALLOW_REGISTRATION, true)) {
+      throw new RuntimeException("系统当前不允许注册新用户");
     }
+    
+    if (userRepository.findByUsername(username).isPresent()) {
+      throw new RuntimeException("用户名已存在");
+    }
+    
+    // 检查密码最小长度
+    int minLength = systemConfigService.getIntConfig(SystemConfigService.PASSWORD_MIN_LENGTH, 6);
+    if (password == null || password.length() < minLength) {
+      throw new RuntimeException("密码长度不能少于 " + minLength + " 个字符");
+    }
+    
     UserEntity user = new UserEntity();
     user.setUsername(username);
     user.setNickname(username); // Default nickname is username
@@ -92,7 +106,13 @@ public class UserService {
         userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
     
     if (!user.getPassword().equals(oldPassword)) {
-      throw new RuntimeException("Invalid old password");
+      throw new RuntimeException("旧密码错误");
+    }
+    
+    // 检查密码最小长度
+    int minLength = systemConfigService.getIntConfig(SystemConfigService.PASSWORD_MIN_LENGTH, 6);
+    if (newPassword == null || newPassword.length() < minLength) {
+      throw new RuntimeException("新密码长度不能少于 " + minLength + " 个字符");
     }
     
     user.setPassword(newPassword);
@@ -128,5 +148,35 @@ public class UserService {
       return userRepository.findByRole(role, pageable);
     }
     return userRepository.findAll(pageable);
+  }
+
+  /** 保存用户 */
+  public UserEntity saveUser(UserEntity user) {
+    return userRepository.save(user);
+  }
+
+  /** 检查邮箱是否已注册 */
+  public boolean existsByEmail(String email) {
+    return userRepository.findByEmail(email).isPresent();
+  }
+
+  /** 通过邮箱重置密码 */
+  public void resetPasswordByEmail(String email, String newPassword) {
+    UserEntity user = userRepository.findByEmail(email)
+        .orElseThrow(() -> new RuntimeException("该邮箱未注册"));
+    
+    // 检查密码最小长度
+    int minLength = systemConfigService.getIntConfig(SystemConfigService.PASSWORD_MIN_LENGTH, 6);
+    if (newPassword == null || newPassword.length() < minLength) {
+      throw new RuntimeException("密码长度不能少于 " + minLength + " 个字符");
+    }
+    
+    user.setPassword(newPassword);
+    userRepository.save(user);
+  }
+
+  /** 通过邮箱查找用户 */
+  public Optional<UserEntity> getUserByEmail(String email) {
+    return userRepository.findByEmail(email);
   }
 }

@@ -6,6 +6,11 @@ import { useBasket } from '@/stores/basket'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import GoogleSelect from '@/components/GoogleSelect.vue'
+import { useConfirm } from '@/composables/useConfirm'
+import { useToast } from '@/composables/useToast'
+
+const { confirm } = useConfirm()
+const { showToast } = useToast()
 
 const questions = ref<QuestionSummary[]>([])
 const loading = ref(false)
@@ -198,7 +203,14 @@ const editQuestion = (id: string) => {
 }
 
 const deleteQuestion = async (id: string) => {
-  if (!confirm('确定要删除这道题目吗？')) return
+  const confirmed = await confirm({
+    title: '删除确认',
+    message: '确定要删除这道题目吗？删除后无法恢复。',
+    type: 'danger',
+    confirmText: '删除',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
   try {
     const token = localStorage.getItem('token')
     await axios.delete(`/api/questions/${id}`, {
@@ -209,7 +221,7 @@ const deleteQuestion = async (id: string) => {
     totalElements.value--
   } catch (err) {
     console.error('Failed to delete question', err)
-    alert('删除失败')
+    showToast({ message: '删除失败', type: 'error' })
   }
 }
 
@@ -241,8 +253,8 @@ const statusLabels: Record<string, string> = {
   PENDING_REVIEW: '待审核',
   APPROVED: '已通过',
   REJECTED: '未通过',
-  PUBLISHED: '已发布',
-  ACTIVE: '已激活'
+  PUBLISHED: '已通过',
+  ACTIVE: '已通过'
 }
 
 onMounted(() => {
@@ -264,7 +276,7 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
   <div class="question-list-container container">
     <div class="header-row">
       <div class="header-title-section">
-        <h1>题库管理</h1>
+        <h1 class="page-title">题库管理</h1>
         <span class="total-count">共 {{ categoryStats.total }} 道题目</span>
       </div>
       <div class="header-actions">
@@ -427,7 +439,7 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
       
       <div class="pagination">
         <button :disabled="page === 0" @click="page--; fetchQuestions()" class="google-btn text-btn">上一页</button>
-        <span class="page-info">第 {{ page + 1 }} 页</span>
+        <span class="page-info">第 {{ page + 1 }} 页 / 共 {{ Math.ceil(totalElements / size) || 1 }} 页</span>
         <button :disabled="(page + 1) * size >= totalElements" @click="page++; fetchQuestions()" class="google-btn text-btn">下一页</button>
       </div>
     </div>
@@ -435,6 +447,7 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
     <div v-if="basket.length > 0" class="basket-float">
       <div class="basket-content">
         <span>已选 {{ basket.length }} 道题目</span>
+        <button @click="clearBasket" class="google-btn text-btn small-btn">全部取消</button>
         <button @click="goToBasket" class="google-btn primary-btn small-btn">创建试卷</button>
       </div>
     </div>
@@ -466,6 +479,11 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
 @keyframes slideUp {
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .header-row {
@@ -576,10 +594,12 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease-out;
 }
 
 .restore-dialog {
@@ -603,6 +623,17 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
 }
 .action-col button {
     margin-right: 8px;
+}
+
+.checkbox-col {
+  width: 48px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.checkbox-col input[type="checkbox"] {
+  margin: 0 auto;
+  display: block;
 }
 
 .filter-bar {

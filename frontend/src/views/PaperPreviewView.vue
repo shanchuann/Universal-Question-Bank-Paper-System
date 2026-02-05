@@ -2,6 +2,7 @@
 import { ref, onMounted, onUpdated, nextTick, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import { useToast } from '@/composables/useToast'
 import 'katex/dist/katex.min.css';
 import katex from 'katex';
 
@@ -32,9 +33,27 @@ type DisplayItem =
 
 const route = useRoute()
 const router = useRouter()
+const { showToast } = useToast()
 const paper = ref<Paper | null>(null)
 const loading = ref(true)
 const error = ref('')
+
+// 题型映射
+const typeLabels: Record<string, string> = {
+  'SINGLE_CHOICE': '单选题',
+  'MULTIPLE_CHOICE': '多选题',
+  'TRUE_FALSE': '判断题',
+  'FILL_BLANK': '填空题',
+  'SHORT_ANSWER': '简答题',
+  'ESSAY': '论述题'
+}
+
+// 难度映射
+const difficultyLabels: Record<string, string> = {
+  'EASY': '简单',
+  'MEDIUM': '中等',
+  'HARD': '困难'
+}
 
 const displayItems = computed<DisplayItem[]>(() => {
   if (paper.value?.items && paper.value.items.length > 0) {
@@ -144,7 +163,7 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
     URL.revokeObjectURL(link.href)
   } catch (err) {
     console.error('Download failed', err)
-    alert('Download failed')
+    showToast({ message: '下载失败', type: 'error' })
   }
 }
 </script>
@@ -200,9 +219,9 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
             <div class="q-index">{{ getQuestionIndex(index) }}</div>
             <div class="q-content">
               <div class="q-meta">
-                <span class="chip type">{{ item.data.type }}</span>
-                <span class="chip difficulty" :class="item.data.difficulty.toLowerCase()">{{ item.data.difficulty }}</span>
-                <span v-if="item.score" class="chip score">{{ item.score }} pts</span>
+                <span class="chip type">{{ typeLabels[item.data.type] || item.data.type }}</span>
+                <span class="chip difficulty" :class="item.data.difficulty.toLowerCase()">{{ difficultyLabels[item.data.difficulty] || item.data.difficulty }}</span>
+                <span v-if="item.score" class="chip score">{{ item.score }} 分</span>
               </div>
               <div class="stem" v-html="item.data.stem"></div>
             </div>
@@ -223,13 +242,13 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
   margin: 0 auto;
   padding: 0;
   overflow: hidden;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--line-border);
 }
 
 .paper-header {
   padding: 24px 32px;
-  background-color: #fff;
-  border-bottom: 1px solid #dadce0;
+  background-color: var(--line-bg);
+  border-bottom: 1px solid var(--line-border);
 }
 
 .header-top {
@@ -256,14 +275,14 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
 .paper-title {
   font-family: 'Google Sans', sans-serif;
   font-size: 24px;
-  font-weight: 400;
-  color: #202124;
+  font-weight: 500;
+  color: var(--line-text);
 }
 
 .paper-count {
-  background: #e8f0fe;
-  color: #1a73e8;
-  padding: 4px 12px;
+  background: rgba(26, 115, 232, 0.1);
+  color: var(--line-primary);
+  padding: 6px 14px;
   border-radius: 16px;
   font-size: 13px;
   font-weight: 500;
@@ -274,13 +293,13 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
   align-items: center;
   gap: 16px;
   padding: 12px 16px;
-  background: #f8f9fa;
+  background: var(--line-bg-soft);
   border-radius: 8px;
 }
 
 .export-label {
   font-size: 13px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
   white-space: nowrap;
 }
 
@@ -294,19 +313,19 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #fff;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
+  background: var(--line-bg);
+  border: 1px solid var(--line-border);
+  border-radius: var(--radius);
   cursor: pointer;
   font-size: 13px;
-  color: #3c4043;
+  color: var(--line-text);
   transition: all 0.2s;
 }
 
 .export-btn:hover {
-  background: #f6fafe;
-  border-color: #1a73e8;
-  color: #1a73e8;
+  border-color: var(--line-primary);
+  color: var(--line-primary);
+  background: rgba(26, 115, 232, 0.04);
 }
 
 .export-btn svg {
@@ -321,8 +340,8 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
   display: flex;
   gap: 16px;
   padding: 24px 32px;
-  border-bottom: 1px solid #f1f3f4;
-  background: #fff;
+  border-bottom: 1px solid var(--line-border);
+  background: var(--line-bg);
 }
 
 .question-item:last-child {
@@ -330,10 +349,10 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
 }
 
 .q-index {
-  font-size: 16px;
-  font-weight: 500;
-  color: #5f6368;
-  min-width: 24px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--line-primary);
+  min-width: 28px;
   padding-top: 2px;
 }
 
@@ -348,47 +367,57 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
 }
 
 .chip {
-  padding: 2px 8px;
-  border-radius: 12px;
+  padding: 4px 12px;
+  border-radius: 16px;
   font-size: 12px;
   font-weight: 500;
-  background-color: #f1f3f4;
-  color: #3c4043;
+  background-color: var(--line-bg-soft);
+  color: var(--line-text);
+}
+
+.chip.type {
+  background-color: rgba(26, 115, 232, 0.08);
+  color: var(--line-primary);
+}
+
+.chip.score {
+  background-color: var(--line-bg-soft);
+  color: var(--line-text-secondary);
 }
 
 .section-header {
   padding: 24px 32px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #f1f3f4;
+  background-color: var(--line-bg-soft);
+  border-bottom: 1px solid var(--line-border);
 }
 
 .section-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 500;
-  color: #202124;
+  color: var(--line-text);
 }
 
-.chip.difficulty.easy { background-color: #e6f4ea; color: #137333; }
-.chip.difficulty.medium { background-color: #fef7e0; color: #b06000; }
-.chip.difficulty.hard { background-color: #fce8e6; color: #c5221f; }
+.chip.difficulty.easy { background-color: rgba(52, 168, 83, 0.1); color: var(--line-success); }
+.chip.difficulty.medium { background-color: rgba(251, 188, 4, 0.15); color: #b06000; }
+.chip.difficulty.hard { background-color: rgba(234, 67, 53, 0.1); color: var(--line-error); }
 
 .stem {
   font-size: 16px;
-  line-height: 1.5;
-  color: #202124;
+  line-height: 1.6;
+  color: var(--line-text);
 }
 
 .loading-state, .error-state {
   text-align: center;
   padding: 40px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .paper-footer {
   padding: 16px 32px;
-  background-color: #fff;
-  border-top: 1px solid #dadce0;
+  background-color: var(--line-bg);
+  border-top: 1px solid var(--line-border);
   display: flex;
   justify-content: flex-end;
 }
@@ -400,17 +429,17 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
 
 .google-btn {
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: 8px 24px;
   font-family: 'Google Sans', sans-serif;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
 }
 
 .primary-btn {
-  background-color: #1a73e8;
+  background-color: var(--line-primary);
   color: white;
 }
 
@@ -421,11 +450,11 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
 
 .text-btn {
   background-color: transparent;
-  color: #1a73e8;
+  color: var(--line-primary);
 }
 
 .text-btn:hover {
-  background-color: #f6fafe;
+  background-color: rgba(26, 115, 232, 0.04);
 }
 
 .material-icons {

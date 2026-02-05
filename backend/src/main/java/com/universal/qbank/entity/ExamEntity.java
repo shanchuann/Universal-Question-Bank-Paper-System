@@ -30,6 +30,12 @@ public class ExamEntity {
 
   private String type; // "EXAM" or "PRACTICE"
 
+  // 阅卷状态: PENDING(待阅卷), GRADING(阅卷中), GRADED(已阅卷)
+  private String gradingStatus = "PENDING";
+
+  // 是否已发送成绩通知邮件
+  private Boolean scoreNotified = false;
+
   @PrePersist
   public void prePersist() {
     if (this.startTime == null) {
@@ -107,5 +113,21 @@ public class ExamEntity {
 
   public void setType(String type) {
     this.type = type;
+  }
+
+  public String getGradingStatus() {
+    return gradingStatus;
+  }
+
+  public void setGradingStatus(String gradingStatus) {
+    this.gradingStatus = gradingStatus;
+  }
+
+  public Boolean getScoreNotified() {
+    return scoreNotified;
+  }
+
+  public void setScoreNotified(Boolean scoreNotified) {
+    this.scoreNotified = scoreNotified;
   }
 }

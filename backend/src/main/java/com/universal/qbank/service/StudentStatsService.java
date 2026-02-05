@@ -2,21 +2,28 @@ package com.universal.qbank.service;
 
 import com.universal.qbank.entity.StudentStatsEntity;
 import com.universal.qbank.entity.UserEntity;
+import com.universal.qbank.entity.UserOrganizationEntity;
 import com.universal.qbank.repository.StudentStatsRepository;
 import com.universal.qbank.repository.UserRepository;
+import com.universal.qbank.repository.UserOrganizationRepository;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class StudentStatsService {
 
   @Autowired private StudentStatsRepository studentStatsRepository;
   @Autowired private UserRepository userRepository;
+  @Autowired private UserOrganizationRepository userOrganizationRepository;
 
   public StudentStatsEntity getStatsByUserId(String userId) {
     if (userId == null || userId.trim().isEmpty()) {
@@ -40,11 +47,66 @@ public class StudentStatsService {
     return stats;
   }
 
-  /** 获取指定班级的学生排行榜，并填充昵称 */
+  /** 获取指定班级的学生排行榜，并填充昵称（自动为班级成员创建统计记录） */
+  @Transactional
   public List<StudentStatsEntity> getLeaderboardByOrganization(String orgId, int limit) {
-    List<StudentStatsEntity> stats = studentStatsRepository.findStudentLeaderboardByOrganization(orgId, PageRequest.of(0, limit));
-    fillNicknames(stats);
-    return stats;
+    // 获取班级所有成员
+    List<UserOrganizationEntity> members = userOrganizationRepository.findByOrganizationId(orgId);
+    List<String> memberUserIds = members.stream()
+        .map(UserOrganizationEntity::getUserId)
+        .collect(Collectors.toList());
+    
+    if (memberUserIds.isEmpty()) {
+      return new ArrayList<>();
+    }
+    
+    // 获取只是学生角色的用户ID
+    List<UserEntity> users = userRepository.findAllById(memberUserIds);
+    Set<String> studentUserIds = users.stream()
+        .filter(u -> "USER".equals(u.getRole()) || "STUDENT".equals(u.getRole()))
+        .map(UserEntity::getId)
+        .collect(Collectors.toSet());
+    
+    if (studentUserIds.isEmpty()) {
+      return new ArrayList<>();
+    }
+    
+    // 获取已有的统计记录
+    List<StudentStatsEntity> existingStats = studentStatsRepository.findStudentLeaderboardByOrganization(orgId, PageRequest.of(0, 1000));
+    Set<String> usersWithStats = existingStats.stream()
+        .map(StudentStatsEntity::getUserId)
+        .collect(Collectors.toSet());
+    
+    // 为没有统计记录的学生创建记录
+    List<StudentStatsEntity> newStats = new ArrayList<>();
+    for (String userId : studentUserIds) {
+      if (!usersWithStats.contains(userId)) {
+        StudentStatsEntity stats = new StudentStatsEntity();
+        stats.setUserId(userId);
+        stats.setTotalQuestionsAnswered(0L);
+        stats.setCorrectAnswers(0L);
+        stats.setCurrentStreak(0);
+        newStats.add(studentStatsRepository.save(stats));
+      }
+    }
+    
+    // 合并所有统计记录
+    List<StudentStatsEntity> allStats = new ArrayList<>(existingStats);
+    allStats.addAll(newStats);
+    
+    // 按正确答题数和总答题数排序
+    allStats.sort((a, b) -> {
+      int cmp = Long.compare(b.getCorrectAnswers() != null ? b.getCorrectAnswers() : 0,
+                             a.getCorrectAnswers() != null ? a.getCorrectAnswers() : 0);
+      if (cmp != 0) return cmp;
+      return Long.compare(b.getTotalQuestionsAnswered() != null ? b.getTotalQuestionsAnswered() : 0,
+                          a.getTotalQuestionsAnswered() != null ? a.getTotalQuestionsAnswered() : 0);
+    });
+    
+    // 限制返回数量并填充昵称
+    List<StudentStatsEntity> result = allStats.stream().limit(limit).collect(Collectors.toList());
+    fillNicknames(result);
+    return result;
   }
 
   /** 填充用户昵称 */
@@ -66,5 +128,22 @@ public class StudentStatsService {
       String nickname = nicknameMap.get(stat.getUserId());
       stat.setNickname(nickname != null ? nickname : stat.getUserId());
     }
+  }
+
+  /** 初始化学生统计记录（用于新加入班级的学生） */
+  public StudentStatsEntity initializeStudentStats(String userId) {
+    if (userId == null || userId.trim().isEmpty()) {
+      return new StudentStatsEntity();
+    }
+    return studentStatsRepository
+        .findByUserId(userId)
+        .orElseGet(() -> {
+          StudentStatsEntity newStats = new StudentStatsEntity();
+          newStats.setUserId(userId);
+          newStats.setTotalQuestionsAnswered(0L);
+          newStats.setCorrectAnswers(0L);
+          newStats.setCurrentStreak(0);
+          return studentStatsRepository.save(newStats);
+        });
   }
 }

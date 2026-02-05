@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
+import ForgotPasswordView from '../views/ForgotPasswordView.vue'
 import QuestionListView from '../views/QuestionListView.vue'
 import QuestionAddView from '../views/QuestionAddView.vue'
 import PaperGenerationView from '../views/PaperGenerationView.vue'
@@ -28,6 +29,11 @@ const router = createRouter({
       path: '/register',
       name: 'register',
       component: RegisterView
+    },
+    {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: ForgotPasswordView
     },
     {
       path: '/questions',
@@ -144,12 +150,6 @@ const router = createRouter({
       meta: { roles: ['TEACHER', 'ADMIN'] }
     },
     {
-      path: '/admin/roles',
-      name: 'role-permission',
-      component: () => import('../views/RolePermissionView.vue'),
-      meta: { roles: ['ADMIN'] }
-    },
-    {
       path: '/questions/review',
       name: 'question-review',
       component: () => import('../views/QuestionReviewView.vue'),
@@ -168,10 +168,46 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/my-scores',
+      name: 'my-scores',
+      component: () => import('../views/MyScoresView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/my-scores/:id',
+      name: 'my-score-detail',
+      component: () => import('../views/MyScoreDetailView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/my-organizations',
       name: 'my-organizations',
       component: () => import('../views/MyOrganizationsView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/logs',
+      name: 'admin-logs',
+      component: () => import('../views/AdminLogsView.vue'),
+      meta: { roles: ['ADMIN'] }
+    },
+    {
+      path: '/admin/statistics',
+      name: 'admin-statistics',
+      component: () => import('../views/AdminStatisticsView.vue'),
+      meta: { roles: ['ADMIN'] }
+    },
+    {
+      path: '/admin/monitor',
+      name: 'admin-monitor',
+      component: () => import('../views/AdminMonitorView.vue'),
+      meta: { roles: ['ADMIN'] }
+    },
+    {
+      path: '/admin/announcements',
+      name: 'admin-announcements',
+      component: () => import('../views/AdminAnnouncementsView.vue'),
+      meta: { roles: ['ADMIN'] }
     }
   ]
 })

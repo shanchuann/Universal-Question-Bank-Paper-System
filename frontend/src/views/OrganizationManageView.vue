@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import GoogleSelect from '@/components/GoogleSelect.vue'
+import { authState } from '@/states/authState'
+import { useConfirm } from '@/composables/useConfirm'
+import { useToast } from '@/composables/useToast'
+
+const { confirm } = useConfirm()
+const { showToast } = useToast()
 
 interface Organization {
   id: string
@@ -78,6 +84,9 @@ const statusOptions = [
   { label: '启用', value: 'ACTIVE' },
   { label: '禁用', value: 'INACTIVE' }
 ]
+
+// 判断是否为管理员
+const isAdmin = computed(() => authState.user.role === 'ADMIN')
 
 // 过滤后的高校列表
 const filteredUniversities = computed(() => {
@@ -237,7 +246,7 @@ async function createFromTemplate() {
     }))
 
   if (selectedDepts.length === 0) {
-    alert('请至少选择一个院系')
+    showToast({ message: '请至少选择一个院系', type: 'warning' })
     return
   }
 
@@ -252,15 +261,15 @@ async function createFromTemplate() {
     const result = await response.json()
     
     if (response.ok) {
-      alert(result.message)
+      showToast({ message: result.message, type: 'success' })
       showUniversityPicker.value = false
       fetchOrganizations()
     } else {
-      alert(result.message || '创建失败')
+      showToast({ message: result.message || '创建失败', type: 'error' })
     }
   } catch (error) {
     console.error('Failed to create from template:', error)
-    alert('创建失败')
+    showToast({ message: '创建失败', type: 'error' })
   } finally {
     creatingFromTemplate.value = false
   }
@@ -284,16 +293,23 @@ async function handleSubmit() {
       fetchOrganizations()
     } else {
       const error = await response.json()
-      alert(error.message || '保存失败')
+      showToast({ message: error.message || '保存失败', type: 'error' })
     }
   } catch (error) {
     console.error('Failed to save organization:', error)
-    alert('保存失败')
+    showToast({ message: '保存失败', type: 'error' })
   }
 }
 
 async function handleDelete(id: string) {
-  if (!confirm('确定要删除该组织吗？删除后其下属组织也会被删除。')) return
+  const confirmed = await confirm({
+    title: '删除组织',
+    message: '确定要删除该组织吗？删除后其下属组织也会被删除。',
+    type: 'danger',
+    confirmText: '删除',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
   
   try {
     await fetch(`/api/organizations/${id}`, { method: 'DELETE' })
@@ -310,7 +326,7 @@ async function refreshInviteCode(orgId: string) {
     })
     const data = await response.json()
     updateOrgInviteCode(organizations.value, orgId, data.inviteCode)
-    alert(`新的邀请码: ${data.inviteCode}`)
+    showToast({ message: `新的邀请码: ${data.inviteCode}`, type: 'success' })
   } catch (error) {
     console.error('Failed to refresh invite code:', error)
   }
@@ -331,18 +347,18 @@ function updateOrgInviteCode(orgs: Organization[], orgId: string, newCode: strin
 
 function copyInviteCode(code: string) {
   navigator.clipboard.writeText(code)
-  alert('邀请码已复制到剪贴板')
+  showToast({ message: '邀请码已复制到剪贴板', type: 'success' })
 }
 </script>
 
 <template>
   <div class="line-container page-container">
     <div class="page-header center-header">
-      <h1>组织架构管理</h1>
+      <h1 class="page-title">组织架构管理</h1>
       <p class="subtitle">管理学校、学院、班级的层级结构</p>
     </div>
 
-    <div class="toolbar-actions">
+    <div class="toolbar-actions" v-if="isAdmin">
       <button class="line-btn primary-btn" @click="openUniversityPicker">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1 2 3 6 3s6-2 6-3v-5"/></svg>
         从高校模板创建
@@ -365,8 +381,9 @@ function copyInviteCode(code: string) {
           </svg>
         </div>
         <h3>暂无组织数据</h3>
-        <p>您可以从高校模板快速创建组织架构，或手动添加学校</p>
-        <div class="empty-actions">
+        <p v-if="isAdmin">您可以从高校模板快速创建组织架构，或手动添加学校</p>
+        <p v-else>暂无组织架构信息，请联系管理员创建</p>
+        <div class="empty-actions" v-if="isAdmin">
           <button class="line-btn primary-btn" @click="openUniversityPicker">从高校模板创建</button>
           <button class="line-btn text-btn" @click="openAddForm(null, 'SCHOOL')">手动添加学校</button>
         </div>
@@ -383,7 +400,7 @@ function copyInviteCode(code: string) {
                 <span class="row-code">{{ school.code }}</span>
               </div>
               <span :class="['status-badge', school.status.toLowerCase()]">{{ school.status === 'ACTIVE' ? '启用' : '停用' }}</span>
-              <div class="row-actions">
+              <div class="row-actions" v-if="isAdmin">
                 <button class="action-btn" @click="openAddForm(school.id, 'DEPARTMENT')" title="添加学院">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 </button>
@@ -407,7 +424,7 @@ function copyInviteCode(code: string) {
                       <span class="row-name">{{ dept.name }}</span>
                       <span class="row-code">{{ dept.code }}</span>
                     </div>
-                    <div class="row-actions">
+                    <div class="row-actions" v-if="isAdmin">
                       <button class="action-btn" @click="openAddForm(dept.id, 'CLASS')" title="添加班级">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                       </button>
@@ -434,7 +451,7 @@ function copyInviteCode(code: string) {
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
                           {{ cls.inviteCode }}
                         </span>
-                        <div class="row-actions">
+                        <div class="row-actions" v-if="isAdmin">
                           <button v-if="cls.inviteCode" class="action-btn" @click="refreshInviteCode(cls.id)" title="刷新邀请码">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                           </button>

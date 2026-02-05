@@ -2,6 +2,7 @@ package com.universal.qbank.controller;
 
 import com.universal.qbank.entity.UserEntity;
 import com.universal.qbank.service.UserService;
+import com.universal.qbank.service.EmailService;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
   @Autowired private UserService userService;
+  @Autowired private EmailService emailService;
 
   private String getUserIdFromToken(String token) {
     if (token != null && token.startsWith("Bearer ")) {
@@ -37,16 +39,37 @@ public class UserController {
         .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
   }
 
+  /** 发送邮箱修改验证码 */
+  @PostMapping("/send-email-verification")
+  public ResponseEntity<?> sendEmailVerification(@RequestHeader("Authorization") String token, @RequestBody Map<String, String> payload) {
+    String userId = getUserIdFromToken(token);
+    if (userId == null) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
+    }
+    String email = payload.get("email");
+    if (email == null || !email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+      return ResponseEntity.badRequest().body("邮箱格式不正确");
+    }
+    emailService.sendEmailChangeCode(email);
+    return ResponseEntity.ok("验证码已发送");
+  }
+
   @PutMapping("/profile")
   public ResponseEntity<?> updateProfile(
       @RequestHeader("Authorization") String token, @RequestBody Map<String, String> payload) {
     String userId = getUserIdFromToken(token);
-
     if (userId == null) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
     }
-
     try {
+      // 校验邮箱验证码
+      String email = payload.get("email");
+      String emailVerifyCode = payload.get("emailVerifyCode");
+      if (email != null && emailVerifyCode != null) {
+        if (!emailService.verifyEmailCode(email, emailVerifyCode)) {
+          return ResponseEntity.badRequest().body("邮箱验证码错误或已过期");
+        }
+      }
       UserEntity updatedUser =
           userService.updateProfile(
               userId, 

@@ -15,7 +15,12 @@ public class FileService {
   private final Path fileStorageLocation;
 
   public FileService() {
-    this.fileStorageLocation = Paths.get("uploads").toAbsolutePath().normalize();
+    Path baseDir = Paths.get(System.getProperty("user.dir")).toAbsolutePath();
+    if (baseDir.getFileName() != null
+        && "backend".equalsIgnoreCase(baseDir.getFileName().toString())) {
+      baseDir = baseDir.getParent();
+    }
+    this.fileStorageLocation = baseDir.resolve("uploads").normalize();
     try {
       Files.createDirectories(this.fileStorageLocation);
     } catch (Exception ex) {

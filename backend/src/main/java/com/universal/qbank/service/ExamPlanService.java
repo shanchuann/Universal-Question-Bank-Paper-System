@@ -3,8 +3,10 @@ package com.universal.qbank.service;
 import com.universal.qbank.entity.*;
 import com.universal.qbank.repository.*;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +22,8 @@ public class ExamPlanService {
 
   @Autowired private UserOrganizationRepository userOrganizationRepository;
 
+  @Autowired private ExamPlanClassRepository examPlanClassRepository;
+
   /** 获取考试计划列表 */
   public Page<ExamPlanEntity> getExamPlans(Pageable pageable) {
     return examPlanRepository.findAll(pageable);
@@ -32,9 +36,38 @@ public class ExamPlanService {
 
   /** 创建考试计划 */
   @Transactional
-  public ExamPlanEntity create(ExamPlanEntity plan) {
+  public ExamPlanEntity create(ExamPlanEntity plan, List<String> classIds) {
     plan.setStatus("DRAFT");
-    return examPlanRepository.save(plan);
+    ExamPlanEntity saved = examPlanRepository.save(plan);
+    
+    // 保存班级关联
+    if (classIds != null && !classIds.isEmpty()) {
+      saveExamPlanClasses(saved.getId(), classIds);
+    }
+    
+    return saved;
+  }
+
+  /** 保存考试计划与班级的关联 */
+  @Transactional
+  public void saveExamPlanClasses(String examPlanId, List<String> classIds) {
+    // 删除旧关联
+    examPlanClassRepository.deleteByExamPlanId(examPlanId);
+    
+    // 添加新关联
+    for (String classId : classIds) {
+      ExamPlanClassEntity relation = new ExamPlanClassEntity();
+      relation.setExamPlanId(examPlanId);
+      relation.setClassId(classId);
+      examPlanClassRepository.save(relation);
+    }
+  }
+
+  /** 获取考试计划关联的班级ID列表 */
+  public List<String> getExamPlanClassIds(String examPlanId) {
+    return examPlanClassRepository.findByExamPlanId(examPlanId).stream()
+        .map(ExamPlanClassEntity::getClassId)
+        .collect(Collectors.toList());
   }
 
   /** 更新考试计划 */
@@ -63,7 +96,7 @@ public class ExamPlanService {
     return examPlanRepository.save(existing);
   }
 
-  /** 发布考试 */
+  /** 发布考试 - 自动将关联班级的学生报名 */
   @Transactional
   public void publish(String id) {
     ExamPlanEntity plan =
@@ -75,6 +108,12 @@ public class ExamPlanService {
 
     if (plan.getPaperId() == null) {
       throw new RuntimeException("Paper must be selected before publishing");
+    }
+
+    // 自动将关联班级的学生报名
+    List<String> classIds = getExamPlanClassIds(id);
+    for (String classId : classIds) {
+      enrollByClass(id, classId);
     }
 
     plan.setStatus("PUBLISHED");
@@ -140,6 +179,37 @@ public class ExamPlanService {
   /** 获取学生的考试列表 */
   public List<ExamEnrollmentEntity> getStudentExams(String studentId) {
     return examEnrollmentRepository.findByStudentId(studentId);
+  }
+
+  /**
+   * 学生加入班级后，自动将其报名到班级关联的已发布考试
+   */
+  @Transactional
+  public void enrollStudentToClassExams(String studentId, String classId) {
+    // 找到该班级关联的所有考试计划
+    List<String> examPlanIds = examPlanClassRepository.findExamPlanIdsByClassId(classId);
+    
+    for (String examPlanId : examPlanIds) {
+      Optional<ExamPlanEntity> planOpt = examPlanRepository.findById(examPlanId);
+      if (planOpt.isPresent()) {
+        ExamPlanEntity plan = planOpt.get();
+        // 只处理已发布或进行中的考试
+        if ("PUBLISHED".equals(plan.getStatus()) || "ONGOING".equals(plan.getStatus())) {
+          // 检查是否已报名
+          Optional<ExamEnrollmentEntity> existing =
+              examEnrollmentRepository.findByExamPlanIdAndStudentId(examPlanId, studentId);
+          
+          if (existing.isEmpty()) {
+            ExamEnrollmentEntity enrollment = new ExamEnrollmentEntity();
+            enrollment.setExamPlanId(examPlanId);
+            enrollment.setStudentId(studentId);
+            enrollment.setClassId(classId);
+            enrollment.setStatus("ENROLLED");
+            examEnrollmentRepository.save(enrollment);
+          }
+        }
+      }
+    }
   }
 
   /** 获取当前进行中的考试 */

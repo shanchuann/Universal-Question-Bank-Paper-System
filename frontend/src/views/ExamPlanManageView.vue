@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useConfirm } from '@/composables/useConfirm'
+import { useToast } from '@/composables/useToast'
+
+const { confirm } = useConfirm()
+const { showToast } = useToast()
 
 interface ExamPlan {
   id: string
@@ -20,15 +25,37 @@ interface Paper {
   title: string
 }
 
+interface Organization {
+  id: string
+  name: string
+  code: string
+  type: 'SCHOOL' | 'DEPARTMENT' | 'CLASS'
+}
+
+interface EnrollmentInfo {
+  id: string
+  studentId: string
+  studentName?: string
+  avatarUrl?: string
+  status: string
+  statusLabel?: string
+}
+
 const examPlans = ref<ExamPlan[]>([])
 const papers = ref<Paper[]>([])
+const organizations = ref<Organization[]>([])
 const loading = ref(false)
 const page = ref(0)
 const size = ref(10)
 const total = ref(0)
 
 const showForm = ref(false)
+const showEnrollModal = ref(false)
 const editingPlan = ref<ExamPlan | null>(null)
+const enrollingPlan = ref<ExamPlan | null>(null)
+const enrollments = ref<EnrollmentInfo[]>([])
+const selectedClasses = ref<string[]>([])
+const enrollLoading = ref(false)
 
 const form = ref({
   name: '',
@@ -38,7 +65,8 @@ const form = ref({
   endTime: '',
   durationMins: 120,
   passScore: 60,
-  maxAttempts: 1
+  maxAttempts: 1,
+  classIds: [] as string[]
 })
 
 const getAuthHeaders = () => ({
@@ -49,6 +77,7 @@ const getAuthHeaders = () => ({
 onMounted(() => {
   fetchExamPlans()
   fetchPapers()
+  fetchOrganizations()
 })
 
 async function fetchPapers() {
@@ -60,6 +89,19 @@ async function fetchPapers() {
     papers.value = data || []
   } catch (error) {
     console.error('Failed to fetch papers:', error)
+  }
+}
+
+async function fetchOrganizations() {
+  try {
+    // 直接获取所有班级类型的组织
+    const response = await fetch('/api/organizations/by-type/CLASS', {
+      headers: getAuthHeaders()
+    })
+    const data = await response.json()
+    organizations.value = data || []
+  } catch (error) {
+    console.error('Failed to fetch organizations:', error)
   }
 }
 
@@ -89,7 +131,8 @@ function openAddForm() {
     endTime: '',
     durationMins: 120,
     passScore: 60,
-    maxAttempts: 1
+    maxAttempts: 1,
+    classIds: []
   }
   showForm.value = true
 }
@@ -104,9 +147,25 @@ function openEditForm(plan: ExamPlan) {
     endTime: plan.endTime ? formatDateTimeLocal(plan.endTime) : '',
     durationMins: plan.durationMins,
     passScore: plan.passScore,
-    maxAttempts: 1
+    maxAttempts: 1,
+    classIds: []
   }
+  // 获取已关联的班级
+  fetchPlanClasses(plan.id)
   showForm.value = true
+}
+
+// 获取考试计划已关联的班级
+async function fetchPlanClasses(planId: string) {
+  try {
+    const response = await fetch(`/api/exam-plans/${planId}`, {
+      headers: getAuthHeaders()
+    })
+    const data = await response.json()
+    form.value.classIds = data.classIds || []
+  } catch (error) {
+    console.error('Failed to fetch plan classes:', error)
+  }
 }
 
 // 格式化为datetime-local输入框需要的格式
@@ -139,7 +198,8 @@ async function submitForm() {
     const requestBody = {
       ...form.value,
       startTime: toISODateTime(form.value.startTime),
-      endTime: toISODateTime(form.value.endTime)
+      endTime: toISODateTime(form.value.endTime),
+      classIds: form.value.classIds
     }
 
     const response = await fetch(url, {
@@ -155,20 +215,27 @@ async function submitForm() {
 
     showForm.value = false
     await fetchExamPlans()
-    alert(editingPlan.value ? '考试计划更新成功' : '考试计划创建成功')
+    showToast({ message: editingPlan.value ? '考试计划更新成功' : '考试计划创建成功', type: 'success' })
   } catch (error) {
     console.error('Failed to save exam plan:', error)
-    alert('保存失败: ' + (error instanceof Error ? error.message : '未知错误'))
+    showToast({ message: '保存失败: ' + (error instanceof Error ? error.message : '未知错误'), type: 'error' })
   }
 }
 
 async function publishPlan(id: string) {
   const plan = examPlans.value.find(p => p.id === id)
   if (!plan?.paperId) {
-    alert('请先选择试卷后再发布')
+    showToast({ message: '请先选择试卷后再发布', type: 'warning' })
     return
   }
-  if (!confirm('确定要发布该考试计划吗？发布后学生可以在考试时间内答题。')) return
+  const confirmed = await confirm({
+    title: '发布考试计划',
+    message: '确定要发布该考试计划吗？发布后学生可以在考试时间内答题。',
+    type: 'info',
+    confirmText: '发布',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
 
   try {
     const response = await fetch(`/api/exam-plans/${id}/publish`, { 
@@ -180,15 +247,22 @@ async function publishPlan(id: string) {
       throw new Error(errorText || `发布失败: ${response.status}`)
     }
     await fetchExamPlans()
-    alert('考试计划发布成功')
+    showToast({ message: '考试计划发布成功', type: 'success' })
   } catch (error) {
     console.error('Failed to publish plan:', error)
-    alert('发布失败: ' + (error instanceof Error ? error.message : '未知错误'))
+    showToast({ message: '发布失败: ' + (error instanceof Error ? error.message : '未知错误'), type: 'error' })
   }
 }
 
 async function cancelPlan(id: string) {
-  if (!confirm('确定要取消该考试计划吗？')) return
+  const confirmed = await confirm({
+    title: '取消考试计划',
+    message: '确定要取消该考试计划吗？',
+    type: 'warning',
+    confirmText: '取消计划',
+    cancelText: '返回'
+  })
+  if (!confirmed) return
 
   try {
     await fetch(`/api/exam-plans/${id}/cancel`, { 
@@ -198,6 +272,57 @@ async function cancelPlan(id: string) {
     fetchExamPlans()
   } catch (error) {
     console.error('Failed to cancel plan:', error)
+  }
+}
+
+// 打开报名管理弹窗
+async function openEnrollModal(plan: ExamPlan) {
+  enrollingPlan.value = plan
+  selectedClasses.value = []
+  enrollments.value = []
+  showEnrollModal.value = true
+  await fetchEnrollments(plan.id)
+}
+
+// 获取已报名学生列表
+async function fetchEnrollments(planId: string) {
+  enrollLoading.value = true
+  try {
+    const response = await fetch(`/api/exam-plans/${planId}/enrollments`, {
+      headers: getAuthHeaders()
+    })
+    const data = await response.json()
+    enrollments.value = data || []
+  } catch (error) {
+    console.error('Failed to fetch enrollments:', error)
+  } finally {
+    enrollLoading.value = false
+  }
+}
+
+// 按班级批量报名
+async function enrollClasses() {
+  if (!enrollingPlan.value || selectedClasses.value.length === 0) {
+    showToast({ message: '请选择要报名的班级', type: 'warning' })
+    return
+  }
+
+  enrollLoading.value = true
+  try {
+    const response = await fetch(`/api/exam-plans/${enrollingPlan.value.id}/enroll-classes`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ classIds: selectedClasses.value })
+    })
+    const result = await response.json()
+    showToast({ message: `成功报名 ${result.enrolled} 名学生`, type: 'success' })
+    selectedClasses.value = []
+    await fetchEnrollments(enrollingPlan.value.id)
+  } catch (error) {
+    console.error('Failed to enroll classes:', error)
+    showToast({ message: '报名失败', type: 'error' })
+  } finally {
+    enrollLoading.value = false
   }
 }
 
@@ -224,7 +349,7 @@ const statusLabels: Record<string, string> = {
 <template>
   <div class="exam-plan-view">
     <div class="page-header">
-      <h1>考试计划管理</h1>
+      <h1 class="page-title">考试计划管理</h1>
       <p class="subtitle">创建和管理考试计划、报名和排考</p>
     </div>
 
@@ -277,6 +402,18 @@ const statusLabels: Record<string, string> = {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
                     <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </button>
+                <button 
+                  class="icon-btn primary"
+                  @click="openEnrollModal(plan)"
+                  title="报名管理"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 010 7.75"/>
                   </svg>
                 </button>
                 <button 
@@ -383,11 +520,89 @@ const statusLabels: Record<string, string> = {
             </div>
           </div>
 
+          <div class="form-group">
+            <label>下发班级</label>
+            <div class="class-select-box">
+              <div v-if="organizations.length === 0" class="empty-hint-inline">
+                暂无班级，请先创建班级
+              </div>
+              <div v-else class="class-checkboxes-form">
+                <label v-for="org in organizations" :key="org.id" class="checkbox-label-form">
+                  <input 
+                    type="checkbox" 
+                    :value="org.id" 
+                    v-model="form.classIds"
+                  />
+                  {{ org.name }}
+                </label>
+              </div>
+            </div>
+            <small class="hint">选择班级后，发布考试时自动将班级学生报名到考试</small>
+          </div>
+
           <div class="form-actions">
             <button type="button" class="google-btn text-btn" @click="showForm = false">取消</button>
             <button type="submit" class="google-btn primary-btn">保存</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Enroll Modal -->
+    <div v-if="showEnrollModal" class="modal-overlay" @click.self="showEnrollModal = false">
+      <div class="modal-content enroll-modal">
+        <h2>报名管理 - {{ enrollingPlan?.name }}</h2>
+        
+        <div class="enroll-section">
+          <h3>按班级批量报名</h3>
+          <div class="class-select-group">
+            <div v-if="organizations.length === 0" class="empty-hint">
+              暂无班级，请先在组织管理中创建班级
+            </div>
+            <div v-else class="class-checkboxes">
+              <label v-for="org in organizations" :key="org.id" class="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  :value="org.id" 
+                  v-model="selectedClasses"
+                />
+                {{ org.name }} ({{ org.code }})
+              </label>
+            </div>
+            <button 
+              v-if="organizations.length > 0"
+              class="google-btn primary-btn"
+              :disabled="selectedClasses.length === 0 || enrollLoading"
+              @click="enrollClasses"
+            >
+              {{ enrollLoading ? '报名中...' : '批量报名' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="enroll-section">
+          <h3>已报名学生 ({{ enrollments.length }}人)</h3>
+          <div v-if="enrollLoading" class="loading-hint">加载中...</div>
+          <div v-else-if="enrollments.length === 0" class="empty-hint">
+            暂无学生报名
+          </div>
+          <div v-else class="enrollment-list">
+            <div v-for="e in enrollments" :key="e.id" class="enrollment-item">
+              <div class="student-info">
+                <div class="student-avatar" :class="{ 'has-img': e.avatarUrl }">
+                  <img v-if="e.avatarUrl" :src="e.avatarUrl" :alt="e.studentName || ''" @error="($event.target as HTMLImageElement).style.display = 'none'" />
+                  <span v-else>{{ (e.studentName || e.studentId || 'U')[0].toUpperCase() }}</span>
+                </div>
+                <span class="student-name">{{ e.studentName || e.studentId }}</span>
+              </div>
+              <span :class="['enroll-status', e.status.toLowerCase()]">{{ e.statusLabel || e.status }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="google-btn text-btn" @click="showEnrollModal = false">关闭</button>
+        </div>
       </div>
     </div>
   </div>
@@ -401,14 +616,12 @@ const statusLabels: Record<string, string> = {
   animation: fadeIn 0.5s ease-out;
 }
 
+
 .page-header {
   margin-bottom: 32px;
 }
 
 .page-header h1 {
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 28px;
-  font-weight: 600;
   color: var(--line-text-primary);
   margin: 0 0 8px 0;
   letter-spacing: -0.5px;
@@ -579,7 +792,7 @@ const statusLabels: Record<string, string> = {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999;
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -692,6 +905,204 @@ const statusLabels: Record<string, string> = {
 .text-btn:hover {
   background: var(--line-bg-soft);
   color: var(--line-primary);
+}
+
+/* Enroll Modal Styles */
+.enroll-modal {
+  max-width: 600px;
+}
+
+.enroll-section {
+  margin-bottom: 24px;
+}
+
+.enroll-section h3 {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--line-text);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-border);
+}
+
+.class-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.class-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 8px;
+  background: var(--line-bg-soft);
+  border-radius: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--line-bg);
+  border: 1px solid var(--line-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.checkbox-label:hover {
+  border-color: var(--line-primary);
+}
+
+.checkbox-label input[type="checkbox"]:checked + span,
+.checkbox-label:has(input:checked) {
+  color: var(--line-primary);
+}
+
+/* 表单中的班级选择样式 */
+.class-select-box {
+  border: 1px solid var(--line-border);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--line-bg-soft);
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.class-checkboxes-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.checkbox-label-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--line-bg);
+  border: 1px solid var(--line-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.checkbox-label-form:hover {
+  border-color: var(--line-primary);
+}
+
+.checkbox-label-form:has(input:checked) {
+  background: var(--line-primary-10);
+  border-color: var(--line-primary);
+  color: var(--line-primary);
+}
+
+.empty-hint-inline {
+  color: var(--line-text-secondary);
+  font-size: 13px;
+}
+
+.empty-hint,
+.loading-hint {
+  color: var(--line-text-secondary);
+  font-size: 14px;
+  text-align: center;
+  padding: 20px;
+}
+
+.enrollment-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--line-border);
+  border-radius: 8px;
+}
+
+.enrollment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line-border);
+}
+
+.enrollment-item:last-child {
+  border-bottom: none;
+}
+
+.student-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.student-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--line-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.student-avatar.has-img {
+  background: transparent;
+}
+
+.student-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.student-name {
+  font-size: 14px;
+  color: var(--line-text);
+}
+
+.enroll-status {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.enroll-status.enrolled {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.enroll-status.exempted {
+  background: #fefce8;
+  color: #ca8a04;
+}
+
+.enroll-status.absent {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.enroll-status.completed {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.icon-btn.primary {
+  color: var(--line-primary);
+}
+
+.icon-btn.primary:hover {
+  background: rgba(26, 115, 232, 0.1);
 }
 
 @keyframes fadeIn {

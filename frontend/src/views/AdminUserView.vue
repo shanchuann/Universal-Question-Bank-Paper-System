@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { Users, Search, UserCheck, UserX, Trash2, RefreshCw, Shield, GraduationCap, User as UserIcon } from 'lucide-vue-next'
+import { useConfirm } from '@/composables/useConfirm'
+import { useToast } from '@/composables/useToast'
+
+const { confirm } = useConfirm()
+const { showToast } = useToast()
 
 interface User {
   id: string
@@ -9,6 +15,7 @@ interface User {
   email: string
   role: string
   status: string
+  avatarUrl?: string
 }
 
 const users = ref<User[]>([])
@@ -18,6 +25,7 @@ const size = ref(10)
 const totalElements = ref(0)
 const totalPages = ref(0)
 const currentTab = ref('ALL')
+const searchKeyword = ref('')
 
 const fetchUsers = async () => {
   loading.value = true
@@ -47,7 +55,14 @@ const setTab = (tab: string) => {
 }
 
 const deleteUser = async (id: string) => {
-  if (!confirm('确定要删除该用户吗？')) return
+  const confirmed = await confirm({
+    title: '删除用户',
+    message: '确定要删除该用户吗？此操作无法撤销。',
+    type: 'danger',
+    confirmText: '删除',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
   try {
     const token = localStorage.getItem('token')
     await axios.delete(`/api/admin/users/${id}`, {
@@ -56,7 +71,7 @@ const deleteUser = async (id: string) => {
     fetchUsers()
   } catch (error) {
     console.error('Failed to delete user', error)
-    alert('删除用户失败')
+    showToast({ message: '删除用户失败', type: 'error' })
   }
 }
 
@@ -70,13 +85,21 @@ const toggleStatus = async (user: User) => {
     user.status = newStatus
   } catch (error) {
     console.error('Failed to update status', error)
-    alert('更新状态失败')
+    showToast({ message: '更新状态失败', type: 'error' })
   }
 }
 
 const toggleRole = async (user: User) => {
   const newRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN'
-  if (!confirm(`确定要将角色更改为 ${newRole} 吗？`)) return
+  const roleText = newRole === 'ADMIN' ? '管理员' : '普通用户'
+  const confirmed = await confirm({
+    title: '更改角色',
+    message: `确定要将该用户的角色更改为 ${roleText} 吗？`,
+    type: 'warning',
+    confirmText: '确认',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
   try {
     const token = localStorage.getItem('token')
     await axios.put(`/api/admin/users/${user.id}/role`, { role: newRole }, {
@@ -85,7 +108,7 @@ const toggleRole = async (user: User) => {
     user.role = newRole
   } catch (error) {
     console.error('Failed to update role', error)
-    alert('更新角色失败')
+    showToast({ message: '更新角色失败', type: 'error' })
   }
 }
 
@@ -103,6 +126,28 @@ const prevPage = () => {
   }
 }
 
+const handleSearch = () => {
+  page.value = 0
+  fetchUsers()
+}
+
+const refresh = () => {
+  fetchUsers()
+}
+
+const getRoleLabel = (role: string) => {
+  const labels: Record<string, string> = {
+    'ADMIN': '管理员',
+    'TEACHER': '教师',
+    'USER': '学生'
+  }
+  return labels[role] || role
+}
+
+const getStatusLabel = (status: string) => {
+  return status === 'ACTIVE' ? '正常' : '已禁用'
+}
+
 onMounted(() => {
   fetchUsers()
 })
@@ -111,23 +156,58 @@ onMounted(() => {
 <template>
   <div class="admin-container container">
     <div class="header-row">
-      <h1>用户管理</h1>
+      <div class="header-content">
+        <h1 class="page-title">用户管理</h1>
+        <p class="page-subtitle">管理系统中的所有用户账户</p>
+      </div>
+      <div class="header-actions">
+        <button class="google-btn icon-btn" @click="refresh" title="刷新">
+          <RefreshCw :size="18" :class="{ spinning: loading }" />
+        </button>
+      </div>
     </div>
 
-    <div class="tabs">
-      <button :class="['tab-btn', currentTab === 'ALL' ? 'active' : '']" @click="setTab('ALL')">全部用户</button>
-      <button :class="['tab-btn', currentTab === 'TEACHER' ? 'active' : '']" @click="setTab('TEACHER')">教师</button>
-      <button :class="['tab-btn', currentTab === 'USER' ? 'active' : '']" @click="setTab('USER')">学生</button>
-      <button :class="['tab-btn', currentTab === 'ADMIN' ? 'active' : '']" @click="setTab('ADMIN')">管理员</button>
+    <div class="toolbar">
+      <div class="tabs">
+        <button :class="['tab-btn', currentTab === 'ALL' ? 'active' : '']" @click="setTab('ALL')">
+          <Users :size="16" />
+          全部
+          <span class="tab-count" v-if="currentTab === 'ALL'">{{ totalElements }}</span>
+        </button>
+        <button :class="['tab-btn', currentTab === 'TEACHER' ? 'active' : '']" @click="setTab('TEACHER')">
+          <GraduationCap :size="16" />
+          教师
+        </button>
+        <button :class="['tab-btn', currentTab === 'USER' ? 'active' : '']" @click="setTab('USER')">
+          <UserIcon :size="16" />
+          学生
+        </button>
+        <button :class="['tab-btn', currentTab === 'ADMIN' ? 'active' : '']" @click="setTab('ADMIN')">
+          <Shield :size="16" />
+          管理员
+        </button>
+      </div>
+      <div class="search-box">
+        <Search :size="18" class="search-icon" />
+        <input 
+          v-model="searchKeyword" 
+          type="text" 
+          placeholder="搜索用户名或昵称..." 
+          class="google-input search-input"
+          @keyup.enter="handleSearch"
+        />
+      </div>
     </div>
 
     <div class="google-card table-card">
-      <div v-if="loading" class="loading">加载中...</div>
+      <div v-if="loading" class="loading-state">
+        <div class="spinner"></div>
+        <p>加载中...</p>
+      </div>
       <table v-else-if="users.length > 0" class="google-table">
         <thead>
           <tr>
-            <th>用户名</th>
-            <th>昵称</th>
+            <th>用户信息</th>
             <th>角色</th>
             <th>状态</th>
             <th>操作</th>
@@ -135,26 +215,51 @@ onMounted(() => {
         </thead>
         <tbody>
           <tr v-for="user in users" :key="user.id">
-            <td>{{ user.username }}</td>
-            <td>{{ user.nickname }}</td>
             <td>
-              <span :class="['badge', user.role === 'ADMIN' ? 'badge-admin' : 'badge-user']">
-                {{ user.role }}
+              <div class="user-info">
+                <img 
+                  v-if="user.avatarUrl" 
+                  :src="user.avatarUrl" 
+                  :alt="user.username" 
+                  class="user-avatar-img"
+                />
+                <div v-else class="user-avatar">
+                  {{ user.username.charAt(0).toUpperCase() }}
+                </div>
+                <div class="user-details">
+                  <span class="user-name">{{ user.username }}</span>
+                  <span class="user-nickname">{{ user.nickname || '未设置昵称' }}</span>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span :class="['role-badge', `role-${user.role.toLowerCase()}`]">
+                <component :is="user.role === 'ADMIN' ? Shield : user.role === 'TEACHER' ? GraduationCap : UserIcon" :size="14" />
+                {{ getRoleLabel(user.role) }}
               </span>
             </td>
             <td>
-              <span :class="['badge', user.status === 'ACTIVE' ? 'badge-active' : 'badge-banned']">
-                {{ user.status || 'ACTIVE' }}
+              <span :class="['status-badge', user.status === 'ACTIVE' ? 'status-active' : 'status-banned']">
+                <span class="status-dot"></span>
+                {{ getStatusLabel(user.status || 'ACTIVE') }}
               </span>
             </td>
             <td class="actions">
-              <button class="action-btn" :class="user.status === 'ACTIVE' ? 'warning' : 'success'" @click="toggleStatus(user)">
+              <button 
+                class="action-btn" 
+                :class="user.status === 'ACTIVE' ? 'warning' : 'success'" 
+                @click="toggleStatus(user)"
+                :title="user.status === 'ACTIVE' ? '禁用用户' : '启用用户'"
+              >
+                <component :is="user.status === 'ACTIVE' ? UserX : UserCheck" :size="16" />
                 {{ user.status === 'ACTIVE' ? '禁用' : '启用' }}
               </button>
-              <button class="action-btn primary" @click="toggleRole(user)">
+              <button class="action-btn primary" @click="toggleRole(user)" title="更改角色">
+                <RefreshCw :size="16" />
                 更改角色
               </button>
-              <button class="action-btn danger" @click="deleteUser(user.id)">
+              <button class="action-btn danger" @click="deleteUser(user.id)" title="删除用户">
+                <Trash2 :size="16" />
                 删除
               </button>
             </td>
@@ -162,8 +267,9 @@ onMounted(() => {
         </tbody>
       </table>
       <div v-else class="empty-state">
-        <span class="material-icon">people_outline</span>
-        <p>未找到用户。</p>
+        <Users :size="48" class="empty-icon" />
+        <p>未找到用户</p>
+        <span class="empty-hint">尝试更改筛选条件或刷新页面</span>
       </div>
       
       <div class="pagination" v-if="users.length > 0">
@@ -178,17 +284,162 @@ onMounted(() => {
 <style scoped>
 .admin-container {
   padding: 24px;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
 .header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 24px;
+}
+
+.header-content {
+  flex: 1;
+}
+
+.page-title {
+  margin: 0 0 4px 0;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--line-text);
+}
+
+.page-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--line-text-secondary);
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line-border);
+  background: var(--line-bg);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--line-text-secondary);
+  transition: all 0.2s ease;
+}
+
+.icon-btn:hover {
+  background: var(--line-bg-soft);
+  color: var(--line-primary);
+  border-color: var(--line-primary);
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--line-bg-soft);
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 10px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--line-text-secondary);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  color: var(--line-text);
+  background: var(--line-bg);
+}
+
+.tab-btn.active {
+  color: var(--line-primary);
+  background: var(--line-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tab-count {
+  background: var(--line-primary);
+  color: white;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.search-box {
+  position: relative;
+  width: 280px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--line-text-secondary);
+}
+
+.search-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px 0 40px;
+  border: 1px solid var(--line-border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--line-bg);
+  color: var(--line-text);
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--line-primary);
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
+}
+
+/* Table Card */
+.google-card {
+  background: var(--line-bg);
+  border: 1px solid var(--line-border);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .table-card {
   padding: 0;
-  overflow: hidden;
 }
 
 .google-table {
@@ -197,169 +448,318 @@ onMounted(() => {
 }
 
 .google-table th {
-  color: #5f6368;
+  color: var(--line-text-secondary);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  background: var(--line-bg-soft);
 }
 
 .google-table th,
 .google-table td {
-  padding: 12px 24px;
+  padding: 16px 24px;
   text-align: left;
-  border-bottom: 1px solid #dadce0;
+  border-bottom: 1px solid var(--line-border);
   vertical-align: middle;
 }
 
+.google-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
 .google-table tbody tr:hover {
-  background-color: #f8f9fa;
+  background-color: var(--line-hover);
 }
 
-.empty-state {
-  padding: 48px;
-  text-align: center;
-  color: #5f6368;
+.google-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
-.empty-state .material-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  color: #dadce0;
-}
-
-.badge {
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.badge-admin { background-color: #e8f0fe; color: #1a73e8; }
-.badge-user { background-color: #f1f3f4; color: #5f6368; }
-.badge-active { background-color: #e6f4ea; color: #1e8e3e; }
-.badge-banned { background-color: #fce8e6; color: #d93025; }
-
-.pagination {
-  padding: 16px 24px;
+/* User Info Cell */
+.user-info {
   display: flex;
-  justify-content: flex-end;
   align-items: center;
-  gap: 16px;
-  border-top: 1px solid #dadce0;
+  gap: 12px;
 }
 
-.tabs {
+.user-avatar-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--line-border);
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--line-primary) 0%, #4285f4 100%);
+  color: white;
   display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid #dadce0;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
 }
 
-.tab-btn {
-  background: none;
-  border: none;
-  padding: 12px 16px;
-  font-family: 'Google Sans', Roboto, Arial, sans-serif;
-  font-size: 14px;
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.user-name {
+  font-weight: 600;
+  color: var(--line-text);
+}
+
+.user-nickname {
+  font-size: 13px;
+  color: var(--line-text-secondary);
+}
+
+/* Role Badge */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
   font-weight: 500;
-  color: #5f6368;
-  cursor: pointer;
-  position: relative;
 }
 
-.tab-btn:hover {
-  color: #202124;
-  background-color: #f1f3f4;
-  border-radius: 4px 4px 0 0;
+.role-admin {
+  background: rgba(26, 115, 232, 0.1);
+  color: var(--line-primary);
 }
 
-.tab-btn.active {
-  color: #1a73e8;
+.role-teacher {
+  background: rgba(251, 188, 4, 0.1);
+  color: #f9a825;
 }
 
-.tab-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background-color: #1a73e8;
-  border-radius: 3px 3px 0 0;
+.role-user {
+  background: var(--line-bg-soft);
+  color: var(--line-text-secondary);
 }
 
-.icon-btn.danger {
-  color: #d93025;
+/* Status Badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-active {
+  background: rgba(52, 168, 83, 0.1);
+  color: #34a853;
+}
+
+.status-active .status-dot {
+  background: #34a853;
+}
+
+.status-banned {
+  background: rgba(234, 67, 53, 0.1);
+  color: #ea4335;
+}
+
+.status-banned .status-dot {
+  background: #ea4335;
+}
+
+/* Actions */
 .actions {
   display: flex;
   gap: 8px;
 }
 
 .action-btn {
-  padding: 0 16px;
-  height: 32px;
-  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  height: auto;
+  border-radius: 8px;
   border: none;
   background-color: transparent;
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
-  transition: background-color 0.2s, box-shadow 0.2s;
-  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  transition: all 0.2s ease;
+  font-family: inherit;
 }
 
 .action-btn:hover {
-  background-color: rgba(95, 99, 104, 0.04);
+  transform: translateY(-1px);
 }
 
 .action-btn.primary {
-  color: #1a73e8;
-  background-color: #e8f0fe;
+  color: var(--line-primary);
+  background-color: rgba(26, 115, 232, 0.1);
 }
 .action-btn.primary:hover {
-  background-color: #d2e3fc;
-  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  background-color: rgba(26, 115, 232, 0.2);
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.2);
 }
 
 .action-btn.warning {
   color: #e37400;
-  background-color: #fef7e0;
+  background-color: rgba(251, 188, 4, 0.1);
 }
 .action-btn.warning:hover {
-  background-color: #feefc3;
-  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  background-color: rgba(251, 188, 4, 0.2);
+  box-shadow: 0 2px 8px rgba(251, 188, 4, 0.2);
 }
 
 .action-btn.success {
   color: #1e8e3e;
-  background-color: #e6f4ea;
+  background-color: rgba(52, 168, 83, 0.1);
 }
 .action-btn.success:hover {
-  background-color: #ceead6;
-  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  background-color: rgba(52, 168, 83, 0.2);
+  box-shadow: 0 2px 8px rgba(52, 168, 83, 0.2);
 }
 
 .action-btn.danger {
   color: #d93025;
-  background-color: #fce8e6;
+  background-color: rgba(234, 67, 53, 0.1);
 }
 .action-btn.danger:hover {
-  background-color: #fad2cf;
-  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  background-color: rgba(234, 67, 53, 0.2);
+  box-shadow: 0 2px 8px rgba(234, 67, 53, 0.2);
+}
+
+/* Pagination */
+.pagination {
+  padding: 16px 24px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+  border-top: 1px solid var(--line-border);
+  background: var(--line-bg-soft);
+}
+
+.pagination span {
+  font-size: 14px;
+  color: var(--line-text-secondary);
+}
+
+.google-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--line-border);
+  background: var(--line-bg);
+  color: var(--line-text);
+  transition: all 0.2s ease;
+}
+
+.google-btn:hover:not(:disabled) {
+  background: var(--line-bg-soft);
+  border-color: var(--line-primary);
+  color: var(--line-primary);
+}
+
+.google-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* States */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  color: var(--line-text-secondary);
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--line-border);
+  border-top-color: var(--line-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 16px;
 }
 
 .empty-state {
-  padding: 24px;
-  text-align: center;
-  color: #5f6368;
-  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  color: var(--line-text-secondary);
 }
 
-.empty-state .material-icon {
-  font-size: 48px;
-  margin-bottom: 8px;
+.empty-icon {
+  color: var(--line-border);
+  margin-bottom: 16px;
+}
+
+.empty-state p {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: var(--line-text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-box {
+    width: 100%;
+  }
+  
+  .actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-container {
+    padding: 16px;
+  }
+  
+  .tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .google-table th,
+  .google-table td {
+    padding: 12px 16px;
+  }
+  
+  .action-btn span {
+    display: none;
+  }
 }
 </style>

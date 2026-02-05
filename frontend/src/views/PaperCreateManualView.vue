@@ -193,7 +193,7 @@ const resetDragState = () => {
   <div class="container">
     <div class="google-card form-card">
       <div class="card-header">
-        <h1>手动组卷</h1>
+        <h1 class="page-title">手动组卷</h1>
         <p class="subtitle">排列题目、设置分数、组织分区。</p>
       </div>
 
@@ -288,9 +288,6 @@ const resetDragState = () => {
 }
 
 h1 {
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 32px;
-  font-weight: 600;
   color: var(--line-text-primary);
   margin-bottom: 8px;
   letter-spacing: -0.5px;

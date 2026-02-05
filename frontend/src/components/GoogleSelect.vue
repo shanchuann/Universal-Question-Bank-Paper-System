@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ChevronDown, Check } from 'lucide-vue-next'
 
 interface Option {
   label: string
@@ -59,10 +60,7 @@ onUnmounted(() => {
     >
       <span class="selected-text">{{ selectedLabel }}</span>
       <span class="arrow-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <chevron-down v-if="!isOpen"></chevron-down>
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
+        <ChevronDown :size="20" />
       </span>
     </div>
     
@@ -77,9 +75,7 @@ onUnmounted(() => {
         >
           {{ option.label }}
           <span v-if="option.value === modelValue" class="check-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
+            <Check :size="18" />
           </span>
         </div>
       </div>
@@ -164,7 +160,7 @@ onUnmounted(() => {
   border: 1px solid var(--line-border);
   border-radius: var(--line-radius-md);
   box-shadow: var(--line-shadow-lg);
-  z-index: 1000;
+  z-index: 10001;
   max-height: 300px;
   overflow-y: auto;
   padding: 6px;

@@ -2,6 +2,11 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { useConfirm } from '@/composables/useConfirm'
+import { useToast } from '@/composables/useToast'
+
+const { confirm } = useConfirm()
+const { showToast } = useToast()
 
 interface PaperResponse {
   id: string
@@ -45,7 +50,14 @@ const createPaper = () => {
 }
 
 const deletePaper = async (id: string) => {
-  if (!confirm('确定要删除这份试卷吗？')) return
+  const confirmed = await confirm({
+    title: '删除试卷',
+    message: '确定要删除这份试卷吗？删除后无法恢复。',
+    type: 'danger',
+    confirmText: '删除',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
   try {
     const token = localStorage.getItem('token')
     await axios.delete(`/api/papers/${id}`, {
@@ -54,7 +66,7 @@ const deletePaper = async (id: string) => {
     await fetchPapers()
   } catch (err) {
     console.error('Failed to delete paper:', err)
-    alert('删除试卷失败')
+    showToast({ message: '删除试卷失败', type: 'error' })
   }
 }
 
@@ -64,7 +76,7 @@ onMounted(fetchPapers)
 <template>
   <div class="container paper-list-container">
     <div class="header-row">
-      <h1>试卷管理</h1>
+      <h1 class="page-title">试卷管理</h1>
       <div class="header-actions">
         <button class="google-btn primary-btn" @click="createPaper">
           新建试卷
@@ -148,9 +160,7 @@ onMounted(fetchPapers)
 }
 
 .header-row h1 {
-  font-family: 'Google Sans', sans-serif;
-  font-size: 24px;
-  color: #202124;
+  color: var(--line-text);
   margin: 0;
 }
 
@@ -173,12 +183,12 @@ onMounted(fetchPapers)
   height: 100%;
   transition: box-shadow 0.2s, transform 0.2s;
   cursor: default;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--line-border);
   border-radius: 12px;
   overflow: hidden;
   padding: 0; /* Override google-card padding */
   margin: 0; /* Override google-card margin */
-  background: white;
+  background: var(--line-bg);
 }
 
 .paper-card:hover {
@@ -194,14 +204,14 @@ onMounted(fetchPapers)
 }
 
 .card-content:hover {
-  background-color: #f8f9fa;
+  background-color: var(--line-bg-soft);
 }
 
 .paper-icon {
   width: 48px;
   height: 48px;
-  background: linear-gradient(135deg, #e8f0fe 0%, #d2e3fc 100%);
-  color: #1a73e8;
+  background: linear-gradient(135deg, rgba(26, 115, 232, 0.08) 0%, rgba(26, 115, 232, 0.15) 100%);
+  color: var(--line-primary);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -217,7 +227,7 @@ onMounted(fetchPapers)
 .paper-title {
   font-size: 16px;
   font-weight: 500;
-  color: #202124;
+  color: var(--line-text);
   margin: 0 0 8px 0;
   white-space: nowrap;
   overflow: hidden;
@@ -236,7 +246,7 @@ onMounted(fetchPapers)
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .meta-item svg {
@@ -253,10 +263,10 @@ onMounted(fetchPapers)
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  background: #f1f3f4;
+  background: var(--line-bg-soft);
   border-radius: 12px;
   font-size: 12px;
-  color: #3c4043;
+  color: var(--line-text);
 }
 
 .stat-badge svg {
@@ -268,8 +278,8 @@ onMounted(fetchPapers)
   justify-content: space-between;
   align-items: center;
   padding: 12px 20px;
-  background: #f8f9fa;
-  border-top: 1px solid #f1f3f4;
+  background: var(--line-bg-soft);
+  border-top: 1px solid var(--line-border);
 }
 
 .action-group {
@@ -287,24 +297,24 @@ onMounted(fetchPapers)
   background: transparent;
   border-radius: 50%;
   cursor: pointer;
-  color: #5f6368;
+  color: var(--line-text-secondary);
   transition: all 0.2s;
 }
 
 .icon-btn:hover {
-  background: #e8f0fe;
-  color: #1a73e8;
+  background: rgba(26, 115, 232, 0.08);
+  color: var(--line-primary);
 }
 
 .icon-btn.danger:hover {
-  background: #fce8e6;
-  color: #d93025;
+  background: rgba(217, 48, 37, 0.08);
+  color: var(--line-error);
 }
 
 .empty-state {
   text-align: center;
   padding: 60px 20px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .empty-icon {
@@ -316,7 +326,7 @@ onMounted(fetchPapers)
 .empty-state h3 {
   font-family: 'Google Sans', sans-serif;
   font-size: 18px;
-  color: #202124;
+  color: var(--line-text);
   margin: 0 0 8px 0;
 }
 

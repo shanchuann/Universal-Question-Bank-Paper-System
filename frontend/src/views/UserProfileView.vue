@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { authState, type UserRole } from '@/states/authState'
+import { useToast } from '@/composables/useToast'
 import axios from 'axios'
+
+const { showToast } = useToast()
 
 const user = ref({
   username: '',
@@ -11,14 +14,17 @@ const user = ref({
   avatarUrl: ''
 })
 
+
 const originalUser = ref({ ...user.value })
 
 const loading = ref(false)
-const toastMessage = ref('')
-const toastType = ref('success') // 'success' | 'error'
 const showPasswordModal = ref(false)
 const showVerifyModal = ref(false)
 const verifyPassword = ref('')
+const showEmailVerifyModal = ref(false)
+const emailVerifyCode = ref('')
+const emailVerifyLoading = ref(false)
+const emailVerifySent = ref(false)
 
 const passwordForm = ref({
   oldPassword: '',
@@ -32,14 +38,6 @@ const preferences = ref({
   publicProfile: false,
   showActivity: true
 })
-
-const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
-  toastMessage.value = msg
-  toastType.value = type
-  setTimeout(() => {
-    toastMessage.value = ''
-  }, 3000)
-}
 
 onMounted(async () => {
   // Initialize from global state
@@ -74,15 +72,15 @@ const hasSensitiveChanges = computed(() => {
 
 const validateForm = () => {
   if (user.value.nickname.length < 2 || user.value.nickname.length > 20) {
-    showToast('昵称长度需在2-20个字符之间', 'error')
+    showToast({ message: '昵称长度需在2-20个字符之间', type: 'error' })
     return false
   }
   if (!/^[\u4e00-\u9fa5a-zA-Z0-9 _-]+$/.test(user.value.nickname)) {
-    showToast('昵称只能包含中文、英文、数字、空格、下划线和短横线', 'error')
+    showToast({ message: '昵称只能包含中文、英文、数字、空格、下划线和短横线', type: 'error' })
     return false
   }
   if (user.value.email && !/^[A-Za-z0-9+_.-]+@(.+)$/.test(user.value.email)) {
-    showToast('邮箱格式不正确', 'error')
+    showToast({ message: '邮箱格式不正确', type: 'error' })
     return false
   }
   return true
@@ -90,8 +88,9 @@ const validateForm = () => {
 
 const handleSaveClick = () => {
   if (!validateForm()) return
-
-  if (hasSensitiveChanges.value) {
+  if (user.value.email !== originalUser.value.email) {
+    showEmailVerifyModal.value = true
+  } else if (hasSensitiveChanges.value) {
     showVerifyModal.value = true
   } else {
     submitProfileUpdate()
@@ -110,12 +109,12 @@ const submitProfileUpdate = async () => {
     
     authState.updateProfile(response.data)
     originalUser.value = { ...user.value }
-    showToast('个人信息已更新')
+    showToast({ message: '个人信息已更新', type: 'success' })
     showVerifyModal.value = false
     verifyPassword.value = ''
   } catch (e: any) {
     console.error('Failed to save profile', e)
-    showToast(e.response?.data || '保存失败', 'error')
+    showToast({ message: e.response?.data || '保存失败', type: 'error' })
   } finally {
     loading.value = false
   }
@@ -123,7 +122,7 @@ const submitProfileUpdate = async () => {
 
 const handleReset = () => {
   user.value = { ...originalUser.value }
-  showToast('已重置修改', 'success')
+  showToast({ message: '已重置修改', type: 'success' })
 }
 
 const triggerFileInput = () => {
@@ -137,11 +136,11 @@ const handleFileChange = async (event: Event) => {
     
     // Client-side validation
     if (!file.type.startsWith('image/')) {
-        showToast('只能上传图片文件', 'error')
+        showToast({ message: '只能上传图片文件', type: 'error' })
         return
     }
     if (file.size > 5 * 1024 * 1024) {
-        showToast('文件大小不能超过5MB', 'error')
+        showToast({ message: '文件大小不能超过5MB', type: 'error' })
         return
     }
 
@@ -155,11 +154,23 @@ const handleFileChange = async (event: Event) => {
           'Content-Type': 'multipart/form-data'
         }
       })
-      user.value.avatarUrl = res.data.fileUrl
-      showToast('头像上传成功')
+      const uploadedUrl = res.data.fileUrl
+      user.value.avatarUrl = uploadedUrl
+
+      const token = localStorage.getItem('token')
+      if (token) {
+        const updateRes = await axios.put('/api/user/profile', { avatarUrl: uploadedUrl }, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        authState.updateProfile(updateRes.data)
+        user.value = { ...user.value, avatarUrl: updateRes.data.avatarUrl || uploadedUrl }
+        originalUser.value = { ...user.value }
+      }
+
+      showToast({ message: '头像上传成功', type: 'success' })
     } catch (e: any) {
       console.error('Failed to upload avatar', e)
-      showToast(e.response?.data?.error || '头像上传失败', 'error')
+      showToast({ message: e.response?.data?.error || '头像上传失败', type: 'error' })
     } finally {
       loading.value = false
     }
@@ -168,7 +179,7 @@ const handleFileChange = async (event: Event) => {
 
 const handlePasswordUpdate = async () => {
   if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
-    showToast('两次输入的新密码不一致', 'error')
+    showToast({ message: '两次输入的新密码不一致', type: 'error' })
     return
   }
   
@@ -182,12 +193,57 @@ const handlePasswordUpdate = async () => {
       headers: { Authorization: `Bearer ${token}` }
     })
     
-    showToast('密码已更新')
+    showToast({ message: '密码已更新', type: 'success' })
     showPasswordModal.value = false
     passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
   } catch (e: any) {
     console.error('Failed to update password', e)
-    showToast(e.response?.data || '密码更新失败', 'error')
+    showToast({ message: e.response?.data || '密码更新失败', type: 'error' })
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleSendEmailVerify = async () => {
+  if (!user.value.email || !/^[A-Za-z0-9+_.-]+@(.+)$/.test(user.value.email)) {
+    showToast({ message: '请输入有效的邮箱地址', type: 'error' })
+    return
+  }
+  emailVerifyLoading.value = true
+  try {
+    const token = localStorage.getItem('token')
+    await axios.post('/api/user/send-email-verification', { email: user.value.email }, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    emailVerifySent.value = true
+    showToast({ message: '验证码已发送到邮箱，请查收', type: 'success' })
+  } catch (e: any) {
+    showToast({ message: e.response?.data || '验证码发送失败', type: 'error' })
+  } finally {
+    emailVerifyLoading.value = false
+  }
+}
+
+const handleEmailVerifySubmit = async () => {
+  if (!emailVerifyCode.value) {
+    showToast({ message: '请输入验证码', type: 'error' })
+    return
+  }
+  loading.value = true
+  try {
+    const token = localStorage.getItem('token')
+    const payload = { ...user.value, emailVerifyCode: emailVerifyCode.value }
+    const response = await axios.put('/api/user/profile', payload, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    authState.updateProfile(response.data)
+    originalUser.value = { ...user.value }
+    showToast({ message: '邮箱已验证并更新', type: 'success' })
+    showEmailVerifyModal.value = false
+    emailVerifyCode.value = ''
+    emailVerifySent.value = false
+  } catch (e: any) {
+    showToast({ message: e.response?.data || '邮箱验证失败', type: 'error' })
   } finally {
     loading.value = false
   }
@@ -196,15 +252,9 @@ const handlePasswordUpdate = async () => {
 
 <template>
   <div class="line-container page-container">
-    <!-- Toast Notification -->
-    <div v-if="toastMessage" :class="['line-toast', toastType]">
-      <span class="toast-icon">{{ toastType === 'success' ? '✓' : '!' }}</span>
-      {{ toastMessage }}
-    </div>
-
     <!-- Page Header -->
     <div class="page-header center-header">
-      <h1>个人信息</h1>
+      <h1 class="page-title">个人信息</h1>
       <p class="subtitle">管理您的个人资料、密码和隐私设置</p>
     </div>
 
@@ -369,6 +419,24 @@ const handlePasswordUpdate = async () => {
         </div>
       </div>
     </div>
+
+    <!-- Email Verify Modal -->
+    <div v-if="showEmailVerifyModal" class="modal-overlay">
+      <div class="modal-card">
+        <h2>邮箱验证</h2>
+        <p>请输入发送到新邮箱的验证码以完成邮箱修改。</p>
+        <div class="form-group">
+          <input v-model="emailVerifyCode" type="text" class="line-input" placeholder="输入验证码" />
+          <button class="line-btn outline-btn" :disabled="emailVerifyLoading" @click="handleSendEmailVerify">
+            {{ emailVerifySent ? '重新发送' : '发送验证码' }}
+          </button>
+        </div>
+        <div class="form-actions">
+          <button class="line-btn primary-btn" :disabled="loading" @click="handleEmailVerifySubmit">验证并保存</button>
+          <button class="line-btn text-btn" @click="showEmailVerifyModal = false">取消</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -385,8 +453,6 @@ const handlePasswordUpdate = async () => {
 }
 
 .center-header h1 {
-  font-size: 2rem;
-  font-weight: 700;
   color: var(--line-text);
   margin-bottom: 8px;
 }
@@ -688,43 +754,8 @@ input:focus + .slider {
   border-bottom-right-radius: var(--line-radius-lg);
 }
 
-/* Toast */
-.line-toast {
-  position: fixed;
-  top: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 10px 16px;
-  border-radius: 99px;
-  color: white;
-  font-weight: 500;
-  font-size: 0.9rem;
-  z-index: 3000;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: var(--line-shadow-lg);
-  animation: slideDownToast 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.line-toast.success { background-color: #10B981; }
-.line-toast.error { background-color: #EF4444; }
-
-.toast-icon {
-  width: 18px;
-  height: 18px;
-  background: rgba(255,255,255,0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: bold;
-}
-
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes slideDownToast { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 @media (max-width: 768px) {
   .profile-layout { grid-template-columns: 1fr; }

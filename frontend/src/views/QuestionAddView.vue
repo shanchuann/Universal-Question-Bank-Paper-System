@@ -3,6 +3,7 @@ import { ref, watch, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { QuillEditor } from '@vueup/vue-quill'
+import { useToast } from '@/composables/useToast'
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
 import 'katex/dist/katex.min.css';
 import katex from 'katex';
@@ -12,6 +13,8 @@ import KnowledgePointDialog from '@/components/KnowledgePointDialog.vue'
 
 // Expose katex to window for Quill's formula module
 (window as any).katex = katex;
+
+const { showToast: globalToast } = useToast()
 
 const route = useRoute()
 const router = useRouter()
@@ -209,7 +212,7 @@ const saveNewKP = async (kpData: any) => {
     showKPDialog.value = false
   } catch (err) {
     console.error('Failed to create KP', err)
-    alert('创建知识点失败')
+    globalToast({ message: '创建知识点失败', type: 'error' })
   }
 }
 
@@ -287,7 +290,7 @@ const imageHandler = () => {
         }
       } catch (err) {
         console.error('Image upload failed', err);
-        alert('Image upload failed');
+        globalToast({ message: '图片上传失败', type: 'error' });
       }
     }
   };
@@ -404,7 +407,13 @@ const handleSubmit = async () => {
       form.value.knowledgePointIds = []
     }
   } catch (err: any) {
-    showToast(err.response?.data?.message || err.message || '操作失败', 'error')
+    if (err.response?.status === 403) {
+      showToast('请先加入班级后才能添加题目', 'error')
+    } else if (err.response?.status === 401) {
+      showToast('请先登录', 'error')
+    } else {
+      showToast(err.response?.data?.message || err.message || '操作失败', 'error')
+    }
     console.error(err)
   } finally {
     loading.value = false
@@ -416,7 +425,7 @@ const handleSubmit = async () => {
   <div class="container add-question-container">
     <div class="google-card form-card">
       <div class="card-header">
-        <h1>{{ isEditMode ? '编辑题目' : '添加题目' }}</h1>
+        <h1 class="page-title">{{ isEditMode ? '编辑题目' : '添加题目' }}</h1>
         <p class="subtitle">{{ isEditMode ? '修改题目信息' : '创建新题目加入题库' }}</p>
       </div>
 
@@ -480,7 +489,7 @@ const handleSubmit = async () => {
             <span class="option-label">{{ String.fromCharCode(65 + idx) }}.</span>
             <input v-model="form.options[idx]" type="text" required placeholder="选项内容" class="google-input" />
             <button type="button" @click="removeOption(idx)" class="icon-btn remove-opt" v-if="form.options.length > 2">
-              <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="#5f6368"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
           </div>
           <button type="button" @click="addOption" class="google-btn text-btn small-btn">添加选项</button>
@@ -593,9 +602,6 @@ const handleSubmit = async () => {
 }
 
 .card-header h1 {
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 24px;
-  font-weight: 600;
   color: var(--line-text-primary);
   margin-bottom: 8px;
   letter-spacing: -0.5px;
@@ -705,18 +711,16 @@ label {
 
 .radio-group, .checkbox-group {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 8px;
   padding: 8px 0;
-  flex-wrap: wrap;
 }
 
 .radio-label, .checkbox-label {
   position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   cursor: pointer;
-  min-width: 48px;
   height: 48px;
   padding: 0 16px;
   border-radius: var(--line-radius-md);
@@ -783,7 +787,7 @@ label {
   font-size: 14px;
   font-weight: 500;
   box-shadow: var(--line-shadow-lg);
-  z-index: 1000;
+  z-index: 10000;
   background: var(--line-card-bg);
   border: 1px solid var(--line-border);
   color: var(--line-text-primary);

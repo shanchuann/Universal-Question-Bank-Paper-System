@@ -26,6 +26,22 @@ const loading = ref(false)
 const importing = ref(false)
 const error = ref('')
 const successMessage = ref('')
+const dragOver = ref(false)
+
+const triggerFileInput = () => {
+  fileInput.value?.click()
+}
+
+const handleDrop = (e: DragEvent) => {
+  dragOver.value = false
+  const files = e.dataTransfer?.files
+  if (files && files.length > 0 && fileInput.value) {
+    const dataTransfer = new DataTransfer()
+    dataTransfer.items.add(files[0])
+    fileInput.value.files = dataTransfer.files
+    handleFileUpload()
+  }
+}
 
 const handleFileUpload = async () => {
   const file = fileInput.value?.files?.[0]
@@ -90,7 +106,7 @@ const importAll = async () => {
     })
     successMessage.value = `成功导入 ${response.data.length} 道题目！`
     parsedQuestions.value = []
-    setTimeout(() => router.push('/questions'), 2000)
+    // 停留在当前页面，不跳转
   } catch (err: any) {
     console.error('Failed to import questions:', err)
     error.value = '保存题目失败。' + (err.response?.data?.message || err.message)
@@ -104,18 +120,27 @@ const importAll = async () => {
   <div class="container">
     <div class="google-card import-card">
       <div class="card-header">
-        <h1>批量导入题目</h1>
+        <h1 class="page-title">批量导入题目</h1>
         <p class="subtitle">上传Word文档(.docx)以导入题目。</p>
       </div>
 
-      <div class="upload-section">
+      <div class="upload-section" @click="triggerFileInput" @dragover.prevent="dragOver = true" @dragleave="dragOver = false" @drop.prevent="handleDrop" :class="{ 'drag-over': dragOver }">
         <input 
           type="file" 
           ref="fileInput" 
           accept=".docx" 
           @change="handleFileUpload" 
-          class="file-input"
+          class="file-input-hidden"
         />
+        <div class="upload-content">
+          <svg class="upload-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <p class="upload-text">点击或拖拽文件到此处上传</p>
+          <p class="upload-hint">支持 .docx 格式的 Word 文档</p>
+        </div>
         <div v-if="loading" class="loading-spinner">正在解析文档...</div>
       </div>
 
@@ -186,7 +211,7 @@ const importAll = async () => {
                 />
                 <input type="text" v-model="opt.text" class="google-input option-input" placeholder="选项内容" />
                 <button @click="removeOption(q, optIndex)" class="google-btn icon-btn" title="移除选项">
-                  <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#5f6368"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
               </div>
               <button @click="addOption(q)" class="google-btn text-btn small-btn">添加选项</button>
@@ -227,10 +252,63 @@ const importAll = async () => {
 
 .upload-section {
   margin: 32px 0;
-  padding: 32px;
-  border: 2px dashed #dadce0;
-  border-radius: 8px;
+  padding: 48px 32px;
+  border: 2px dashed var(--line-border);
+  border-radius: 12px;
   text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--line-bg);
+}
+
+.upload-section:hover {
+  border-color: var(--line-primary);
+  background: rgba(26, 115, 232, 0.02);
+}
+
+.upload-section.drag-over {
+  border-color: var(--line-primary);
+  background: rgba(26, 115, 232, 0.06);
+  transform: scale(1.01);
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+.upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.upload-icon {
+  color: var(--line-text-secondary);
+  transition: color 0.2s ease;
+}
+
+.upload-section:hover .upload-icon {
+  color: var(--line-primary);
+}
+
+.upload-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--line-text);
+  margin: 0;
+}
+
+.upload-hint {
+  font-size: 13px;
+  color: var(--line-text-secondary);
+  margin: 0;
+}
+
+.loading-spinner {
+  margin-top: 16px;
+  color: var(--line-primary);
+  font-weight: 500;
 }
 
 .preview-header {
@@ -239,12 +317,12 @@ const importAll = async () => {
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #dadce0;
+  border-bottom: 1px solid var(--line-border);
 }
 
 .question-preview-item {
-  background: #f8f9fa;
-  border: 1px solid #dadce0;
+  background: var(--line-bg-soft);
+  border: 1px solid var(--line-border);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 16px;
@@ -258,7 +336,7 @@ const importAll = async () => {
 
 .index {
   font-weight: bold;
-  color: #1a73e8;
+  color: var(--line-primary);
 }
 
 .form-row {
@@ -274,7 +352,7 @@ const importAll = async () => {
 .google-input, .google-select {
   width: 100%;
   padding: 8px;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--line-border);
   border-radius: 4px;
 }
 
@@ -294,13 +372,13 @@ const importAll = async () => {
 .option-input {
   flex: 1;
   min-width: 200px;
-  background-color: #fff;
+  background-color: var(--line-bg);
 }
 
 .icon-btn {
   padding: 0 8px;
   font-size: 18px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .small-btn {

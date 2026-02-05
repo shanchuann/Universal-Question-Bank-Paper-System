@@ -84,9 +84,22 @@ public class OrganizationService {
     return organizationRepository.save(existing);
   }
 
-  /** 删除组织 */
+  /** 删除组织（级联删除所有子组织） */
   @Transactional
   public void delete(String id) {
+    // 递归删除所有子组织
+    deleteRecursively(id);
+  }
+
+  /** 递归删除组织及其所有子组织 */
+  private void deleteRecursively(String id) {
+    // 先获取所有直接子组织
+    List<OrganizationEntity> children = organizationRepository.findByParentIdOrderBySortOrder(id);
+    // 递归删除每个子组织
+    for (OrganizationEntity child : children) {
+      deleteRecursively(child.getId());
+    }
+    // 删除当前组织
     organizationRepository.deleteById(id);
   }
 
@@ -101,6 +114,11 @@ public class OrganizationService {
     return allClasses.stream()
         .filter(org -> userOrganizationRepository.countByOrganizationId(org.getId()) > 0)
         .collect(Collectors.toList());
+  }
+
+  /** 检查用户是否为指定组织的成员 */
+  public boolean isUserMemberOfOrganization(String userId, String orgId) {
+    return userOrganizationRepository.existsByUserIdAndOrganizationId(userId, orgId);
   }
 
   /** 生成邀请码 */

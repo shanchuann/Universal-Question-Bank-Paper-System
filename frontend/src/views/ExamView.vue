@@ -5,6 +5,10 @@ import axios from 'axios'
 import 'katex/dist/katex.min.css';
 import katex from 'katex';
 import { authState } from '@/states/authState'
+import { Flag, Square, CheckSquare, Clock, AlertTriangle } from 'lucide-vue-next'
+import { useToast } from '@/composables/useToast'
+
+const { showToast } = useToast()
 
 interface Question {
   id: string
@@ -78,7 +82,7 @@ const handleVisibilityChange = () => {
     switchCount.value++
     if (switchCount.value >= maxSwitches) {
       submitExam()
-      alert('您切换标签页次数过多，答卷已自动提交。')
+      showToast({ message: '您切换标签页次数过多，答卷已自动提交。', type: 'error', duration: 5000 })
     } else {
       securityWarningMessage.value = `警告：考试期间禁止切换标签页。您还有 ${maxSwitches - switchCount.value} 次机会。`
       showSecurityWarning.value = true
@@ -316,7 +320,9 @@ const exitExam = () => {
 const getQuestionStatus = (qId: string) => {
   if (!exam.value?.records) return null
   const record = exam.value.records.find(r => r.questionId === qId)
-  return record ? (record.isCorrect ? 'correct' : 'incorrect') : 'unanswered'
+  if (!record) return 'unanswered'
+  if (record.isCorrect === null || record.isCorrect === undefined) return 'pending'
+  return record.isCorrect ? 'correct' : 'incorrect'
 }
 
 const isSelected = (qId: string, option: string) => {
@@ -325,6 +331,25 @@ const isSelected = (qId: string, option: string) => {
     return ans.includes(option)
   }
   return ans === option
+}
+
+const selectOption = (qId: string, option: string, type: string) => {
+  if (type === 'MULTIPLE_CHOICE') {
+    // 多选题：切换选项
+    if (!Array.isArray(answers.value[qId])) {
+      answers.value[qId] = []
+    }
+    const arr = answers.value[qId] as string[]
+    const idx = arr.indexOf(option)
+    if (idx >= 0) {
+      arr.splice(idx, 1)
+    } else {
+      arr.push(option)
+    }
+  } else {
+    // 单选题/判断题：直接赋值
+    answers.value[qId] = option
+  }
 }
 
 const questionTypeLabels: Record<string, string> = {
@@ -342,7 +367,7 @@ const questionTypeLabels: Record<string, string> = {
   <div class="container">
     <div v-if="!exam" class="google-card start-card">
       <div class="card-header">
-        <h1>开始考试</h1>
+        <h1 class="page-title">开始考试</h1>
         <p class="subtitle">{{ planId ? '点击下方按钮开始答题' : '输入试卷编号开始考试' }}</p>
       </div>
       
@@ -388,9 +413,15 @@ const questionTypeLabels: Record<string, string> = {
           <h2>{{ exam.paper.title }}</h2>
         </div>
         <div v-if="submitted" class="score-badge">
-          <span class="score-label">得分</span>
-          <span class="score-value">{{ exam.score }}</span>
-          <span class="score-total">/ 100</span>
+          <template v-if="exam.score !== null && exam.score !== undefined">
+            <span class="score-label">得分</span>
+            <span class="score-value">{{ exam.score }}</span>
+            <span class="score-total">/ 100</span>
+          </template>
+          <template v-else>
+            <span class="score-label">状态</span>
+            <span class="score-pending">待阅卷</span>
+          </template>
         </div>
       </div>
 
@@ -405,8 +436,8 @@ const questionTypeLabels: Record<string, string> = {
               <div class="question-header">
                 <span class="q-number">第 {{ itemData.questionNumber }} 题</span>
                 <span class="q-type-badge">{{ questionTypeLabels[itemData.item.data.type] || itemData.item.data.type }}</span>
-                <span v-if="submitted" class="status-badge" :class="getQuestionStatus(itemData.item.data.id)">
-                  {{ getQuestionStatus(itemData.item.data.id) === 'correct' ? '正确' : '错误' }}
+                <span v-if="submitted && getQuestionStatus(itemData.item.data.id)" class="status-badge" :class="getQuestionStatus(itemData.item.data.id)">
+                  {{ getQuestionStatus(itemData.item.data.id) === 'correct' ? '正确' : (getQuestionStatus(itemData.item.data.id) === 'pending' ? '待批阅' : '错误') }}
                 </span>
               </div>
               
@@ -422,29 +453,16 @@ const questionTypeLabels: Record<string, string> = {
                     (错误：没有可用选项)
                   </div>
                   <template v-else>
-                      <label v-for="option in (itemData.item.data.options && itemData.item.data.options.length > 0 ? itemData.item.data.options : ['True', 'False'])" :key="option" class="option-item" :class="{ 'selected': isSelected(itemData.item.data.id, option) }">
+                      <div v-for="option in (itemData.item.data.options && itemData.item.data.options.length > 0 ? itemData.item.data.options : ['True', 'False'])" :key="option" 
+                           class="option-item" 
+                           :class="{ 'selected': isSelected(itemData.item.data.id, option), 'disabled': submitted }"
+                           @click="!submitted && selectOption(itemData.item.data.id, option, itemData.item.data.type)">
                         <div class="input-wrapper">
-                          <input 
-                            v-if="itemData.item.data.type === 'MULTIPLE_CHOICE' || itemData.item.data.type === 'MULTI_CHOICE'"
-                            type="checkbox" 
-                            :name="'q-' + itemData.item.data.id" 
-                            :value="option" 
-                            v-model="answers[itemData.item.data.id]"
-                            :disabled="submitted"
-                            class="google-checkbox"
-                          >
-                          <input 
-                            v-else
-                            type="radio" 
-                            :name="'q-' + itemData.item.data.id" 
-                            :value="option" 
-                            v-model="answers[itemData.item.data.id]"
-                            :disabled="submitted"
-                            class="google-radio"
-                          >
+                          <CheckSquare v-if="isSelected(itemData.item.data.id, option)" :size="20" class="check-icon checked" />
+                          <Square v-else :size="20" class="check-icon" />
                         </div>
-                        <span class="option-text">{{ option }}</span>
-                      </label>
+                        <span class="option-text">{{ itemData.item.data.type === 'TRUE_FALSE' ? (option === 'True' ? '正确' : '错误') : option }}</span>
+                      </div>
                   </template>
                 </template>
                 <template v-else-if="itemData.item.data.type === 'FILL_BLANK'">
@@ -525,9 +543,6 @@ const questionTypeLabels: Record<string, string> = {
 }
 
 .card-header h1 {
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 28px;
-  font-weight: 600;
   margin-bottom: 8px;
   color: var(--line-text-primary);
   letter-spacing: -0.5px;
@@ -650,6 +665,12 @@ const questionTypeLabels: Record<string, string> = {
   font-weight: 400;
 }
 
+.score-pending {
+  font-size: 20px;
+  font-weight: 600;
+  color: #f9ab00;
+}
+
 .question-card {
   padding: 40px;
   margin-bottom: 24px;
@@ -716,6 +737,11 @@ const questionTypeLabels: Record<string, string> = {
   color: #dc2626;
 }
 
+.status-badge.pending {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
 .question-content {
   font-size: 18px;
   line-height: 1.6;
@@ -762,10 +788,27 @@ const questionTypeLabels: Record<string, string> = {
   color: var(--line-text-primary);
 }
 
-.google-checkbox, .google-radio {
-  width: 20px;
-  height: 20px;
-  accent-color: var(--line-primary);
+.option-item.selected .option-text {
+  color: var(--line-primary);
+}
+
+.option-item.disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.check-icon {
+  color: #5f6368;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.check-icon.checked {
+  color: var(--line-primary);
+}
+
+.option-item:hover .check-icon {
+  color: var(--line-primary);
 }
 
 .exam-actions {

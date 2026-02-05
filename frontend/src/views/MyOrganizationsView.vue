@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { confirm } = useConfirm()
 
 interface Organization {
   id: string
@@ -82,7 +85,14 @@ async function joinOrganization() {
 }
 
 async function leaveOrganization(orgId: string) {
-  if (!confirm('确定要退出该班级吗？')) return
+  const confirmed = await confirm({
+    title: '退出班级',
+    message: '确定要退出该班级吗？退出后您将无法查看该班级的考试和消息。',
+    type: 'warning',
+    confirmText: '退出',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
 
   try {
     const token = localStorage.getItem('token')
@@ -114,7 +124,7 @@ function formatDate(dateStr?: string) {
 <template>
   <div class="my-organizations-view">
     <div class="page-header">
-      <h1>我的班级</h1>
+      <h1 class="page-title">我的班级</h1>
       <p class="subtitle">管理您加入的班级组织</p>
     </div>
 
@@ -251,9 +261,6 @@ function formatDate(dateStr?: string) {
 }
 
 .page-header h1 {
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 28px;
-  font-weight: 600;
   color: var(--line-text-primary);
   margin: 0 0 8px 0;
   letter-spacing: -0.5px;
@@ -471,7 +478,7 @@ function formatDate(dateStr?: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999;
   animation: fadeIn 0.2s ease-out;
 }
 
