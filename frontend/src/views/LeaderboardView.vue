@@ -9,6 +9,7 @@ interface StudentStats {
   oderId?: string  // legacy field
   userId?: string
   nickname?: string
+  avatarUrl?: string
   totalQuestionsAnswered: number
   correctAnswers: number
   currentStreak: number
@@ -27,6 +28,19 @@ const leaderboard = ref<StudentStats[]>([])
 const allClasses = ref<Organization[]>([])
 const selectedOrgId = ref<string>('')
 const loading = ref(false)
+const brokenAvatars = ref<Record<string, boolean>>({})
+
+const getAvatarKey = (user: StudentStats | undefined, index: number) => {
+  return String(user?.id ?? user?.userId ?? `idx-${index}`)
+}
+
+const canShowAvatar = (user: StudentStats | undefined, index: number) => {
+  return !!user?.avatarUrl && !brokenAvatars.value[getAvatarKey(user, index)]
+}
+
+const markAvatarBroken = (user: StudentStats | undefined, index: number) => {
+  brokenAvatars.value[getAvatarKey(user, index)] = true
+}
 
 // Convert to options for GoogleSelect
 const classOptions = computed(() => {
@@ -57,9 +71,11 @@ const fetchLeaderboard = async (orgId?: string) => {
       headers: getAuthHeaders()
     })
     leaderboard.value = res.data
+    brokenAvatars.value = {}
   } catch (e) {
     console.error(e)
     leaderboard.value = []
+    brokenAvatars.value = {}
   } finally {
     loading.value = false
   }
@@ -107,11 +123,6 @@ const fetchMyOrganizations = async () => {
     console.error(e)
     allClasses.value = []
   }
-}
-
-const selectOrganization = (orgId: string) => {
-  selectedOrgId.value = orgId
-  fetchLeaderboard(orgId)
 }
 
 onMounted(() => {
@@ -183,7 +194,14 @@ onMounted(() => {
           <div class="podium-item second" v-if="leaderboard.length >= 2">
             <div class="rank-medal silver">2</div>
             <div class="avatar silver">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <img
+                v-if="canShowAvatar(leaderboard[1], 1)"
+                :src="leaderboard[1]?.avatarUrl"
+                :alt="leaderboard[1]?.nickname || leaderboard[1]?.userId || 'avatar'"
+                class="avatar-img"
+                @error="markAvatarBroken(leaderboard[1], 1)"
+              />
+              <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
@@ -201,7 +219,14 @@ onMounted(() => {
               </svg>
             </div>
             <div class="avatar gold">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <img
+                v-if="canShowAvatar(leaderboard[0], 0)"
+                :src="leaderboard[0]?.avatarUrl"
+                :alt="leaderboard[0]?.nickname || leaderboard[0]?.userId || 'avatar'"
+                class="avatar-img"
+                @error="markAvatarBroken(leaderboard[0], 0)"
+              />
+              <svg v-else width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
@@ -215,7 +240,14 @@ onMounted(() => {
           <div class="podium-item third" v-if="leaderboard.length >= 3">
             <div class="rank-medal bronze">3</div>
             <div class="avatar bronze">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <img
+                v-if="canShowAvatar(leaderboard[2], 2)"
+                :src="leaderboard[2]?.avatarUrl"
+                :alt="leaderboard[2]?.nickname || leaderboard[2]?.userId || 'avatar'"
+                class="avatar-img"
+                @error="markAvatarBroken(leaderboard[2], 2)"
+              />
+              <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
@@ -251,7 +283,14 @@ onMounted(() => {
                 <td class="col-name">
                   <div class="user-info">
                     <div class="user-avatar-sm">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <img
+                        v-if="canShowAvatar(user, index + 3)"
+                        :src="user.avatarUrl"
+                        :alt="user.nickname || user.userId || 'avatar'"
+                        class="avatar-img"
+                        @error="markAvatarBroken(user, index + 3)"
+                      />
+                      <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
                       </svg>
@@ -451,6 +490,13 @@ onMounted(() => {
   background: var(--line-bg-soft);
   color: var(--line-text-secondary);
   transition: all 0.3s;
+  overflow: hidden;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .podium-item:hover .avatar {
@@ -576,6 +622,7 @@ onMounted(() => {
   justify-content: center;
   color: var(--line-text-secondary);
   border: 1px solid var(--line-border);
+  overflow: hidden;
 }
 
 .user-name {

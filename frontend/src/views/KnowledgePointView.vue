@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
+import GoogleSelect from '@/components/GoogleSelect.vue'
 
 const { confirm } = useConfirm()
 const { showToast } = useToast()
@@ -31,6 +32,12 @@ const form = ref({
   level: 'CHAPTER' as 'CHAPTER' | 'SECTION' | 'POINT',
   sortOrder: 0
 })
+
+const levelOptions = [
+  { value: 'CHAPTER', label: '章' },
+  { value: 'SECTION', label: '节' },
+  { value: 'POINT', label: '知识点' }
+]
 
 const fetchPoints = async () => {
   loading.value = true
@@ -230,11 +237,12 @@ onMounted(fetchPoints)
         </div>
         <div class="form-group">
           <label>级别</label>
-          <select v-model="form.level" class="google-select" disabled>
-            <option value="CHAPTER">章</option>
-            <option value="SECTION">节</option>
-            <option value="POINT">知识点</option>
-          </select>
+          <GoogleSelect
+            v-model="form.level"
+            :options="levelOptions"
+            placeholder="级别"
+            :disabled="true"
+          />
         </div>
         <div class="form-group">
           <label>排序</label>
@@ -283,8 +291,8 @@ onMounted(fetchPoints)
 }
 
 .node-content:hover {
-  background: rgba(26, 115, 232, 0.1);
-  border-color: #d2e3fc;
+  background: var(--line-bg-hover);
+  border-color: var(--line-border);
 }
 
 .node-title {
@@ -322,7 +330,7 @@ onMounted(fetchPoints)
 }
 
 .icon-btn.delete:hover {
-  color: #d93025;
+  color: var(--line-error);
 }
 
 .modal-overlay {

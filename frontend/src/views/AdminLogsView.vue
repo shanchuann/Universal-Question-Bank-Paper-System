@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { Search, Download, Filter } from 'lucide-vue-next'
 import { useToast } from '@/composables/useToast'
+import GoogleSelect from '@/components/GoogleSelect.vue'
 
 const { showToast } = useToast()
 
@@ -25,6 +26,7 @@ const totalElements = ref(0)
 const totalPages = ref(0)
 const searchKeyword = ref('')
 const actionFilter = ref('')
+const errorMessage = ref('')
 
 const actionTypes = [
   { value: '', label: '全部操作' },
@@ -38,6 +40,7 @@ const actionTypes = [
 
 const fetchLogs = async () => {
   loading.value = true
+  errorMessage.value = ''
   try {
     const token = localStorage.getItem('token')
     let url = `/api/admin/logs?page=${page.value}&size=${size.value}`
@@ -55,19 +58,28 @@ const fetchLogs = async () => {
     totalPages.value = response.data.totalPages || 0
   } catch (error) {
     console.error('Failed to fetch logs', error)
-    // 模拟数据用于展示
-    logs.value = [
-      { id: '1', userId: 'u001', username: 'admin', action: 'LOGIN', target: '系统', ip: '192.168.1.100', timestamp: '2026-02-05 10:30:00', details: '管理员登录系统' },
-      { id: '2', userId: 'u002', username: 'teacher1', action: 'CREATE', target: '题目', ip: '192.168.1.101', timestamp: '2026-02-05 10:25:00', details: '创建新题目 #1234' },
-      { id: '3', userId: 'u003', username: 'student1', action: 'LOGIN', target: '系统', ip: '192.168.1.102', timestamp: '2026-02-05 10:20:00', details: '学生登录系统' },
-      { id: '4', userId: 'u001', username: 'admin', action: 'UPDATE', target: '用户', ip: '192.168.1.100', timestamp: '2026-02-05 10:15:00', details: '更新用户角色' },
-      { id: '5', userId: 'u002', username: 'teacher1', action: 'DELETE', target: '试卷', ip: '192.168.1.101', timestamp: '2026-02-05 10:10:00', details: '删除试卷 #567' }
-    ]
-    totalElements.value = 5
-    totalPages.value = 1
+    logs.value = []
+    totalElements.value = 0
+    totalPages.value = 0
+    errorMessage.value = '获取操作日志失败，请检查管理员权限或后端服务状态'
+    showToast({ message: errorMessage.value, type: 'error' })
   } finally {
     loading.value = false
   }
+}
+
+const formatLogTime = (value: string) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
 }
 
 const handleSearch = () => {
@@ -79,6 +91,10 @@ const handleFilterChange = () => {
   page.value = 0
   fetchLogs()
 }
+
+watch(actionFilter, () => {
+  handleFilterChange()
+})
 
 const exportLogs = async () => {
   try {
@@ -95,7 +111,7 @@ const exportLogs = async () => {
     link.click()
     link.remove()
   } catch (error) {
-    showToast({ message: '导出日志失败，API 尚未实现', type: 'error' })
+    showToast({ message: '导出日志失败，请检查后端服务或权限后重试', type: 'error' })
   }
 }
 
@@ -150,11 +166,11 @@ onMounted(() => {
       </div>
       <div class="filter-box">
         <Filter :size="18" class="filter-icon" />
-        <select v-model="actionFilter" class="google-input" @change="handleFilterChange">
-          <option v-for="type in actionTypes" :key="type.value" :value="type.value">
-            {{ type.label }}
-          </option>
-        </select>
+        <GoogleSelect
+          v-model="actionFilter"
+          :options="actionTypes"
+          placeholder="全部操作"
+        />
       </div>
       <button class="google-btn text-btn" @click="exportLogs">
         <Download :size="18" />
@@ -166,6 +182,11 @@ onMounted(() => {
       <div v-if="loading" class="loading-state">
         <div class="spinner"></div>
         <p>加载中...</p>
+      </div>
+      
+      <div v-else-if="errorMessage" class="empty-state">
+        <p>{{ errorMessage }}</p>
+        <button class="google-btn text-btn" @click="fetchLogs">重试</button>
       </div>
       
       <table v-else-if="logs.length > 0" class="google-table">
@@ -181,7 +202,7 @@ onMounted(() => {
         </thead>
         <tbody>
           <tr v-for="log in logs" :key="log.id">
-            <td class="time-cell">{{ log.timestamp }}</td>
+            <td class="time-cell">{{ formatLogTime(log.timestamp) }}</td>
             <td>{{ log.username }}</td>
             <td>
               <span :class="['badge', getActionBadgeClass(log.action)]">
@@ -249,9 +270,12 @@ onMounted(() => {
   width: 300px;
 }
 
-.filter-box select {
+.filter-box :deep(.google-select-container) {
+  min-width: 170px;
+}
+
+.filter-box :deep(.select-trigger) {
   padding-left: 40px;
-  min-width: 150px;
 }
 
 .table-card {
@@ -309,13 +333,13 @@ onMounted(() => {
   font-weight: 500;
 }
 
-.badge-info { background: #e8f0fe; color: #1a73e8; }
-.badge-secondary { background: #f1f3f4; color: #5f6368; }
-.badge-success { background: #e6f4ea; color: #1e8e3e; }
-.badge-warning { background: #fef7e0; color: #f9ab00; }
-.badge-danger { background: #fce8e6; color: #d93025; }
-.badge-primary { background: #e8f0fe; color: #1a73e8; }
-.badge-default { background: #f1f3f4; color: #5f6368; }
+.badge-info { background: color-mix(in srgb, var(--line-accent) 14%, white); color: var(--line-accent); }
+.badge-secondary { background: var(--line-bg-hover); color: var(--line-text-secondary); }
+.badge-success { background: color-mix(in srgb, var(--line-success) 14%, white); color: var(--line-success); }
+.badge-warning { background: color-mix(in srgb, var(--line-warning) 18%, white); color: color-mix(in srgb, var(--line-warning) 85%, black); }
+.badge-danger { background: color-mix(in srgb, var(--line-error) 14%, white); color: var(--line-error); }
+.badge-primary { background: color-mix(in srgb, var(--line-primary) 10%, white); color: var(--line-primary); }
+.badge-default { background: var(--line-bg-hover); color: var(--line-text-secondary); }
 
 .loading-state {
   display: flex;
@@ -351,7 +375,7 @@ onMounted(() => {
   align-items: center;
   gap: 16px;
   padding: 16px;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
 }
 
 .google-btn {
@@ -373,7 +397,7 @@ onMounted(() => {
 }
 
 .text-btn:hover:not(:disabled) {
-  background: rgba(26, 115, 232, 0.1);
+  background: color-mix(in srgb, var(--line-primary) 10%, transparent);
 }
 
 .text-btn:disabled {
@@ -396,3 +420,4 @@ onMounted(() => {
   border-color: var(--line-primary);
 }
 </style>
+

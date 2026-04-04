@@ -1,5 +1,6 @@
 package com.universal.qbank.service;
 
+import java.net.SocketTimeoutException;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,19 +23,37 @@ public class EmailService {
 
   // 验证码存储 (邮箱 -> 验证码信息)
   private static final Map<String, VerificationCode> verificationCodes = new ConcurrentHashMap<>();
+  // 发送频控 (邮箱+类型 -> 最近发送时间)
+  private static final Map<String, Long> lastSendAt = new ConcurrentHashMap<>();
 
   // 验证码有效期：10分钟
   private static final long CODE_EXPIRY_MS = 10 * 60 * 1000;
+  // 发送冷却：60秒
+  private static final long SEND_COOLDOWN_MS = 60 * 1000;
+  // 最大校验失败次数
+  private static final int MAX_VERIFY_ATTEMPTS = 5;
 
   public static class VerificationCode {
     public String code;
     public long expiryTime;
     public String type; // "register", "reset_password", "change_email"
+    public String subjectId; // change_email 时绑定用户ID
+    public int remainingAttempts;
 
     public VerificationCode(String code, String type) {
       this.code = code;
       this.type = type;
       this.expiryTime = System.currentTimeMillis() + CODE_EXPIRY_MS;
+      this.subjectId = null;
+      this.remainingAttempts = MAX_VERIFY_ATTEMPTS;
+    }
+
+    public VerificationCode(String code, String type, String subjectId) {
+      this.code = code;
+      this.type = type;
+      this.subjectId = subjectId;
+      this.expiryTime = System.currentTimeMillis() + CODE_EXPIRY_MS;
+      this.remainingAttempts = MAX_VERIFY_ATTEMPTS;
     }
 
     public boolean isExpired() {
@@ -59,9 +78,7 @@ public class EmailService {
     if (!isEmailServiceAvailable()) {
       throw new RuntimeException("邮件服务未配置");
     }
-
-    String code = generateCode();
-    verificationCodes.put(toEmail, new VerificationCode(code, "register"));
+    String code = issueCode(toEmail, "register", null);
 
     String siteName = systemConfigService.getConfig(SystemConfigService.SITE_NAME);
     if (siteName == null || siteName.isEmpty()) {
@@ -74,10 +91,13 @@ public class EmailService {
     message.setSubject("【" + siteName + "】注册验证码");
     message.setText(
         "您好！\n\n"
-            + "您的注册验证码是：" + code + "\n\n"
+            + "您的注册验证码是："
+            + code
+            + "\n\n"
             + "验证码有效期为10分钟，请尽快完成注册。\n\n"
             + "如果这不是您的操作，请忽略此邮件。\n\n"
-            + "——" + siteName);
+            + "——"
+            + siteName);
 
     try {
       mailSender.send(message);
@@ -99,8 +119,7 @@ public class EmailService {
       throw new RuntimeException("系统不支持密码重置功能");
     }
 
-    String code = generateCode();
-    verificationCodes.put(toEmail, new VerificationCode(code, "reset_password"));
+    String code = issueCode(toEmail, "reset_password", null);
 
     String siteName = systemConfigService.getConfig(SystemConfigService.SITE_NAME);
     if (siteName == null || siteName.isEmpty()) {
@@ -113,10 +132,13 @@ public class EmailService {
     message.setSubject("【" + siteName + "】密码重置验证码");
     message.setText(
         "您好！\n\n"
-            + "您正在重置密码，验证码是：" + code + "\n\n"
+            + "您正在重置密码，验证码是："
+            + code
+            + "\n\n"
             + "验证码有效期为10分钟。\n\n"
             + "如果这不是您的操作，请立即检查账户安全。\n\n"
-            + "——" + siteName);
+            + "——"
+            + siteName);
 
     try {
       mailSender.send(message);
@@ -128,12 +150,11 @@ public class EmailService {
   }
 
   /** 发送邮箱修改验证码 */
-  public void sendEmailChangeCode(String toEmail) {
+  public void sendEmailChangeCode(String toEmail, String userId) {
     if (!isEmailServiceAvailable()) {
       throw new RuntimeException("邮件服务未配置");
     }
-    String code = generateCode();
-    verificationCodes.put(toEmail, new VerificationCode(code, "change_email"));
+    String code = issueCode(toEmail, "change_email", userId);
     String siteName = systemConfigService.getConfig(SystemConfigService.SITE_NAME);
     if (siteName == null || siteName.isEmpty()) {
       siteName = "UQBank 题库系统";
@@ -144,24 +165,34 @@ public class EmailService {
     message.setSubject("【" + siteName + "】邮箱修改验证码");
     message.setText(
         "您好！\n\n"
-            + "您正在修改邮箱，验证码为：" + code + "\n\n"
+            + "您正在修改邮箱，验证码为："
+            + code
+            + "\n\n"
             + "验证码有效期为10分钟，请尽快完成操作。\n\n"
             + "如果这不是您的操作，请忽略此邮件。\n\n"
-            + "——" + siteName);
-    mailSender.send(message);
+            + "——"
+            + siteName);
+    try {
+      mailSender.send(message);
+    } catch (Exception e) {
+      System.err.println("Failed to send email change code: " + e.getMessage());
+      verificationCodes.remove(toEmail);
+      lastSendAt.remove(toEmail + "#change_email");
+      throw new RuntimeException(buildMailSendErrorMessage(e));
+    }
   }
 
   /** 校验邮箱验证码 */
-  public boolean verifyEmailCode(String email, String code) {
-    VerificationCode vc = verificationCodes.get(email);
-    if (vc == null || !"change_email".equals(vc.type) || vc.isExpired()) {
-      return false;
-    }
-    return vc.code.equals(code);
+  public boolean verifyEmailCode(String email, String code, String userId) {
+    return verifyCode(email, code, "change_email", userId);
   }
 
   /** 验证码 */
   public boolean verifyCode(String email, String code, String type) {
+    return verifyCode(email, code, type, null);
+  }
+
+  public boolean verifyCode(String email, String code, String type, String subjectId) {
     VerificationCode stored = verificationCodes.get(email);
     if (stored == null) {
       return false;
@@ -173,7 +204,14 @@ public class EmailService {
     if (!stored.type.equals(type)) {
       return false;
     }
+    if (stored.subjectId != null && (subjectId == null || !stored.subjectId.equals(subjectId))) {
+      return false;
+    }
     if (!stored.code.equals(code)) {
+      stored.remainingAttempts -= 1;
+      if (stored.remainingAttempts <= 0) {
+        verificationCodes.remove(email);
+      }
       return false;
     }
     // 验证成功后删除验证码
@@ -186,9 +224,46 @@ public class EmailService {
     verificationCodes.entrySet().removeIf(entry -> entry.getValue().isExpired());
   }
 
+  private String issueCode(String email, String type, String subjectId) {
+    cleanupExpiredCodes();
+    String key = email + "#" + type;
+    long now = System.currentTimeMillis();
+    Long last = lastSendAt.get(key);
+    if (last != null && now - last < SEND_COOLDOWN_MS) {
+      long left = (SEND_COOLDOWN_MS - (now - last)) / 1000;
+      throw new RuntimeException("请求过于频繁，请 " + Math.max(left, 1) + " 秒后重试");
+    }
+
+    String code = generateCode();
+    verificationCodes.put(email, new VerificationCode(code, type, subjectId));
+    lastSendAt.put(key, now);
+    return code;
+  }
+
+  private String buildMailSendErrorMessage(Exception e) {
+    Throwable root = e;
+    while (root.getCause() != null && root.getCause() != root) {
+      root = root.getCause();
+    }
+
+    String message = root.getMessage() == null ? "" : root.getMessage();
+    if (root instanceof SocketTimeoutException || message.toLowerCase().contains("timed out")) {
+      return "邮件发送失败：邮件服务器连接超时，请检查邮件配置或稍后重试";
+    }
+    if (message.toLowerCase().contains("authentication")
+        || message.toLowerCase().contains("auth")) {
+      return "邮件发送失败：邮箱账号或授权码校验失败，请检查 SMTP 用户名和密码";
+    }
+    if (message.toLowerCase().contains("unknownhost")
+        || message.toLowerCase().contains("nodename")) {
+      return "邮件发送失败：SMTP 服务器地址不可达，请检查服务器地址和网络";
+    }
+    return "邮件发送失败：" + (message.isBlank() ? "未知错误" : message);
+  }
+
   /** 发送成绩通知邮件 */
-  public void sendScoreNotification(String toEmail, String studentName, String examTitle, 
-      int score, String comments) {
+  public void sendScoreNotification(
+      String toEmail, String studentName, String examTitle, int score, String comments) {
     if (!isEmailServiceAvailable()) {
       System.out.println("邮件服务未配置，无法发送成绩通知");
       return;
@@ -214,11 +289,11 @@ public class EmailService {
     content.append("亲爱的 ").append(studentName).append("：\n\n");
     content.append("您参加的考试「").append(examTitle).append("」已批阅完成。\n\n");
     content.append("考试成绩：").append(score).append(" 分\n\n");
-    
+
     if (comments != null && !comments.isEmpty()) {
       content.append("教师评语：\n").append(comments).append("\n\n");
     }
-    
+
     content.append("您可以登录系统查看详细的答题情况和评分明细。\n\n");
     content.append("祝您学习进步！\n\n");
     content.append("——").append(siteName);
@@ -234,8 +309,8 @@ public class EmailService {
   }
 
   /** 发送考试即将开始提醒 */
-  public void sendExamReminder(String toEmail, String studentName, String examTitle, 
-      String startTime) {
+  public void sendExamReminder(
+      String toEmail, String studentName, String examTitle, String startTime) {
     if (!isEmailServiceAvailable()) {
       return;
     }
@@ -269,6 +344,88 @@ public class EmailService {
       System.out.println("Exam reminder sent to: " + toEmail);
     } catch (Exception e) {
       System.err.println("Failed to send exam reminder: " + e.getMessage());
+    }
+  }
+
+  /** 发送公告发布通知 */
+  public void sendAnnouncementNotification(
+      String toEmail, String receiverName, String title, String content) {
+    if (!isEmailServiceAvailable()) {
+      return;
+    }
+
+    if (!systemConfigService.getBooleanConfig(SystemConfigService.ENABLE_NOTIFICATIONS, true)) {
+      return;
+    }
+
+    String siteName = systemConfigService.getConfig(SystemConfigService.SITE_NAME);
+    if (siteName == null || siteName.isEmpty()) {
+      siteName = "UQBank 题库系统";
+    }
+
+    SimpleMailMessage message = new SimpleMailMessage();
+    message.setFrom(fromEmail);
+    message.setTo(toEmail);
+    message.setSubject("【" + siteName + "】新公告通知 - " + title);
+
+    String summary = content == null ? "" : content;
+    if (summary.length() > 180) {
+      summary = summary.substring(0, 180) + "...";
+    }
+
+    message.setText(
+        "亲爱的 "
+            + receiverName
+            + "：\n\n"
+            + "系统发布了新公告："
+            + title
+            + "\n\n"
+            + "公告摘要：\n"
+            + summary
+            + "\n\n"
+            + "请登录系统查看完整公告内容。\n\n"
+            + "——"
+            + siteName);
+
+    try {
+      mailSender.send(message);
+    } catch (Exception e) {
+      System.err.println("Failed to send announcement notification: " + e.getMessage());
+    }
+  }
+
+  /** 发送资料修改提醒 */
+  public void sendProfileUpdateNotification(String toEmail, String username) {
+    if (!isEmailServiceAvailable()) {
+      return;
+    }
+
+    if (!systemConfigService.getBooleanConfig(SystemConfigService.ENABLE_NOTIFICATIONS, true)) {
+      return;
+    }
+
+    String siteName = systemConfigService.getConfig(SystemConfigService.SITE_NAME);
+    if (siteName == null || siteName.isEmpty()) {
+      siteName = "UQBank 题库系统";
+    }
+
+    SimpleMailMessage message = new SimpleMailMessage();
+    message.setFrom(fromEmail);
+    message.setTo(toEmail);
+    message.setSubject("【" + siteName + "】个人信息更新提醒");
+    message.setText(
+        "您好，"
+            + username
+            + "：\n\n"
+            + "您的个人信息刚刚发生了变更。\n"
+            + "如果这不是您本人操作，请尽快修改密码并联系管理员。\n\n"
+            + "——"
+            + siteName);
+
+    try {
+      mailSender.send(message);
+    } catch (Exception e) {
+      System.err.println("Failed to send profile update notification: " + e.getMessage());
     }
   }
 }

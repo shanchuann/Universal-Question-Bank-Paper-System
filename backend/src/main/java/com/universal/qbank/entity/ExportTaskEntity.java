@@ -4,9 +4,7 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * 导出任务实体
- */
+/** 导出任务实体 */
 @Entity
 @Table(name = "export_tasks")
 public class ExportTaskEntity {

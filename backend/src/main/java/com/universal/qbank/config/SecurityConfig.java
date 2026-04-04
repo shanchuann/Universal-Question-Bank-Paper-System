@@ -5,8 +5,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -23,7 +23,11 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(
-                  "/api/auth/**", "/h2-console/**", "/swagger-ui/**", "/v3/api-docs/**", "/error")
+                        "/api/auth/**",
+                        "/h2-console/**",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        "/error")
                     .permitAll()
                     .requestMatchers("/api/questions", "/api/questions/**")
                     .permitAll()
@@ -44,6 +48,8 @@ public class SecurityConfig {
                     .requestMatchers("/api/admin/**", "/api/stats/**")
                     .permitAll()
                     .requestMatchers("/api/organizations/**", "/api/my-organizations/**")
+                    .permitAll()
+                    .requestMatchers("/api/notifications/**", "/api/system/**")
                     .permitAll()
                     .requestMatchers("/api/roles/**", "/api/permissions/**", "/api/users/**")
                     .permitAll()

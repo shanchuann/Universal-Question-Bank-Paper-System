@@ -57,9 +57,10 @@ public class AuthController implements AuthApi {
   public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
     try {
       // 检查是否需要邮箱验证
-      boolean requireVerification = systemConfigService.getBooleanConfig(
-          SystemConfigService.REQUIRE_EMAIL_VERIFICATION, false);
-      
+      boolean requireVerification =
+          systemConfigService.getBooleanConfig(
+              SystemConfigService.REQUIRE_EMAIL_VERIFICATION, false);
+
       if (requireVerification) {
         if (req.email == null || req.email.isEmpty()) {
           return ResponseEntity.badRequest().body(Map.of("error", "需要提供邮箱地址"));
@@ -71,15 +72,15 @@ public class AuthController implements AuthApi {
           return ResponseEntity.badRequest().body(Map.of("error", "验证码错误或已过期"));
         }
       }
-      
+
       UserEntity user = userService.register(req.username, req.password, req.role);
-      
+
       // 如果提供了邮箱，保存到用户信息
       if (req.email != null && !req.email.isEmpty()) {
         user.setEmail(req.email);
         user = userService.saveUser(user);
       }
-      
+
       return ResponseEntity.ok(user);
     } catch (RuntimeException e) {
       return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -92,7 +93,7 @@ public class AuthController implements AuthApi {
       if (req.email == null || req.email.isEmpty()) {
         return ResponseEntity.badRequest().body(Map.of("error", "请提供邮箱地址"));
       }
-      
+
       // 验证邮箱格式
       if (!req.email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
         return ResponseEntity.badRequest().body(Map.of("error", "邮箱格式不正确"));
@@ -173,8 +174,7 @@ public class AuthController implements AuthApi {
       loginAttempts.remove(username);
     }
 
-    Optional<UserEntity> user =
-        userService.login(username, loginRequest.getPassword());
+    Optional<UserEntity> user = userService.login(username, loginRequest.getPassword());
 
     if (user.isPresent()) {
       // 检查系统状态
@@ -190,7 +190,8 @@ public class AuthController implements AuthApi {
       AuthTokenResponse response = new AuthTokenResponse();
       response.setAccessToken("dummy-jwt-token-" + user.get().getId());
       response.setRefreshToken("dummy-refresh-token");
-      response.setExpiresIn(systemConfigService.getIntConfig(SystemConfigService.SESSION_TIMEOUT, 30) * 60);
+      response.setExpiresIn(
+          systemConfigService.getIntConfig(SystemConfigService.SESSION_TIMEOUT, 30) * 60);
       return ResponseEntity.ok(response);
     } else {
       // 处理 admin 后备账号
@@ -221,17 +222,17 @@ public class AuthController implements AuthApi {
 
   @GetMapping("/api/auth/registration-settings")
   public ResponseEntity<?> getRegistrationSettings() {
-    boolean allowRegistration = systemConfigService.getBooleanConfig(
-        SystemConfigService.ALLOW_REGISTRATION, true);
-    boolean requireEmailVerification = systemConfigService.getBooleanConfig(
-        SystemConfigService.REQUIRE_EMAIL_VERIFICATION, false);
-    int passwordMinLength = systemConfigService.getIntConfig(
-        SystemConfigService.PASSWORD_MIN_LENGTH, 6);
-    
-    return ResponseEntity.ok(Map.of(
-        "allowRegistration", allowRegistration,
-        "requireEmailVerification", requireEmailVerification,
-        "passwordMinLength", passwordMinLength
-    ));
+    boolean allowRegistration =
+        systemConfigService.getBooleanConfig(SystemConfigService.ALLOW_REGISTRATION, true);
+    boolean requireEmailVerification =
+        systemConfigService.getBooleanConfig(SystemConfigService.REQUIRE_EMAIL_VERIFICATION, false);
+    int passwordMinLength =
+        systemConfigService.getIntConfig(SystemConfigService.PASSWORD_MIN_LENGTH, 6);
+
+    return ResponseEntity.ok(
+        Map.of(
+            "allowRegistration", allowRegistration,
+            "requireEmailVerification", requireEmailVerification,
+            "passwordMinLength", passwordMinLength));
   }
 }

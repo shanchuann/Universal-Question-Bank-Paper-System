@@ -146,8 +146,7 @@ public class AnalyticsService {
 
       // Error rate = 1 - (correct / attempts), returns 0-1 decimal
       double correctRate = (double) correct / attempts;
-      rate.setErrorRate(
-          BigDecimal.valueOf(1.0 - correctRate).setScale(4, RoundingMode.HALF_UP));
+      rate.setErrorRate(BigDecimal.valueOf(1.0 - correctRate).setScale(4, RoundingMode.HALF_UP));
 
       errorRates.add(rate);
     }

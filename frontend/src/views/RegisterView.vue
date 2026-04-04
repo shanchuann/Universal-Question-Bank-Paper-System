@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import axios from 'axios'
+import GoogleSelect from '@/components/GoogleSelect.vue'
 
 const router = useRouter()
 const { showToast } = useToast()
@@ -14,6 +15,10 @@ const confirmPassword = ref('')
 const email = ref('')
 const verificationCode = ref('')
 const role = ref('USER')
+const roleOptions = [
+  { value: 'USER', label: '学生' },
+  { value: 'TEACHER', label: '教师' }
+]
 
 // 状态
 const loading = ref(false)
@@ -207,12 +212,7 @@ const passwordHint = computed(() => {
         </div>
 
         <div class="form-group">
-          <div class="select-wrapper">
-            <select v-model="role" class="google-input">
-              <option value="USER">学生</option>
-              <option value="TEACHER">教师</option>
-            </select>
-          </div>
+          <GoogleSelect v-model="role" :options="roleOptions" placeholder="选择角色" />
         </div>
 
         <div class="actions">
@@ -252,7 +252,7 @@ const passwordHint = computed(() => {
   font-family: 'Product Sans', 'Google Sans', sans-serif;
   font-size: 24px;
   font-weight: bold;
-  color: #4285f4;
+  color: var(--line-primary);
 }
 
 h1 {
@@ -355,15 +355,6 @@ h1 {
   cursor: not-allowed;
 }
 
-.select-wrapper select {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 12px center;
-  background-repeat: no-repeat;
-  background-size: 16px 16px;
-  padding-right: 40px;
-}
-
 .actions {
   display: flex;
   justify-content: space-between;
@@ -381,7 +372,7 @@ h1 {
 }
 
 .sign-in-link:hover {
-  background-color: #f6fafe;
+  background-color: var(--line-bg-soft);
 }
 
 .primary-btn {
@@ -397,8 +388,8 @@ h1 {
 }
 
 .primary-btn:hover {
-  background-color: #1557b0;
-  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+  background-color: var(--line-primary-hover);
+  box-shadow: var(--line-shadow-sm);
 }
 
 .primary-btn:disabled {

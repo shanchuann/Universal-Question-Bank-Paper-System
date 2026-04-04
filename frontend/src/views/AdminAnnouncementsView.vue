@@ -20,6 +20,7 @@ interface Announcement {
 
 const announcements = ref<Announcement[]>([])
 const loading = ref(false)
+const errorMessage = ref('')
 const showModal = ref(false)
 const editingAnnouncement = ref<Announcement | null>(null)
 const currentTab = ref('ALL')
@@ -92,6 +93,7 @@ const formatDateTime = (dateStr: string) => {
 
 const fetchAnnouncements = async () => {
   loading.value = true
+  errorMessage.value = ''
   try {
     const token = localStorage.getItem('token')
     let url = '/api/admin/announcements'
@@ -104,13 +106,9 @@ const fetchAnnouncements = async () => {
     announcements.value = response.data.content || response.data || []
   } catch (error) {
     console.error('Failed to fetch announcements', error)
-    // 模拟数据用于展示
-    announcements.value = [
-      { id: '1', title: '系统维护通知', content: '系统将于本周日凌晨2点-6点进行维护升级，届时系统将暂停服务，请各位用户提前做好准备。', status: 'PUBLISHED', priority: 'HIGH', createdAt: '2026-02-04T10:00:00', publishedAt: '2026-02-04T10:30:00', author: 'admin', viewCount: 256 },
-      { id: '2', title: '新学期考试安排', content: '2026年春季学期期中考试将于3月15日开始，请各位教师及时完成试卷准备工作。', status: 'PUBLISHED', priority: 'NORMAL', createdAt: '2026-02-03T14:00:00', publishedAt: '2026-02-03T14:30:00', author: 'admin', viewCount: 189 },
-      { id: '3', title: '功能更新说明', content: '本次更新新增了智能组卷功能，支持根据知识点和难度自动生成试卷。', status: 'DRAFT', priority: 'LOW', createdAt: '2026-02-05T09:00:00', publishedAt: null, author: 'admin', viewCount: 0 },
-      { id: '4', title: '紧急安全通知', content: '检测到异常登录行为，请各位用户及时修改密码，开启两步验证。', status: 'ARCHIVED', priority: 'URGENT', createdAt: '2026-01-20T08:00:00', publishedAt: '2026-01-20T08:05:00', author: 'admin', viewCount: 512 }
-    ]
+    announcements.value = []
+    errorMessage.value = '获取公告失败，请检查管理员权限或后端服务状态'
+    showToast({ message: errorMessage.value, type: 'error' })
   } finally {
     loading.value = false
   }
@@ -182,22 +180,7 @@ const saveAnnouncement = async (publish: boolean = false) => {
     fetchAnnouncements()
   } catch (error) {
     console.error('Failed to save announcement', error)
-    showToast({ message: 'API 尚未实现，模拟保存成功', type: 'warning' })
-    // 模拟保存成功
-    closeModal()
-    if (!editingAnnouncement.value) {
-      announcements.value.unshift({
-        id: Date.now().toString(),
-        title: form.value.title,
-        content: form.value.content,
-        status: publish ? 'PUBLISHED' : 'DRAFT',
-        priority: form.value.priority,
-        createdAt: new Date().toISOString(),
-        publishedAt: publish ? new Date().toISOString() : null,
-        author: 'admin',
-        viewCount: 0
-      })
-    }
+    showToast({ message: '保存失败，请稍后重试', type: 'error' })
   }
 }
 
@@ -220,10 +203,7 @@ const publishAnnouncement = async (id: string) => {
         fetchAnnouncements()
       } catch (error) {
         console.error('Failed to publish announcement', error)
-        // 模拟发布成功
-        announcement.status = 'PUBLISHED'
-        announcement.publishedAt = new Date().toISOString()
-        showToast({ message: '公告已发布（模拟）', type: 'success' })
+        showToast({ message: '发布失败，请稍后重试', type: 'error' })
       }
     }
   })
@@ -248,9 +228,7 @@ const archiveAnnouncement = async (id: string) => {
         fetchAnnouncements()
       } catch (error) {
         console.error('Failed to archive announcement', error)
-        // 模拟归档成功
-        announcement.status = 'ARCHIVED'
-        showToast({ message: '公告已归档（模拟）', type: 'success' })
+        showToast({ message: '归档失败，请稍后重试', type: 'error' })
       }
     }
   })
@@ -275,9 +253,7 @@ const deleteAnnouncement = async (id: string) => {
         fetchAnnouncements()
       } catch (error) {
         console.error('Failed to delete announcement', error)
-        // 模拟删除成功
-        announcements.value = announcements.value.filter(a => a.id !== id)
-        showToast({ message: '公告已删除（模拟）', type: 'success' })
+        showToast({ message: '删除失败，请稍后重试', type: 'error' })
       }
     }
   })
@@ -423,6 +399,15 @@ onMounted(() => {
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
       <p>加载中...</p>
+    </div>
+
+    <div v-else-if="errorMessage" class="empty-state">
+      <div class="empty-icon">
+        <AlertCircle :size="48" />
+      </div>
+      <h3>加载失败</h3>
+      <p>{{ errorMessage }}</p>
+      <button class="btn-primary" @click="fetchAnnouncements">重试</button>
     </div>
 
     <!-- 空状态 -->
@@ -597,11 +582,11 @@ onMounted(() => {
 .confirm-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(15, 23, 42, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10001;
+  z-index: var(--line-layer-modal-overlay);
   backdrop-filter: blur(2px);
 }
 
@@ -611,7 +596,7 @@ onMounted(() => {
   padding: 28px;
   width: 100%;
   max-width: 420px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--line-shadow-xl);
 }
 
 .confirm-header {
@@ -628,8 +613,8 @@ onMounted(() => {
   margin: 0;
 }
 
-.text-warning { color: #f9ab00; }
-.text-danger { color: #d93025; }
+.text-warning { color: var(--line-warning); }
+.text-danger { color: var(--line-error); }
 
 .confirm-message {
   color: var(--line-text-secondary);
@@ -660,7 +645,7 @@ onMounted(() => {
 .header-icon {
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, #e8f0fe 0%, #d2e3fc 100%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--line-primary) 14%, white) 0%, color-mix(in srgb, var(--line-primary) 8%, white) 100%);
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -696,14 +681,14 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--line-shadow-sm);
   border: 1px solid var(--line-border);
   transition: all 0.2s;
 }
 
 .stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--line-shadow-md);
 }
 
 .stat-icon {
@@ -716,23 +701,23 @@ onMounted(() => {
 }
 
 .stat-icon.total {
-  background: linear-gradient(135deg, #e8f0fe 0%, #d2e3fc 100%);
-  color: #1a73e8;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--line-primary) 14%, white) 0%, color-mix(in srgb, var(--line-primary) 8%, white) 100%);
+  color: var(--line-primary);
 }
 
 .stat-icon.draft {
-  background: linear-gradient(135deg, #fef7e0 0%, #feefc3 100%);
-  color: #f9ab00;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--line-warning) 18%, white) 0%, color-mix(in srgb, var(--line-warning) 10%, white) 100%);
+  color: color-mix(in srgb, var(--line-warning) 85%, black);
 }
 
 .stat-icon.published {
-  background: linear-gradient(135deg, #e6f4ea 0%, #ceead6 100%);
-  color: #1e8e3e;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--line-success) 16%, white) 0%, color-mix(in srgb, var(--line-success) 10%, white) 100%);
+  color: var(--line-success);
 }
 
 .stat-icon.archived {
-  background: linear-gradient(135deg, #f1f3f4 0%, #e8eaed 100%);
-  color: #5f6368;
+  background: linear-gradient(135deg, var(--line-bg-hover) 0%, var(--line-bg-soft) 100%);
+  color: var(--line-text-secondary);
 }
 
 .stat-info {
@@ -787,7 +772,7 @@ onMounted(() => {
 
 .tab-btn.active {
   color: var(--line-primary);
-  background: rgba(26, 115, 232, 0.1);
+  background: color-mix(in srgb, var(--line-primary) 10%, transparent);
 }
 
 /* 加载和空状态 */
@@ -824,7 +809,7 @@ onMounted(() => {
 .empty-icon {
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #f1f3f4 0%, #e8eaed 100%);
+  background: linear-gradient(135deg, var(--line-bg-hover) 0%, var(--line-bg-soft) 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -857,14 +842,14 @@ onMounted(() => {
   border-radius: 14px;
   display: flex;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--line-shadow-sm);
   border: 1px solid var(--line-border);
   transition: all 0.2s;
 }
 
 .announcement-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--line-shadow-md);
 }
 
 .card-left-border {
@@ -872,9 +857,9 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.border-published { background: linear-gradient(180deg, #1e8e3e, #34a853); }
-.border-draft { background: linear-gradient(180deg, #202124, #3c4043); }
-.border-archived { background: linear-gradient(180deg, #9e9e9e, #bdbdbd); }
+.border-published { background: linear-gradient(180deg, var(--line-success), color-mix(in srgb, var(--line-success) 80%, white)); }
+.border-draft { background: linear-gradient(180deg, var(--line-primary), var(--line-primary-hover)); }
+.border-archived { background: linear-gradient(180deg, #94a3b8, #cbd5e1); }
 
 .card-content {
   flex: 1;
@@ -908,10 +893,10 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.priority-low { background: #f1f3f4; color: #5f6368; }
-.priority-normal { background: #e8f0fe; color: #1a73e8; }
-.priority-high { background: #fef7e0; color: #e37400; }
-.priority-urgent { background: #fce8e6; color: #d93025; }
+.priority-low { background: var(--line-bg-hover); color: var(--line-text-secondary); }
+.priority-normal { background: color-mix(in srgb, var(--line-primary) 12%, white); color: var(--line-primary); }
+.priority-high { background: color-mix(in srgb, var(--line-warning) 18%, white); color: color-mix(in srgb, var(--line-warning) 85%, black); }
+.priority-urgent { background: color-mix(in srgb, var(--line-error) 14%, white); color: var(--line-error); }
 
 .status-badge {
   display: inline-flex;
@@ -923,9 +908,9 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.status-badge.status-draft { background: #fef7e0; color: #e37400; }
-.status-badge.status-published { background: #e6f4ea; color: #1e8e3e; }
-.status-badge.status-archived { background: #f1f3f4; color: #5f6368; }
+.status-badge.status-draft { background: color-mix(in srgb, var(--line-warning) 18%, white); color: color-mix(in srgb, var(--line-warning) 85%, black); }
+.status-badge.status-published { background: color-mix(in srgb, var(--line-success) 16%, white); color: var(--line-success); }
+.status-badge.status-archived { background: var(--line-bg-hover); color: var(--line-text-secondary); }
 
 .announcement-content {
   color: var(--line-text-secondary);
@@ -939,7 +924,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding-top: 18px;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
 }
 
 .meta-info {
@@ -980,14 +965,14 @@ onMounted(() => {
   color: var(--line-text);
 }
 
-.action-btn.success { color: #1e8e3e; }
-.action-btn.success:hover { background: #e6f4ea; }
+.action-btn.success { color: var(--line-success); }
+.action-btn.success:hover { background: color-mix(in srgb, var(--line-success) 16%, white); }
 
-.action-btn.warning { color: #e37400; }
-.action-btn.warning:hover { background: #fef7e0; }
+.action-btn.warning { color: color-mix(in srgb, var(--line-warning) 85%, black); }
+.action-btn.warning:hover { background: color-mix(in srgb, var(--line-warning) 18%, white); }
 
-.action-btn.danger { color: #d93025; }
-.action-btn.danger:hover { background: #fce8e6; }
+.action-btn.danger { color: var(--line-error); }
+.action-btn.danger:hover { background: color-mix(in srgb, var(--line-error) 14%, white); }
 
 /* 按钮样式 */
 .btn-primary {
@@ -1006,7 +991,7 @@ onMounted(() => {
 }
 
 .btn-primary:hover {
-  background: #1557b0;
+  background: var(--line-primary-hover);
   transform: translateY(-1px);
 }
 
@@ -1042,26 +1027,26 @@ onMounted(() => {
 }
 
 .btn-outline:hover {
-  background: rgba(26, 115, 232, 0.1);
+  background: color-mix(in srgb, var(--line-primary) 10%, transparent);
 }
 
 .btn-danger {
-  background: #d93025;
+  background: var(--line-error);
 }
 
 .btn-danger:hover {
-  background: #c5221f;
+  background: color-mix(in srgb, var(--line-error) 86%, black);
 }
 
 /* 弹窗样式 */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(15, 23, 42, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: var(--line-layer-modal-overlay);
   padding: 24px;
   backdrop-filter: blur(2px);
   animation: fadeIn 0.2s ease-out;
@@ -1076,7 +1061,7 @@ onMounted(() => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--line-shadow-xl);
 }
 
 .modal-header {
@@ -1123,8 +1108,8 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 12px;
   padding: 20px 28px;
-  border-top: 1px solid var(--line-border);
-  background: var(--line-bg-soft);
+  border-top: none;
+  background: transparent;
 }
 
 /* 表单样式 */
@@ -1154,7 +1139,7 @@ onMounted(() => {
 .form-input:focus {
   outline: none;
   border-color: var(--line-primary);
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--line-primary) 14%, transparent);
 }
 
 .content-input {
@@ -1190,13 +1175,13 @@ onMounted(() => {
 
 .priority-option.selected {
   border-color: var(--line-primary);
-  background: rgba(26, 115, 232, 0.1);
+  background: color-mix(in srgb, var(--line-primary) 10%, transparent);
 }
 
-.priority-option.priority-low.selected { border-color: #5f6368; background: #f1f3f4; }
-.priority-option.priority-normal.selected { border-color: #1a73e8; background: #e8f0fe; }
-.priority-option.priority-high.selected { border-color: #e37400; background: #fef7e0; }
-.priority-option.priority-urgent.selected { border-color: #d93025; background: #fce8e6; }
+.priority-option.priority-low.selected { border-color: #94a3b8; background: var(--line-bg-hover); }
+.priority-option.priority-normal.selected { border-color: var(--line-primary); background: color-mix(in srgb, var(--line-primary) 12%, white); }
+.priority-option.priority-high.selected { border-color: color-mix(in srgb, var(--line-warning) 85%, black); background: color-mix(in srgb, var(--line-warning) 18%, white); }
+.priority-option.priority-urgent.selected { border-color: var(--line-error); background: color-mix(in srgb, var(--line-error) 14%, white); }
 
 /* 动画 */
 .modal-enter-active,
@@ -1295,3 +1280,4 @@ onMounted(() => {
   }
 }
 </style>
+

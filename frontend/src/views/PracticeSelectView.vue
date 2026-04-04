@@ -25,6 +25,35 @@ const examHistory = ref<ExamHistory[]>([])
 const allPapers = ref<Paper[]>([])
 const loading = ref(false)
 const router = useRouter()
+const favoritePaperIds = ref<string[]>([])
+
+const FAVORITES_KEY = 'practice.favorite.papers'
+
+const loadFavorites = () => {
+  try {
+    const raw = localStorage.getItem(FAVORITES_KEY)
+    favoritePaperIds.value = raw ? JSON.parse(raw) : []
+  } catch {
+    favoritePaperIds.value = []
+  }
+}
+
+const saveFavorites = () => {
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(favoritePaperIds.value))
+}
+
+const isFavorite = (paperId: string) => favoritePaperIds.value.includes(String(paperId))
+
+const toggleFavorite = (paperId: string) => {
+  const id = String(paperId)
+  const idx = favoritePaperIds.value.indexOf(id)
+  if (idx >= 0) {
+    favoritePaperIds.value.splice(idx, 1)
+  } else {
+    favoritePaperIds.value.unshift(id)
+  }
+  saveFavorites()
+}
 
 const getAuthHeaders = () => ({
   'Content-Type': 'application/json',
@@ -77,7 +106,13 @@ const uniqueExams = computed(() => {
 
 const hasExamHistory = computed(() => uniqueExams.value.length > 0)
 
+const favoritePapers = computed(() => {
+  const map = new Map(allPapers.value.map(p => [String(p.id), p]))
+  return favoritePaperIds.value.map(id => map.get(String(id))).filter((p): p is Paper => !!p)
+})
+
 onMounted(async () => {
+  loadFavorites()
   loading.value = true
   try {
     await Promise.all([fetchExamHistory(), fetchAllPapers()])
@@ -101,6 +136,35 @@ onMounted(async () => {
 
     <!-- 有考试历史时显示做过的试卷 -->
     <template v-else-if="hasExamHistory">
+      <template v-if="favoritePapers.length > 0">
+        <div class="section-title">
+          <span>我的收藏</span>
+          <small>快速进入常用练习试卷</small>
+        </div>
+        <div class="papers-grid">
+          <div v-for="paper in favoritePapers" :key="`fav-${paper.id}`" class="paper-card favorite-card">
+            <div class="paper-info">
+              <div class="paper-title-row">
+                <h3 class="paper-title">{{ paper.title }}</h3>
+                <button class="favorite-btn active" @click="toggleFavorite(paper.id)">★</button>
+              </div>
+              <div class="paper-meta">
+                <span class="meta-item">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 8v4l3 3"/>
+                    <circle cx="12" cy="12" r="10"/>
+                  </svg>
+                  {{ new Date(paper.createdAt).toLocaleDateString('zh-CN') }}
+                </span>
+              </div>
+            </div>
+            <button class="practice-btn" @click="startPractice(paper.id)">
+              开始练习
+            </button>
+          </div>
+        </div>
+      </template>
+
       <div class="section-title">
         <span>您做过的试卷</span>
         <small>选择试卷重新练习</small>
@@ -108,7 +172,12 @@ onMounted(async () => {
       <div class="papers-grid">
         <div v-for="exam in uniqueExams" :key="exam.sessionId" class="paper-card">
           <div class="paper-info">
+            <div class="paper-title-row">
             <h3 class="paper-title">{{ exam.paperTitle || `试卷 #${exam.paperVersionId}` }}</h3>
+              <button class="favorite-btn" :class="{ active: isFavorite(exam.paperVersionId) }" @click="toggleFavorite(exam.paperVersionId)">
+                {{ isFavorite(exam.paperVersionId) ? '★' : '☆' }}
+              </button>
+            </div>
             <div class="paper-meta">
               <span class="meta-item">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -137,7 +206,12 @@ onMounted(async () => {
         <div class="papers-grid">
           <div v-for="paper in allPapers" :key="paper.id" class="paper-card">
             <div class="paper-info">
+              <div class="paper-title-row">
               <h3 class="paper-title">{{ paper.title }}</h3>
+                <button class="favorite-btn" :class="{ active: isFavorite(paper.id) }" @click="toggleFavorite(paper.id)">
+                  {{ isFavorite(paper.id) ? '★' : '☆' }}
+                </button>
+              </div>
               <div class="paper-meta">
                 <span class="meta-item">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -178,7 +252,12 @@ onMounted(async () => {
         <div class="papers-grid">
           <div v-for="paper in allPapers" :key="paper.id" class="paper-card">
             <div class="paper-info">
+              <div class="paper-title-row">
               <h3 class="paper-title">{{ paper.title }}</h3>
+                <button class="favorite-btn" :class="{ active: isFavorite(paper.id) }" @click="toggleFavorite(paper.id)">
+                  {{ isFavorite(paper.id) ? '★' : '☆' }}
+                </button>
+              </div>
               <div class="paper-meta">
                 <span class="meta-item">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -302,6 +381,32 @@ onMounted(async () => {
   font-weight: 600;
   color: var(--line-text);
   margin: 0 0 12px 0;
+}
+
+.paper-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.favorite-btn {
+  border: none;
+  background: transparent;
+  color: var(--line-text-secondary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.favorite-btn.active {
+  color: #f59e0b;
+}
+
+.favorite-card {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.06) 0%, transparent 100%);
 }
 
 .paper-meta {

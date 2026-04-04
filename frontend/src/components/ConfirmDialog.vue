@@ -116,7 +116,7 @@ defineExpose({ show, close })
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10002;
+  z-index: 2147483642;
 }
 
 .confirm-dialog {
@@ -125,6 +125,8 @@ defineExpose({ show, close })
   width: 100%;
   max-width: 400px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 2147483643;
   animation: dialogSlideIn 0.2s ease-out;
 }
 

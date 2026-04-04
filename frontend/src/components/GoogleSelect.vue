@@ -19,6 +19,7 @@ const emit = defineEmits(['update:modelValue'])
 
 const isOpen = ref(false)
 const containerRef = ref<HTMLElement | null>(null)
+const alignRight = ref(false)
 
 const selectedLabel = computed(() => {
   const option = props.options.find(o => o.value === props.modelValue)
@@ -27,7 +28,17 @@ const selectedLabel = computed(() => {
 
 const toggleDropdown = () => {
   if (props.disabled) return
+  if (!isOpen.value) {
+    updateDropdownAlignment()
+  }
   isOpen.value = !isOpen.value
+}
+
+const updateDropdownAlignment = () => {
+  if (!containerRef.value) return
+  const rect = containerRef.value.getBoundingClientRect()
+  const dropdownWidth = Math.max(rect.width, 180)
+  alignRight.value = rect.left + dropdownWidth > window.innerWidth - 8
 }
 
 const selectOption = (value: string | number) => {
@@ -65,7 +76,7 @@ onUnmounted(() => {
     </div>
     
     <transition name="fade">
-      <div v-if="isOpen" class="options-list">
+      <div v-if="isOpen" class="options-list" :class="{ 'align-right': alignRight }">
         <div 
           v-for="option in options" 
           :key="option.value"
@@ -127,7 +138,7 @@ onUnmounted(() => {
 
 .select-trigger.is-open {
   border-color: var(--line-primary);
-  box-shadow: 0 0 0 2px var(--line-primary-10);
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.12);
   background-color: var(--line-bg);
 }
 
@@ -155,16 +166,22 @@ onUnmounted(() => {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
-  right: 0;
-  background-color: var(--line-card-bg);
+  right: auto;
+  background-color: var(--line-bg-elevated);
   border: 1px solid var(--line-border);
   border-radius: var(--line-radius-md);
   box-shadow: var(--line-shadow-lg);
-  z-index: 10001;
+  z-index: var(--line-layer-dropdown);
   max-height: 300px;
   overflow-y: auto;
   padding: 6px;
   animation: slideDown 0.2s ease-out;
+  min-width: max(100%, 180px);
+}
+
+.options-list.align-right {
+  left: auto;
+  right: 0;
 }
 
 .option-item {
@@ -177,14 +194,16 @@ onUnmounted(() => {
   justify-content: space-between;
   border-radius: var(--line-radius-sm);
   transition: background-color 0.1s;
+  gap: 10px;
+  white-space: nowrap;
 }
 
 .option-item:hover {
-  background-color: var(--line-bg-soft);
+  background-color: var(--line-bg-hover);
 }
 
 .option-item.is-selected {
-  background-color: var(--line-bg-hover);
+  background-color: rgba(15, 23, 42, 0.08);
   color: var(--line-primary);
   font-weight: 600;
 }

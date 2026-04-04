@@ -417,7 +417,7 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
 .paper-footer {
   padding: 16px 32px;
   background-color: var(--line-bg);
-  border-top: 1px solid var(--line-border);
+  border-top: none;
   display: flex;
   justify-content: flex-end;
 }
@@ -478,3 +478,4 @@ const download = async (type: 'teacher' | 'student' | 'answer-sheet') => {
   }
 }
 </style>
+

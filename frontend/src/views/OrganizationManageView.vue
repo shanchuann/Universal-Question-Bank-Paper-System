@@ -104,10 +104,8 @@ const filteredUniversities = computed(() => {
 const universitiesByProvince = computed(() => {
   const groups: Record<string, University[]> = {}
   for (const uni of filteredUniversities.value) {
-    if (!groups[uni.province]) {
-      groups[uni.province] = []
-    }
-    groups[uni.province].push(uni)
+    const group = groups[uni.province] ?? (groups[uni.province] = [])
+    group.push(uni)
   }
   return groups
 })
@@ -230,7 +228,7 @@ function removeClass(deptCode: string, index: number) {
 
 function updateClassName(deptCode: string, index: number, name: string) {
   const dept = departmentConfigs.value.find(d => d.code === deptCode)
-  if (dept) {
+  if (dept && dept.classes[index]) {
     dept.classes[index].name = name
   }
 }
@@ -944,7 +942,7 @@ function copyInviteCode(code: string) {
 .class-list {
   padding: 16px;
   background: rgba(255,255,255,0.5);
-  border-top: 1px solid var(--line-border);
+  border-top: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1026,8 +1024,8 @@ function copyInviteCode(code: string) {
 
 .modal-footer {
   padding: 16px 24px;
-  border-top: 1px solid var(--line-border);
-  background: var(--line-bg-soft);
+  border-top: none;
+  background: transparent;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
@@ -1076,3 +1074,4 @@ select.line-select:focus {
   box-shadow: 0 0 0 2px var(--line-primary-10) !important;
 }
 </style>
+

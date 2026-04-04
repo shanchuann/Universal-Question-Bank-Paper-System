@@ -40,13 +40,13 @@ public class OrganizationService {
 
   private void buildChildren(
       OrganizationEntity parent, Map<String, List<OrganizationEntity>> byParent) {
-    List<OrganizationEntity> children =
-        byParent.getOrDefault(parent.getId(), new ArrayList<>());
-    children.sort((a, b) -> {
-      int sa = a.getSortOrder() != null ? a.getSortOrder() : 0;
-      int sb = b.getSortOrder() != null ? b.getSortOrder() : 0;
-      return Integer.compare(sa, sb);
-    });
+    List<OrganizationEntity> children = byParent.getOrDefault(parent.getId(), new ArrayList<>());
+    children.sort(
+        (a, b) -> {
+          int sa = a.getSortOrder() != null ? a.getSortOrder() : 0;
+          int sb = b.getSortOrder() != null ? b.getSortOrder() : 0;
+          return Integer.compare(sa, sb);
+        });
     parent.setChildren(children);
     children.forEach(child -> buildChildren(child, byParent));
   }
@@ -110,7 +110,8 @@ public class OrganizationService {
 
   /** 获取有学生成员的班级列表 */
   public List<OrganizationEntity> getClassesWithMembers() {
-    List<OrganizationEntity> allClasses = organizationRepository.findByTypeAndStatus("CLASS", "ACTIVE");
+    List<OrganizationEntity> allClasses =
+        organizationRepository.findByTypeAndStatus("CLASS", "ACTIVE");
     return allClasses.stream()
         .filter(org -> userOrganizationRepository.countByOrganizationId(org.getId()) > 0)
         .collect(Collectors.toList());
@@ -134,8 +135,8 @@ public class OrganizationService {
   /** 刷新组织邀请码 */
   @Transactional
   public String refreshInviteCode(String orgId) {
-    OrganizationEntity org = organizationRepository.findById(orgId)
-        .orElseThrow(() -> new RuntimeException("组织不存在"));
+    OrganizationEntity org =
+        organizationRepository.findById(orgId).orElseThrow(() -> new RuntimeException("组织不存在"));
     String newCode = generateInviteCode();
     org.setInviteCode(newCode);
     organizationRepository.save(org);
@@ -145,13 +146,15 @@ public class OrganizationService {
   /** 通过邀请码加入组织 */
   @Transactional
   public OrganizationEntity joinByInviteCode(String userId, String inviteCode) {
-    OrganizationEntity org = organizationRepository.findByInviteCode(inviteCode.toUpperCase())
-        .orElseThrow(() -> new RuntimeException("无效的识别码"));
-    
+    OrganizationEntity org =
+        organizationRepository
+            .findByInviteCode(inviteCode.toUpperCase())
+            .orElseThrow(() -> new RuntimeException("无效的识别码"));
+
     if (!"ACTIVE".equals(org.getStatus())) {
       throw new RuntimeException("该班级已停用");
     }
-    
+
     // 检查是否已加入
     if (userOrganizationRepository.existsByUserIdAndOrganizationId(userId, org.getId())) {
       throw new RuntimeException("您已加入该班级");
@@ -170,9 +173,10 @@ public class OrganizationService {
   /** 获取用户加入的组织列表 */
   public List<OrganizationEntity> getUserOrganizations(String userId) {
     List<UserOrganizationEntity> userOrgs = userOrganizationRepository.findByUserId(userId);
-    List<String> orgIds = userOrgs.stream()
-        .map(UserOrganizationEntity::getOrganizationId)
-        .collect(Collectors.toList());
+    List<String> orgIds =
+        userOrgs.stream()
+            .map(UserOrganizationEntity::getOrganizationId)
+            .collect(Collectors.toList());
     return organizationRepository.findAllById(orgIds);
   }
 
@@ -180,79 +184,93 @@ public class OrganizationService {
   public List<Map<String, Object>> getUserOrganizationsWithDetails(String userId) {
     // 获取用户加入的组织
     List<UserOrganizationEntity> userOrgs = userOrganizationRepository.findByUserId(userId);
-    List<String> joinedOrgIds = userOrgs.stream()
-        .map(UserOrganizationEntity::getOrganizationId)
-        .collect(Collectors.toList());
-    
+    List<String> joinedOrgIds =
+        userOrgs.stream()
+            .map(UserOrganizationEntity::getOrganizationId)
+            .collect(Collectors.toList());
+
     // 获取用户创建的组织
     List<OrganizationEntity> createdOrgs = organizationRepository.findByCreatedBy(userId);
-    List<String> createdOrgIds = createdOrgs.stream()
-        .map(OrganizationEntity::getId)
-        .collect(Collectors.toList());
-    
+    List<String> createdOrgIds =
+        createdOrgs.stream().map(OrganizationEntity::getId).collect(Collectors.toList());
+
     // 合并去重
     java.util.Set<String> allOrgIds = new java.util.HashSet<>(joinedOrgIds);
     allOrgIds.addAll(createdOrgIds);
-    
+
     List<OrganizationEntity> orgs = organizationRepository.findAllById(allOrgIds);
-    
+
     // 创建用户角色映射（加入的组织）
-    Map<String, String> roleMap = userOrgs.stream()
-        .collect(Collectors.toMap(
-            UserOrganizationEntity::getOrganizationId, 
-            uo -> uo.getRoleInOrg() != null ? uo.getRoleInOrg() : "MEMBER"
-        ));
-    
+    Map<String, String> roleMap =
+        userOrgs.stream()
+            .collect(
+                Collectors.toMap(
+                    UserOrganizationEntity::getOrganizationId,
+                    uo -> uo.getRoleInOrg() != null ? uo.getRoleInOrg() : "MEMBER"));
+
     // 创建用户加入时间映射
-    Map<String, java.time.OffsetDateTime> joinTimeMap = userOrgs.stream()
-        .collect(Collectors.toMap(
-            UserOrganizationEntity::getOrganizationId, 
-            uo -> uo.getJoinedAt() != null ? uo.getJoinedAt() : java.time.OffsetDateTime.now()
-        ));
-    
-    return orgs.stream().map(org -> {
-      Map<String, Object> result = new java.util.LinkedHashMap<>();
-      result.put("id", org.getId());
-      result.put("name", org.getName());
-      result.put("code", org.getCode());
-      result.put("type", org.getType());
-      result.put("status", org.getStatus());
-      result.put("inviteCode", org.getInviteCode());
-      
-      // 判断用户角色：创建者为 OWNER，否则取加入时的角色
-      boolean isCreator = userId.equals(org.getCreatedBy());
-      if (isCreator) {
-        result.put("memberRole", "OWNER");
-        result.put("joinedAt", org.getCreatedAt());
-      } else {
-        result.put("memberRole", roleMap.get(org.getId()));
-        result.put("joinedAt", joinTimeMap.get(org.getId()));
-      }
-      result.put("isCreator", isCreator);
-      
-      // 获取父级组织信息（学院、学校）
-      if (org.getParentId() != null) {
-        organizationRepository.findById(org.getParentId()).ifPresent(parent -> {
-          result.put("parentName", parent.getName());
-          result.put("parentType", parent.getType());
-          
-          // 如果父级是学院，继续获取学校
-          if (parent.getParentId() != null) {
-            organizationRepository.findById(parent.getParentId()).ifPresent(grandParent -> {
-              result.put("schoolName", grandParent.getName());
-            });
-          } else if ("SCHOOL".equals(parent.getType())) {
-            result.put("schoolName", parent.getName());
-          }
-        });
-      }
-      
-      // 获取班级成员数量
-      long memberCount = userOrganizationRepository.countByOrganizationId(org.getId());
-      result.put("memberCount", memberCount);
-      
-      return result;
-    }).collect(Collectors.toList());
+    Map<String, java.time.OffsetDateTime> joinTimeMap =
+        userOrgs.stream()
+            .collect(
+                Collectors.toMap(
+                    UserOrganizationEntity::getOrganizationId,
+                    uo ->
+                        uo.getJoinedAt() != null
+                            ? uo.getJoinedAt()
+                            : java.time.OffsetDateTime.now()));
+
+    return orgs.stream()
+        .map(
+            org -> {
+              Map<String, Object> result = new java.util.LinkedHashMap<>();
+              result.put("id", org.getId());
+              result.put("name", org.getName());
+              result.put("code", org.getCode());
+              result.put("type", org.getType());
+              result.put("status", org.getStatus());
+              result.put("inviteCode", org.getInviteCode());
+
+              // 判断用户角色：创建者为 OWNER，否则取加入时的角色
+              boolean isCreator = userId.equals(org.getCreatedBy());
+              if (isCreator) {
+                result.put("memberRole", "OWNER");
+                result.put("joinedAt", org.getCreatedAt());
+              } else {
+                result.put("memberRole", roleMap.get(org.getId()));
+                result.put("joinedAt", joinTimeMap.get(org.getId()));
+              }
+              result.put("isCreator", isCreator);
+
+              // 获取父级组织信息（学院、学校）
+              if (org.getParentId() != null) {
+                organizationRepository
+                    .findById(org.getParentId())
+                    .ifPresent(
+                        parent -> {
+                          result.put("parentName", parent.getName());
+                          result.put("parentType", parent.getType());
+
+                          // 如果父级是学院，继续获取学校
+                          if (parent.getParentId() != null) {
+                            organizationRepository
+                                .findById(parent.getParentId())
+                                .ifPresent(
+                                    grandParent -> {
+                                      result.put("schoolName", grandParent.getName());
+                                    });
+                          } else if ("SCHOOL".equals(parent.getType())) {
+                            result.put("schoolName", parent.getName());
+                          }
+                        });
+              }
+
+              // 获取班级成员数量
+              long memberCount = userOrganizationRepository.countByOrganizationId(org.getId());
+              result.put("memberCount", memberCount);
+
+              return result;
+            })
+        .collect(Collectors.toList());
   }
 
   /** 退出组织 */

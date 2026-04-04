@@ -27,27 +27,29 @@ const { toastMessage, toastType, toastVisible } = useToast()
   left: 50%;
   transform: translateX(-50%);
   padding: 12px 24px;
-  border-radius: 99px;
+  border-radius: var(--line-radius-full);
   color: white;
-  font-weight: 500;
+  font-weight: 600;
   font-size: 14px;
-  z-index: 99999;
+  z-index: var(--line-layer-toast);
   display: flex;
   align-items: center;
   gap: 10px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--line-shadow-lg);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
 }
 
 .toast-success {
-  background-color: #10B981;
+  background-color: color-mix(in srgb, var(--line-success) 86%, black 14%);
 }
 
 .toast-error {
-  background-color: #EF4444;
+  background-color: color-mix(in srgb, var(--line-error) 86%, black 14%);
 }
 
 .toast-warning {
-  background-color: #F59E0B;
+  background-color: color-mix(in srgb, var(--line-warning) 86%, black 14%);
 }
 
 .toast-icon {

@@ -109,6 +109,26 @@ const totalGotScore = computed(() => {
   return detail.value.questionScores.reduce((sum, q) => sum + (q.score || 0), 0)
 })
 
+const isQuestionPending = (q: QuestionScore) => {
+  const rawPending = q.isCorrect === null || q.isCorrect === undefined
+  return detail.value?.gradingStatus !== 'GRADED' && rawPending
+}
+
+const isQuestionCorrect = (q: QuestionScore) => {
+  if (q.isCorrect === true) return true
+  if (isQuestionPending(q)) return false
+  if (detail.value?.gradingStatus === 'GRADED') {
+    if (typeof q.score === 'number' && typeof q.maxScore === 'number') {
+      return q.score >= q.maxScore
+    }
+  }
+  return false
+}
+
+const isQuestionIncorrect = (q: QuestionScore) => {
+  return !isQuestionPending(q) && !isQuestionCorrect(q)
+}
+
 const renderMath = () => {
   setTimeout(() => {
     const formulas = document.querySelectorAll('.ql-formula')
@@ -202,7 +222,7 @@ onMounted(() => {
           v-for="(q, index) in detail.questionScores" 
           :key="q.questionId" 
           class="question-card"
-          :class="{ correct: q.isCorrect === true, incorrect: q.isCorrect === false, pending: q.isCorrect === null }"
+          :class="{ correct: isQuestionCorrect(q), incorrect: isQuestionIncorrect(q), pending: isQuestionPending(q) }"
         >
           <div class="question-header">
             <div class="question-info">
@@ -229,14 +249,20 @@ onMounted(() => {
             </div>
 
             <div class="result-indicator">
-              <template v-if="q.isCorrect === true">
+              <template v-if="isQuestionCorrect(q)">
                 <span class="correct-badge">✔ 回答正确</span>
               </template>
-              <template v-else-if="q.isCorrect === false">
+              <template v-else-if="isQuestionIncorrect(q)">
                 <span class="incorrect-badge">✖ 回答错误</span>
               </template>
               <template v-else>
-                <span class="pending-badge-inline">⏳ 等待批阅</span>
+                <span class="pending-badge-inline">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                  等待批阅
+                </span>
               </template>
             </div>
 

@@ -5,7 +5,7 @@ import axios from 'axios'
 import 'katex/dist/katex.min.css';
 import katex from 'katex';
 import { authState } from '@/states/authState'
-import { Flag, Square, CheckSquare, Clock, AlertTriangle } from 'lucide-vue-next'
+import { Square, CheckSquare } from 'lucide-vue-next'
 import { useToast } from '@/composables/useToast'
 
 const { showToast } = useToast()

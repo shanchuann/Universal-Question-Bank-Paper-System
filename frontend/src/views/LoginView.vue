@@ -79,7 +79,7 @@ const handleLogin = async () => {
   justify-content: center;
   align-items: center;
   min-height: 80vh;
-  background-color: #fff; /* Google login page is usually white or very light grey */
+  background: transparent;
 }
 
 .login-container {
@@ -87,7 +87,15 @@ const handleLogin = async () => {
   max-width: 400px;
   padding: 48px 40px;
   text-align: center;
-  /* border & shadow handled by line-card class */
+  background: rgba(255, 255, 255, 0.56);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.login-container:hover {
+  transform: none;
 }
 
 .logo-area {

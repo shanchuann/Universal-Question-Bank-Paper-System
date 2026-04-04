@@ -528,8 +528,18 @@ h1 {
 
 .full-width {
   width: 100%;
-  padding: 14px;
+  height: 48px;
+  padding: 0 24px;
   font-size: 16px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: transparent;
+  border-top: none;
+  padding: 12px 0 0;
 }
 
 .error {

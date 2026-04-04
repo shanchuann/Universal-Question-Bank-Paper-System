@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import axios from 'axios'
-import { useRouter } from 'vue-router'
+import GoogleSelect from '@/components/GoogleSelect.vue'
 
 interface QuestionOption {
   text: string
@@ -19,7 +19,6 @@ interface Question {
   analysis?: string
 }
 
-const router = useRouter()
 const fileInput = ref<HTMLInputElement | null>(null)
 const parsedQuestions = ref<Question[]>([])
 const loading = ref(false)
@@ -27,6 +26,21 @@ const importing = ref(false)
 const error = ref('')
 const successMessage = ref('')
 const dragOver = ref(false)
+
+const questionTypeOptions = [
+  { value: 'SINGLE_CHOICE', label: '单选题' },
+  { value: 'MULTI_CHOICE', label: '多选题' },
+  { value: 'MULTIPLE_CHOICE', label: '多选题(旧版)' },
+  { value: 'TRUE_FALSE', label: '判断题' },
+  { value: 'FILL_BLANK', label: '填空题' },
+  { value: 'SHORT_ANSWER', label: '简答题' }
+]
+
+const difficultyOptions = [
+  { value: 'EASY', label: '简单' },
+  { value: 'MEDIUM', label: '中等' },
+  { value: 'HARD', label: '困难' }
+]
 
 const triggerFileInput = () => {
   fileInput.value?.click()
@@ -36,8 +50,10 @@ const handleDrop = (e: DragEvent) => {
   dragOver.value = false
   const files = e.dataTransfer?.files
   if (files && files.length > 0 && fileInput.value) {
+    const firstFile = files.item(0)
+    if (!firstFile) return
     const dataTransfer = new DataTransfer()
-    dataTransfer.items.add(files[0])
+    dataTransfer.items.add(firstFile)
     fileInput.value.files = dataTransfer.files
     handleFileUpload()
   }
@@ -175,22 +191,11 @@ const importAll = async () => {
             <div class="form-row">
               <div class="form-group">
                 <label>题型</label>
-                <select v-model="q.type" class="google-select">
-                  <option value="SINGLE_CHOICE">单选题</option>
-                  <option value="MULTI_CHOICE">多选题</option>
-                  <option value="MULTIPLE_CHOICE">多选题(旧版)</option>
-                  <option value="TRUE_FALSE">判断题</option>
-                  <option value="FILL_BLANK">填空题</option>
-                  <option value="SHORT_ANSWER">简答题</option>
-                </select>
+                <GoogleSelect v-model="q.type" :options="questionTypeOptions" placeholder="选择题型" />
               </div>
               <div class="form-group">
                 <label>难度</label>
-                <select v-model="q.difficulty" class="google-select">
-                  <option value="EASY">简单</option>
-                  <option value="MEDIUM">中等</option>
-                  <option value="HARD">困难</option>
-                </select>
+                <GoogleSelect v-model="q.difficulty" :options="difficultyOptions" placeholder="选择难度" />
               </div>
               <div class="form-group">
                 <label>分数</label>
@@ -263,12 +268,12 @@ const importAll = async () => {
 
 .upload-section:hover {
   border-color: var(--line-primary);
-  background: rgba(26, 115, 232, 0.02);
+  background: color-mix(in srgb, var(--line-primary) 4%, transparent);
 }
 
 .upload-section.drag-over {
   border-color: var(--line-primary);
-  background: rgba(26, 115, 232, 0.06);
+  background: color-mix(in srgb, var(--line-primary) 10%, transparent);
   transform: scale(1.01);
 }
 
@@ -393,12 +398,12 @@ const importAll = async () => {
 }
 
 .error {
-  background-color: #fce8e6;
-  color: #c5221f;
+  background-color: color-mix(in srgb, var(--line-error) 14%, white);
+  color: color-mix(in srgb, var(--line-error) 80%, black);
 }
 
 .success {
-  background-color: #e6f4ea;
-  color: #137333;
+  background-color: color-mix(in srgb, var(--line-success) 14%, white);
+  color: color-mix(in srgb, var(--line-success) 80%, black);
 }
 </style>

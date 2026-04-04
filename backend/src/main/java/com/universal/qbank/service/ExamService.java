@@ -3,13 +3,14 @@ package com.universal.qbank.service;
 import com.universal.qbank.api.generated.model.ManualGradeRequest;
 import com.universal.qbank.api.generated.model.ManualGradeRequestGradesInner;
 import com.universal.qbank.entity.*;
+import com.universal.qbank.repository.ExamEnrollmentRepository;
+import com.universal.qbank.repository.ExamPlanRepository;
 import com.universal.qbank.repository.ExamRepository;
 import com.universal.qbank.repository.PaperRepository;
 import com.universal.qbank.repository.QuestionRepository;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,6 +26,10 @@ public class ExamService {
 
   @Autowired private PaperRepository paperRepository;
 
+  @Autowired private ExamPlanRepository examPlanRepository;
+
+  @Autowired private ExamEnrollmentRepository examEnrollmentRepository;
+
   @Autowired private QuestionRepository questionRepository;
 
   @Autowired private com.universal.qbank.repository.UserRepository userRepository;
@@ -36,11 +41,43 @@ public class ExamService {
   private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
       new com.fasterxml.jackson.databind.ObjectMapper();
 
-  public ExamEntity startExam(Long paperId, String userId, String type) {
+  public ExamEntity startExam(Long paperId, String userId, String type, String planId) {
     PaperEntity paper =
         paperRepository
             .findById(paperId)
             .orElseThrow(() -> new IllegalArgumentException("Paper not found"));
+
+    if (planId != null && !planId.isBlank()) {
+      ExamPlanEntity plan =
+          examPlanRepository
+              .findById(planId)
+              .orElseThrow(() -> new IllegalArgumentException("Exam plan not found"));
+
+      if (plan.getPaperId() != null && !plan.getPaperId().equals(paperId)) {
+        throw new IllegalStateException("Paper does not match exam plan");
+      }
+
+      String planStatus = plan.getStatus();
+      if (!("PUBLISHED".equals(planStatus) || "ONGOING".equals(planStatus))) {
+        throw new IllegalStateException("Exam plan is not open for entry");
+      }
+
+      int maxAttempts =
+          plan.getMaxAttempts() == null || plan.getMaxAttempts() < 1 ? 1 : plan.getMaxAttempts();
+      ExamEnrollmentEntity enrollment =
+          examEnrollmentRepository
+              .findByExamPlanIdAndStudentId(planId, userId)
+              .orElseThrow(
+                  () -> new IllegalStateException("Student is not enrolled in this exam plan"));
+
+      int used = enrollment.getAttemptsUsed() == null ? 0 : enrollment.getAttemptsUsed();
+      if (used >= maxAttempts) {
+        throw new IllegalStateException("Max attempts reached for this exam");
+      }
+
+      enrollment.setAttemptsUsed(used + 1);
+      examEnrollmentRepository.save(enrollment);
+    }
 
     ExamEntity exam = new ExamEntity();
     exam.setPaperId(paperId);
@@ -56,8 +93,10 @@ public class ExamService {
   private boolean isObjectiveQuestion(String type) {
     if (type == null) return false;
     String t = type.toUpperCase();
-    return t.equals("SINGLE_CHOICE") || t.equals("MULTIPLE_CHOICE") || 
-           t.equals("MULTI_CHOICE") || t.equals("TRUE_FALSE");
+    return t.equals("SINGLE_CHOICE")
+        || t.equals("MULTIPLE_CHOICE")
+        || t.equals("MULTI_CHOICE")
+        || t.equals("TRUE_FALSE");
   }
 
   public ExamEntity submitExam(
@@ -117,33 +156,36 @@ public class ExamService {
                   q.getOptionsJson(),
                   new com.fasterxml.jackson.core.type.TypeReference<
                       List<com.universal.qbank.api.generated.model.QuestionOption>>() {});
-          
-          if ("MULTIPLE_CHOICE".equalsIgnoreCase(q.getType()) || "MULTI_CHOICE".equalsIgnoreCase(q.getType())) {
-              // Set based comparison
-              Set<String> correctSet = opts.stream()
-                  .filter(o -> Boolean.TRUE.equals(o.getIsCorrect()))
-                  .map(o -> o.getText().trim())
-                  .collect(Collectors.toSet());
-              
-              if (userAnswer != null) {
-                  Set<String> userSet = Arrays.stream(userAnswer.split(","))
+
+          if ("MULTIPLE_CHOICE".equalsIgnoreCase(q.getType())
+              || "MULTI_CHOICE".equalsIgnoreCase(q.getType())) {
+            // Set based comparison
+            Set<String> correctSet =
+                opts.stream()
+                    .filter(o -> Boolean.TRUE.equals(o.getIsCorrect()))
+                    .map(o -> o.getText().trim())
+                    .collect(Collectors.toSet());
+
+            if (userAnswer != null) {
+              Set<String> userSet =
+                  Arrays.stream(userAnswer.split(","))
                       .map(String::trim)
                       .collect(Collectors.toSet());
-                  isCorrect = userSet.equals(correctSet);
-              }
+              isCorrect = userSet.equals(correctSet);
+            }
           } else {
-              // Standard string comparison (SINGLE_CHOICE, TRUE_FALSE)
-              String correctAnswer =
-                  opts.stream()
-                      .filter(o -> Boolean.TRUE.equals(o.getIsCorrect()))
-                      .map(com.universal.qbank.api.generated.model.QuestionOption::getText)
-                      .collect(Collectors.joining(","));
+            // Standard string comparison (SINGLE_CHOICE, TRUE_FALSE)
+            String correctAnswer =
+                opts.stream()
+                    .filter(o -> Boolean.TRUE.equals(o.getIsCorrect()))
+                    .map(com.universal.qbank.api.generated.model.QuestionOption::getText)
+                    .collect(Collectors.joining(","));
 
-              if (userAnswer != null) {
-                String normalizedUser = userAnswer.trim();
-                String normalizedCorrect = correctAnswer.trim();
-                isCorrect = normalizedUser.equalsIgnoreCase(normalizedCorrect);
-              }
+            if (userAnswer != null) {
+              String normalizedUser = userAnswer.trim();
+              String normalizedCorrect = correctAnswer.trim();
+              isCorrect = normalizedUser.equalsIgnoreCase(normalizedCorrect);
+            }
           }
         } catch (Exception e) {
           e.printStackTrace();
@@ -215,10 +257,11 @@ public class ExamService {
             page, size, org.springframework.data.domain.Sort.by("startTime").descending());
 
     // 获取所有学生用户ID（只显示学生的答卷）
-    List<String> studentUserIds = userRepository.findAll().stream()
-        .filter(u -> "USER".equals(u.getRole()) || "STUDENT".equals(u.getRole()))
-        .map(u -> u.getId())
-        .collect(Collectors.toList());
+    List<String> studentUserIds =
+        userRepository.findAll().stream()
+            .filter(u -> "USER".equals(u.getRole()) || "STUDENT".equals(u.getRole()))
+            .map(u -> u.getId())
+            .collect(Collectors.toList());
 
     Specification<ExamEntity> spec =
         (root, query, cb) -> {
@@ -338,34 +381,38 @@ public class ExamService {
       return;
     }
 
-    userRepository.findById(exam.getUserId()).ifPresent(user -> {
-      if (user.getEmail() != null && !user.getEmail().isEmpty()) {
-        String studentName = user.getNickname() != null ? user.getNickname() : user.getUsername();
-        String examTitle = paper.getTitle() != null ? paper.getTitle() : "考试 #" + exam.getId();
-        
-        // 收集教师评语
-        StringBuilder comments = new StringBuilder();
-        if (exam.getRecords() != null) {
-          for (ExamRecordEntity record : exam.getRecords()) {
-            if (record.getNotes() != null && !record.getNotes().isEmpty()) {
-              comments.append("- ").append(record.getNotes()).append("\n");
-            }
-          }
-        }
+    userRepository
+        .findById(exam.getUserId())
+        .ifPresent(
+            user -> {
+              if (user.getEmail() != null && !user.getEmail().isEmpty()) {
+                String studentName =
+                    user.getNickname() != null ? user.getNickname() : user.getUsername();
+                String examTitle =
+                    paper.getTitle() != null ? paper.getTitle() : "考试 #" + exam.getId();
 
-        emailService.sendScoreNotification(
-            user.getEmail(),
-            studentName,
-            examTitle,
-            exam.getScore() != null ? exam.getScore() : 0,
-            comments.toString()
-        );
+                // 收集教师评语
+                StringBuilder comments = new StringBuilder();
+                if (exam.getRecords() != null) {
+                  for (ExamRecordEntity record : exam.getRecords()) {
+                    if (record.getNotes() != null && !record.getNotes().isEmpty()) {
+                      comments.append("- ").append(record.getNotes()).append("\n");
+                    }
+                  }
+                }
 
-        // 标记已发送
-        exam.setScoreNotified(true);
-        examRepository.save(exam);
-      }
-    });
+                emailService.sendScoreNotification(
+                    user.getEmail(),
+                    studentName,
+                    examTitle,
+                    exam.getScore() != null ? exam.getScore() : 0,
+                    comments.toString());
+
+                // 标记已发送
+                exam.setScoreNotified(true);
+                examRepository.save(exam);
+              }
+            });
   }
 
   public ExamEntity getExam(Long examId) {
@@ -377,14 +424,15 @@ public class ExamService {
   /** 获取学生自己的考试记录 */
   public org.springframework.data.domain.Page<ExamEntity> getStudentExams(
       String userId, org.springframework.data.domain.Pageable pageable) {
-    
-    Specification<ExamEntity> spec = (root, query, cb) -> {
-      List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
-      predicates.add(cb.equal(root.get("userId"), userId));
-      // 只获取已提交的考试
-      predicates.add(cb.isNotNull(root.get("endTime")));
-      return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
-    };
+
+    Specification<ExamEntity> spec =
+        (root, query, cb) -> {
+          List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+          predicates.add(cb.equal(root.get("userId"), userId));
+          // 只获取已提交的考试
+          predicates.add(cb.isNotNull(root.get("endTime")));
+          return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
 
     return examRepository.findAll(spec, pageable);
   }

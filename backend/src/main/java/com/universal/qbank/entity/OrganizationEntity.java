@@ -6,9 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * 组织架构实体 - 支持学校/学院/班级等层级结构
- */
+/** 组织架构实体 - 支持学校/学院/班级等层级结构 */
 @Entity
 @Table(name = "organizations")
 public class OrganizationEntity {

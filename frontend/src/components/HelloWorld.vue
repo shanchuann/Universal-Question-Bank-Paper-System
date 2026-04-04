@@ -2,10 +2,10 @@
 import { computed, ref, onMounted, watch } from 'vue'
 import { authState } from '@/states/authState'
 import axios from 'axios'
-import { 
-  LogIn, UserPlus, Book, Plus, FileText, CheckCircle, 
-  FileClock, Users, Settings, Home, Network, ClipboardList,
-  GraduationCap, ArrowRight, ScrollText, BarChart3, Activity, Megaphone, Shield
+import {
+  LogIn, UserPlus, Book, Plus, FileText, CheckCircle,
+  FileClock, Users, Home, Network, ClipboardList,
+  ArrowRight, ScrollText, BarChart3, Activity, Megaphone
 } from 'lucide-vue-next'
 
 defineProps<{ msg: string }>()
@@ -80,17 +80,22 @@ const fetchLeaderboard = async () => {
 }
 
 onMounted(() => {
-  if (authState.user.id) {
+  if (authState.isAuthenticated && authState.user.id) {
     fetchStats()
+    fetchLeaderboard()
   }
-  fetchLeaderboard()
 })
 
-watch(() => authState.user.id, (newId) => {
-  if (newId) {
-    fetchStats()
-  }
-})
+watch(
+  () => [authState.isAuthenticated, authState.user.id, authState.user.role],
+  ([authed, userId, role]) => {
+    if (authed && userId && role !== 'TEACHER' && role !== 'ADMIN') {
+      fetchStats()
+      fetchLeaderboard()
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>

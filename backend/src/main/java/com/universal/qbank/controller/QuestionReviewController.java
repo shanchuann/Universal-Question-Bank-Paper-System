@@ -35,71 +35,80 @@ public class QuestionReviewController {
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
       @RequestParam(required = false) String status) {
-    
+
     // 获取所有学生（非教师、非管理员）的ID列表
-    List<String> studentIds = userRepository.findAll().stream()
-        .filter(u -> "USER".equals(u.getRole()) || "STUDENT".equals(u.getRole()))
-        .map(UserEntity::getId)
-        .toList();
-    
-    Specification<QuestionEntity> spec = (root, query, cb) -> {
-      List<Predicate> predicates = new ArrayList<>();
-      
-      // 只查询学生创建的题目
-      if (!studentIds.isEmpty()) {
-        predicates.add(root.get("createdBy").in(studentIds));
-      } else {
-        // 如果没有学生，返回空结果
-        predicates.add(cb.equal(cb.literal(1), cb.literal(0)));
-      }
-      
-      // 状态过滤
-      if (status != null && !status.isEmpty()) {
-        predicates.add(cb.equal(root.get("status"), status));
-      }
-      
-      return cb.and(predicates.toArray(new Predicate[0]));
-    };
-    
-    Page<QuestionEntity> pagedResult = questionRepository.findAll(
-        spec, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
-    
+    List<String> studentIds =
+        userRepository.findAll().stream()
+            .filter(u -> "USER".equals(u.getRole()) || "STUDENT".equals(u.getRole()))
+            .map(UserEntity::getId)
+            .toList();
+
+    Specification<QuestionEntity> spec =
+        (root, query, cb) -> {
+          List<Predicate> predicates = new ArrayList<>();
+
+          // 只查询学生创建的题目
+          if (!studentIds.isEmpty()) {
+            predicates.add(root.get("createdBy").in(studentIds));
+          } else {
+            // 如果没有学生，返回空结果
+            predicates.add(cb.equal(cb.literal(1), cb.literal(0)));
+          }
+
+          // 状态过滤
+          if (status != null && !status.isEmpty()) {
+            predicates.add(cb.equal(root.get("status"), status));
+          }
+
+          return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+    Page<QuestionEntity> pagedResult =
+        questionRepository.findAll(
+            spec, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+
     // 构建用户ID到昵称的映射
-    Map<String, String> userNicknameMap = userRepository.findAll().stream()
-        .collect(java.util.stream.Collectors.toMap(
-            UserEntity::getId,
-            u -> u.getNickname() != null ? u.getNickname() : u.getUsername(),
-            (a, b) -> a
-        ));
-    
+    Map<String, String> userNicknameMap =
+        userRepository.findAll().stream()
+            .collect(
+                java.util.stream.Collectors.toMap(
+                    UserEntity::getId,
+                    u -> u.getNickname() != null ? u.getNickname() : u.getUsername(),
+                    (a, b) -> a));
+
     // 将题目转换为包含昵称的Map
-    List<Map<String, Object>> contentWithNickname = pagedResult.getContent().stream()
-        .map(q -> {
-          Map<String, Object> map = new HashMap<>();
-          map.put("id", q.getId());
-          map.put("stem", q.getStem());
-          map.put("type", q.getType());
-          map.put("difficulty", q.getDifficulty());
-          map.put("status", q.getStatus());
-          map.put("version", q.getVersion());
-          map.put("createdBy", q.getCreatedBy());
-          map.put("createdAt", q.getCreatedAt());
-          map.put("optionsJson", q.getOptionsJson());
-          map.put("answerSchema", q.getAnswerSchema());
-          map.put("analysis", q.getAnalysis());
-          map.put("reviewNotes", q.getReviewNotes());
-          // 添加创建者昵称
-          String creatorNickname = q.getCreatedBy() != null ? userNicknameMap.get(q.getCreatedBy()) : null;
-          map.put("creatorNickname", creatorNickname != null ? creatorNickname : q.getCreatedBy());
-          return map;
-        })
-        .toList();
-    
+    List<Map<String, Object>> contentWithNickname =
+        pagedResult.getContent().stream()
+            .map(
+                q -> {
+                  Map<String, Object> map = new HashMap<>();
+                  map.put("id", q.getId());
+                  map.put("stem", q.getStem());
+                  map.put("type", q.getType());
+                  map.put("difficulty", q.getDifficulty());
+                  map.put("status", q.getStatus());
+                  map.put("version", q.getVersion());
+                  map.put("createdBy", q.getCreatedBy());
+                  map.put("createdAt", q.getCreatedAt());
+                  map.put("optionsJson", q.getOptionsJson());
+                  map.put("answerSchema", q.getAnswerSchema());
+                  map.put("analysis", q.getAnalysis());
+                  map.put("reviewNotes", q.getReviewNotes());
+                  // 添加创建者昵称
+                  String creatorNickname =
+                      q.getCreatedBy() != null ? userNicknameMap.get(q.getCreatedBy()) : null;
+                  map.put(
+                      "creatorNickname",
+                      creatorNickname != null ? creatorNickname : q.getCreatedBy());
+                  return map;
+                })
+            .toList();
+
     Map<String, Object> response = new HashMap<>();
     response.put("content", contentWithNickname);
     response.put("totalElements", pagedResult.getTotalElements());
     response.put("totalPages", pagedResult.getTotalPages());
-    
+
     return ResponseEntity.ok(response);
   }
 

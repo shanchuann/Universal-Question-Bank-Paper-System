@@ -37,7 +37,8 @@ const filterKnowledgePoint = ref<string>('')
 const filterType = ref<string>('')
 const filterDifficulty = ref<string>('')
 const knowledgePoints = ref<KnowledgePoint[]>([])
-const flattenedKnowledgePoints = ref<{ id: string, label: string }[]>([])
+const kpKeyword = ref('')
+const expandedNodes = ref<Set<string>>(new Set())
 
 const difficultyOptions = [
   { label: '全部难度', value: '' },
@@ -46,64 +47,143 @@ const difficultyOptions = [
   { label: '困难', value: 'HARD' }
 ]
 
-const kpOptions = computed(() => {
-  return [
-    { label: '全部知识点', value: '' },
-    ...flattenedKnowledgePoints.value.map(kp => ({ label: kp.label, value: kp.id }))
-  ]
+type KpTreeNode = {
+  id: string
+  name: string
+  level: string
+  parentId: string | null
+  children: KpTreeNode[]
+}
+
+const levelLabels: Record<string, string> = {
+  CHAPTER: '章',
+  SECTION: '节',
+  POINT: '知识点'
+}
+
+const knowledgeTree = computed<KpTreeNode[]>(() => {
+  const map = new Map<string, KpTreeNode>()
+  const roots: KpTreeNode[] = []
+
+  for (const kp of knowledgePoints.value) {
+    if (!kp.id) continue
+    map.set(kp.id, {
+      id: kp.id,
+      name: kp.name || '未命名',
+      level: (kp as any).level || 'POINT',
+      parentId: kp.parentId || null,
+      children: []
+    })
+  }
+
+  for (const node of map.values()) {
+    if (node.parentId && map.has(node.parentId)) {
+      map.get(node.parentId)!.children.push(node)
+    } else {
+      roots.push(node)
+    }
+  }
+
+  const sortNode = (nodes: KpTreeNode[]) => {
+    nodes.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+    nodes.forEach(n => sortNode(n.children))
+  }
+  sortNode(roots)
+  return roots
 })
+
+const findNodePath = (nodes: KpTreeNode[], id: string, path: KpTreeNode[] = []): KpTreeNode[] => {
+  for (const node of nodes) {
+    const nextPath = [...path, node]
+    if (node.id === id) return nextPath
+    const found = findNodePath(node.children, id, nextPath)
+    if (found.length > 0) return found
+  }
+  return []
+}
+
+const selectedNodePathText = computed(() => {
+  if (!filterKnowledgePoint.value) return '全部知识点'
+  const path = findNodePath(knowledgeTree.value, filterKnowledgePoint.value)
+  return path.map(p => p.name).join(' / ') || '全部知识点'
+})
+
+const expandPathToNode = (id: string) => {
+  const path = findNodePath(knowledgeTree.value, id)
+  path.forEach(p => expandedNodes.value.add(p.id))
+}
+
+const isExpanded = (id: string) => expandedNodes.value.has(id)
+
+const toggleNodeExpand = (id: string) => {
+  if (expandedNodes.value.has(id)) {
+    expandedNodes.value.delete(id)
+  } else {
+    expandedNodes.value.add(id)
+  }
+}
+
+const selectKnowledgeNode = (id: string) => {
+  filterKnowledgePoint.value = id
+  expandPathToNode(id)
+}
+
+const shouldShowChildren = (id: string) => {
+  return kpKeyword.value.trim().length > 0 || isExpanded(id)
+}
+
+const filterTreeByKeyword = (nodes: KpTreeNode[], keyword: string): KpTreeNode[] => {
+  if (!keyword.trim()) return nodes
+  const lower = keyword.trim().toLowerCase()
+  const dfs = (list: KpTreeNode[]): KpTreeNode[] => {
+    const result: KpTreeNode[] = []
+    for (const node of list) {
+      const children = dfs(node.children)
+      const hit = node.name.toLowerCase().includes(lower)
+      if (hit || children.length > 0) {
+        result.push({ ...node, children })
+      }
+    }
+    return result
+  }
+  return dfs(nodes)
+}
+
+const filteredKnowledgeTree = computed(() => filterTreeByKeyword(knowledgeTree.value, kpKeyword.value))
 
 const fetchKnowledgePoints = async () => {
   try {
     const response = await knowledgePointApi.apiKnowledgePointsGet()
     knowledgePoints.value = response.data
-    flattenedKnowledgePoints.value = flattenPoints(knowledgePoints.value)
+    if (filterKnowledgePoint.value) {
+      expandPathToNode(filterKnowledgePoint.value)
+    } else {
+      knowledgeTree.value.forEach(root => expandedNodes.value.add(root.id))
+    }
   } catch (err) {
     console.error('Failed to load knowledge points', err)
   }
 }
 
-const flattenPoints = (points: KnowledgePoint[], level = 0): { id: string, label: string }[] => {
-  let result: { id: string, label: string }[] = []
-  for (const point of points) {
-    const prefix = '\u00A0'.repeat(level * 4)
-    result.push({ id: point.id!, label: `${prefix}${point.name}` })
-    if (point.children && point.children.length > 0) {
-      result = result.concat(flattenPoints(point.children, level + 1))
+const getDescendantIdsFromTree = (nodes: KpTreeNode[], targetId: string): string[] => {
+  const walk = (node: KpTreeNode): string[] => {
+    let ids = [node.id]
+    for (const child of node.children) {
+      ids = ids.concat(walk(child))
     }
+    return ids
   }
-  return result
-}
 
-const getDescendantIds = (points: KnowledgePoint[], targetId: string): string[] => {
-  let ids: string[] = []
-  for (const point of points) {
-    if (point.id === targetId) {
-      ids.push(point.id)
-      if (point.children) {
-        ids = ids.concat(getAllIds(point.children))
-      }
-      return ids
+  const find = (list: KpTreeNode[]): string[] => {
+    for (const node of list) {
+      if (node.id === targetId) return walk(node)
+      const found = find(node.children)
+      if (found.length > 0) return found
     }
-    if (point.children) {
-      const found = getDescendantIds(point.children, targetId)
-      if (found.length > 0) {
-        return found
-      }
-    }
+    return []
   }
-  return []
-}
 
-const getAllIds = (points: KnowledgePoint[]): string[] => {
-  let ids: string[] = []
-  for (const point of points) {
-    if (point.id) ids.push(point.id)
-    if (point.children) {
-      ids = ids.concat(getAllIds(point.children))
-    }
-  }
-  return ids
+  return find(nodes)
 }
 
 // 获取分类统计数据
@@ -121,12 +201,12 @@ const fetchCategoryStats = async () => {
     ])
     
     categoryStats.value = {
-      total: responses[0].data.totalElements || 0,
-      singleChoice: responses[1].data.totalElements || 0,
-      multiChoice: (responses[2].data.totalElements || 0) + (responses[6].data.totalElements || 0),
-      trueFalse: responses[3].data.totalElements || 0,
-      fillBlank: responses[4].data.totalElements || 0,
-      shortAnswer: responses[5].data.totalElements || 0
+      total: responses[0]?.data?.totalElements || 0,
+      singleChoice: responses[1]?.data?.totalElements || 0,
+      multiChoice: (responses[2]?.data?.totalElements || 0) + (responses[6]?.data?.totalElements || 0),
+      trueFalse: responses[3]?.data?.totalElements || 0,
+      fillBlank: responses[4]?.data?.totalElements || 0,
+      shortAnswer: responses[5]?.data?.totalElements || 0
     }
   } catch (err) {
     console.error('Failed to fetch category stats', err)
@@ -139,7 +219,7 @@ const fetchQuestions = async () => {
   try {
     let kpIds: string[] | undefined = undefined
     if (filterKnowledgePoint.value) {
-      kpIds = getDescendantIds(knowledgePoints.value, filterKnowledgePoint.value)
+      kpIds = getDescendantIdsFromTree(knowledgeTree.value, filterKnowledgePoint.value)
     }
 
     const response = await questionApi.apiQuestionsGet(
@@ -340,19 +420,85 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
     </div>
 
     <div class="filter-bar google-card">
-      <div class="filter-group">
-        <GoogleSelect
-          v-model="filterKnowledgePoint"
-          :options="kpOptions"
-          label="知识点"
-        />
+      <div class="filter-group tree-group">
+        <label>知识结构树筛选</label>
+        <div class="tree-filter-panel">
+          <div class="tree-filter-top">
+            <input v-model="kpKeyword" class="google-input" placeholder="搜索章 / 节 / 知识点" />
+            <button class="google-btn text-btn" @click="filterKnowledgePoint = ''">清空</button>
+          </div>
+          <div class="selected-path">当前：{{ selectedNodePathText }}</div>
+          <div class="tree-list">
+            <ul class="tree-root">
+              <li v-for="chapter in filteredKnowledgeTree" :key="chapter.id" class="tree-node-item">
+                <div class="node-row chapter-row" :class="{ active: filterKnowledgePoint === chapter.id }">
+                  <div class="node-info">
+                    <button
+                      v-if="chapter.children.length > 0"
+                      class="node-toggle"
+                      @click="toggleNodeExpand(chapter.id)"
+                    >
+                      {{ shouldShowChildren(chapter.id) ? '▾' : '▸' }}
+                    </button>
+                    <span v-else class="node-toggle-placeholder"></span>
+                    <span class="node-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                    </span>
+                    <button class="node-name-btn" @click="selectKnowledgeNode(chapter.id)">{{ chapter.name }}</button>
+                    <span class="node-level">{{ levelLabels[chapter.level] || '章' }}</span>
+                  </div>
+                </div>
+
+                <ul v-if="chapter.children?.length && shouldShowChildren(chapter.id)" class="tree-children">
+                  <li v-for="section in chapter.children" :key="section.id" class="tree-node-item">
+                    <div class="node-row section-row" :class="{ active: filterKnowledgePoint === section.id }">
+                      <div class="node-info">
+                        <button
+                          v-if="section.children.length > 0"
+                          class="node-toggle"
+                          @click="toggleNodeExpand(section.id)"
+                        >
+                          {{ shouldShowChildren(section.id) ? '▾' : '▸' }}
+                        </button>
+                        <span v-else class="node-toggle-placeholder"></span>
+                        <span class="node-icon">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        </span>
+                        <button class="node-name-btn" @click="selectKnowledgeNode(section.id)">{{ section.name }}</button>
+                        <span class="node-level">{{ levelLabels[section.level] || '节' }}</span>
+                      </div>
+                    </div>
+
+                    <ul v-if="section.children?.length && shouldShowChildren(section.id)" class="tree-children">
+                      <li v-for="point in section.children" :key="point.id" class="tree-node-item">
+                        <div class="node-row point-row" :class="{ active: filterKnowledgePoint === point.id }">
+                          <div class="node-info">
+                            <span class="node-toggle-placeholder"></span>
+                            <span class="node-icon">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            </span>
+                            <button class="node-name-btn" @click="selectKnowledgeNode(point.id)">{{ point.name }}</button>
+                            <span class="node-level">{{ levelLabels[point.level] || '知识点' }}</span>
+                          </div>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
-      <div class="filter-group">
-        <GoogleSelect
-          v-model="filterDifficulty"
-          :options="difficultyOptions"
-          label="难度"
-        />
+      <div class="filter-group compact-group">
+        <label>难度筛选</label>
+        <div class="single-filter-card">
+          <GoogleSelect
+            v-model="filterDifficulty"
+            :options="difficultyOptions"
+            label="难度"
+          />
+        </div>
       </div>
     </div>
 
@@ -582,7 +728,7 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
   justify-content: flex-end;
   align-items: center;
   gap: 16px;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
   background-color: var(--line-bg);
 }
 
@@ -637,21 +783,37 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
 }
 
 .filter-bar {
-  display: flex;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
   padding: 24px;
   margin-bottom: 24px;
-  align-items: flex-end;
+  align-items: start;
   background: var(--line-bg);
   border: 1px solid var(--line-border);
   border-radius: var(--radius);
 }
 
 .filter-group {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
+}
+
+.tree-group {
+  min-height: 0;
+}
+
+.compact-group {
+  max-width: 100%;
+}
+
+.single-filter-card {
+  border: 1px solid var(--line-border);
+  border-radius: 10px;
+  background: var(--line-bg-soft);
+  padding: 10px;
 }
 
 .filter-group label {
@@ -659,4 +821,156 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
   font-weight: 500;
   color: var(--line-text-secondary);
 }
+
+.tree-filter-panel {
+  border: 1px solid var(--line-border);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--line-bg-soft);
+}
+
+.tree-filter-top {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tree-filter-top .google-input {
+  flex: 1;
+}
+
+.selected-path {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--line-text-secondary);
+  text-align: left;
+}
+
+.tree-list {
+  margin-top: 10px;
+  max-height: 240px;
+  overflow: auto;
+  border-top: 1px dashed var(--line-border);
+  padding-top: 8px;
+}
+
+.tree-root,
+.tree-children {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.tree-children {
+  padding-left: 24px;
+  border-left: 1px solid var(--line-bg-soft);
+  margin-left: 12px;
+}
+
+.tree-children .tree-node-item {
+  position: relative;
+}
+
+.tree-children .tree-node-item::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: -24px;
+  width: 20px;
+  height: 1px;
+  background: var(--line-bg-soft);
+}
+
+.tree-node-item {
+  margin-bottom: 4px;
+}
+
+.node-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 6px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.node-row:hover {
+  background-color: var(--line-bg-soft);
+  border-color: var(--line-bg-soft);
+}
+
+.node-row.active {
+  background: color-mix(in srgb, var(--line-primary) 12%, white);
+  border-color: color-mix(in srgb, var(--line-primary) 20%, transparent);
+}
+
+.node-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+
+.node-toggle,
+.node-toggle-placeholder {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.node-toggle {
+  border: none;
+  background: transparent;
+  color: var(--line-text-secondary);
+  cursor: pointer;
+  padding: 0;
+}
+
+.node-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--line-text-secondary);
+  flex-shrink: 0;
+}
+
+.node-name-btn {
+  border: none;
+  background: transparent;
+  color: var(--line-text);
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-level {
+  font-size: 12px;
+  color: var(--line-text-secondary);
+  background: var(--line-bg-soft);
+  border: 1px solid var(--line-border);
+  border-radius: 999px;
+  padding: 1px 8px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1100px) {
+  .compact-group {
+    max-width: none;
+  }
+}
 </style>
+

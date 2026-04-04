@@ -4,9 +4,7 @@ import jakarta.persistence.*;
 import java.io.Serializable;
 import java.util.Objects;
 
-/**
- * 考试计划-班级关联实体
- */
+/** 考试计划-班级关联实体 */
 @Entity
 @Table(name = "exam_plan_classes")
 @IdClass(ExamPlanClassEntity.ExamPlanClassId.class)

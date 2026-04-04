@@ -37,6 +37,7 @@ const breadcrumbConfig: Record<string, { label: string; parent?: string }> = {
   
   // 排行榜
   '/leaderboard': { label: '排行榜', parent: '/' },
+  '/messages': { label: '消息中心', parent: '/' },
   
   // 班级/组织
   '/my-organizations': { label: '我的班级', parent: '/' },
@@ -154,12 +155,17 @@ defineExpose({ navigateTo })
 
 <style scoped>
 .breadcrumb-nav {
-  background: var(--line-bg);
-  border-bottom: 1px solid var(--line-border);
+  background: rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.72);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.05);
   padding: 12px 24px;
-  position: sticky;
-  top: 60px;
-  z-index: 90;
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  z-index: 999;
 }
 
 .breadcrumb-container {

@@ -4,9 +4,7 @@ import jakarta.persistence.*;
 import java.io.Serializable;
 import java.util.Objects;
 
-/**
- * 角色-权限关联实体
- */
+/** 角色-权限关联实体 */
 @Entity
 @Table(name = "role_permissions")
 @IdClass(RolePermissionEntity.RolePermissionId.class)
@@ -55,8 +53,7 @@ public class RolePermissionEntity {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
       RolePermissionId that = (RolePermissionId) o;
-      return Objects.equals(roleId, that.roleId)
-          && Objects.equals(permissionId, that.permissionId);
+      return Objects.equals(roleId, that.roleId) && Objects.equals(permissionId, that.permissionId);
     }
 
     @Override

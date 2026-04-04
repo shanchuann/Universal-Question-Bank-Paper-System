@@ -4,9 +4,7 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * 角色实体
- */
+/** 角色实体 */
 @Entity
 @Table(name = "roles")
 public class RoleEntity {

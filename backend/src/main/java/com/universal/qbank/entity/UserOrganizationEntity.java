@@ -4,9 +4,7 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * 用户-组织关联实体
- */
+/** 用户-组织关联实体 */
 @Entity
 @Table(name = "user_organizations")
 public class UserOrganizationEntity {

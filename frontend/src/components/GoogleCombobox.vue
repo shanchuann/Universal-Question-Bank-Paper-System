@@ -171,8 +171,9 @@ onUnmounted(() => {
 }
 
 .combo-wrapper.is-focused {
-  border-color: var(--line-border);
+  border-color: var(--line-primary);
   background-color: var(--line-bg);
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.12);
 }
 
 .chips-area {
@@ -254,11 +255,11 @@ onUnmounted(() => {
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background-color: var(--line-card-bg);
+  background-color: var(--line-bg-elevated);
   border: 1px solid var(--line-border);
   border-radius: var(--line-radius-md);
   box-shadow: var(--line-shadow-lg);
-  z-index: 10001;
+  z-index: var(--line-layer-dropdown);
   max-height: 250px;
   overflow-y: auto;
   padding: 6px;
@@ -275,13 +276,13 @@ onUnmounted(() => {
 }
 
 .dropdown-item:hover {
-  background-color: var(--line-bg-soft);
+  background-color: var(--line-bg-hover);
 }
 
 .create-item {
   color: var(--line-primary);
   font-weight: 500;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
   margin-top: 4px;
   padding-top: 10px;
   display: flex;
@@ -326,3 +327,4 @@ onUnmounted(() => {
   opacity: 0;
 }
 </style>
+

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { examApi, paperApi } from '@/api/client'
+import { examApi } from '@/api/client'
 import type { ExamSessionResponse, ManualGradeRequest } from '@/api/generated'
 import { useToast } from '@/composables/useToast'
 
@@ -64,14 +64,8 @@ const fetchExam = async () => {
     const response = await examApi.apiExamsIdGet(examId)
     exam.value = response.data
     
-    // Fetch paper title
     if (exam.value?.paperVersionId) {
-      try {
-        const paperResp = await paperApi.apiPapersPaperIdGet(exam.value.paperVersionId)
-        paperTitle.value = (paperResp.data as any)?.title || `试卷 ${exam.value.paperVersionId}`
-      } catch {
-        paperTitle.value = `试卷 ${exam.value.paperVersionId}`
-      }
+      paperTitle.value = `试卷 ${exam.value.paperVersionId}`
     }
     
     // Initialize grades from existing data
@@ -185,7 +179,16 @@ onMounted(fetchExam)
 
       <!-- 无题目提示 -->
       <div v-if="!exam.questions || exam.questions.length === 0" class="empty-state google-card">
-        <p>📋 该考试暂无题目数据</p>
+        <p class="empty-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 2h6"></path>
+            <path d="M12 17v-6"></path>
+            <path d="M9 22h6"></path>
+            <path d="M17 2l-5 5-5-5"></path>
+            <path d="M17 22l-5-5-5 5"></path>
+          </svg>
+          该考试暂无题目数据
+        </p>
         <p class="hint">可能的原因：试卷数据已被删除或考试未完成</p>
       </div>
 
@@ -676,6 +679,14 @@ onMounted(fetchExam)
 
 .empty-state p {
   margin: 10px 0;
+}
+
+.empty-state .empty-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--line-text);
 }
 
 .empty-state .hint {

@@ -128,6 +128,12 @@ const router = createRouter({
       component: () => import('../views/LeaderboardView.vue')
     },
     {
+      path: '/messages',
+      name: 'messages',
+      component: () => import('../views/NotificationCenterView.vue'),
+      meta: { requiresAuth: true, roles: ['USER', 'TEACHER'] }
+    },
+    {
       path: '/admin/users',
       name: 'admin-users',
       component: () => import('../views/AdminUserView.vue')

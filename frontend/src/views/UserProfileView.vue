@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { authState, type UserRole } from '@/states/authState'
 import { useToast } from '@/composables/useToast'
 import axios from 'axios'
@@ -23,8 +23,23 @@ const showVerifyModal = ref(false)
 const verifyPassword = ref('')
 const showEmailVerifyModal = ref(false)
 const emailVerifyCode = ref('')
+const emailVerifyPassword = ref('')
 const emailVerifyLoading = ref(false)
 const emailVerifySent = ref(false)
+const emailVerifyCooldown = ref(0)
+let emailCooldownTimer: ReturnType<typeof setInterval> | null = null
+const showAvatarPreviewModal = ref(false)
+const avatarPreviewUrl = ref('')
+const avatarZoom = ref(1)
+const avatarRotate = ref(0)
+const avatarOffsetX = ref(0)
+const avatarOffsetY = ref(0)
+const isDraggingAvatar = ref(false)
+const dragStartX = ref(0)
+const dragStartY = ref(0)
+const dragOriginOffsetX = ref(0)
+const dragOriginOffsetY = ref(0)
+let pendingAvatarFile: File | null = null
 
 const passwordForm = ref({
   oldPassword: '',
@@ -58,11 +73,24 @@ onMounted(async () => {
         role: (data.role as UserRole) || user.value.role,
         avatarUrl: data.avatarUrl || ''
       }
+      preferences.value = {
+        emailNotification: data.emailNotification ?? true,
+        systemNotification: data.systemNotification ?? true,
+        publicProfile: data.publicProfile ?? false,
+        showActivity: data.showActivity ?? true
+      }
       originalUser.value = { ...user.value }
       authState.updateProfile(user.value)
     }
   } catch (e) {
     console.error('Failed to fetch profile', e)
+  }
+})
+
+onUnmounted(() => {
+  if (emailCooldownTimer) {
+    clearInterval(emailCooldownTimer)
+    emailCooldownTimer = null
   }
 })
 
@@ -101,7 +129,11 @@ const submitProfileUpdate = async () => {
   loading.value = true
   try {
     const token = localStorage.getItem('token')
-    const payload = { ...user.value, currentPassword: verifyPassword.value }
+    const payload = {
+      ...user.value,
+      ...preferences.value,
+      currentPassword: verifyPassword.value
+    }
     
     const response = await axios.put('/api/user/profile', payload, {
       headers: { Authorization: `Bearer ${token}` }
@@ -129,6 +161,150 @@ const triggerFileInput = () => {
   document.getElementById('avatar-input')?.click()
 }
 
+const resetAvatarPreview = () => {
+  if (avatarPreviewUrl.value) {
+    URL.revokeObjectURL(avatarPreviewUrl.value)
+  }
+  avatarPreviewUrl.value = ''
+  avatarZoom.value = 1
+  avatarRotate.value = 0
+  avatarOffsetX.value = 0
+  avatarOffsetY.value = 0
+  isDraggingAvatar.value = false
+  pendingAvatarFile = null
+  showAvatarPreviewModal.value = false
+}
+
+const onAvatarDragStart = (event: MouseEvent) => {
+  if (!showAvatarPreviewModal.value) return
+  isDraggingAvatar.value = true
+  dragStartX.value = event.clientX
+  dragStartY.value = event.clientY
+  dragOriginOffsetX.value = avatarOffsetX.value
+  dragOriginOffsetY.value = avatarOffsetY.value
+}
+
+const onAvatarDragMove = (event: MouseEvent) => {
+  if (!isDraggingAvatar.value) return
+  const deltaX = event.clientX - dragStartX.value
+  const deltaY = event.clientY - dragStartY.value
+  avatarOffsetX.value = dragOriginOffsetX.value + deltaX
+  avatarOffsetY.value = dragOriginOffsetY.value + deltaY
+}
+
+const onAvatarDragEnd = () => {
+  isDraggingAvatar.value = false
+}
+
+const resetAvatarAdjustments = () => {
+  avatarZoom.value = 1
+  avatarRotate.value = 0
+  avatarOffsetX.value = 0
+  avatarOffsetY.value = 0
+}
+
+const avatarPreviewViewportWidth = 260
+const avatarPreviewViewportHeight = 260
+
+const buildTransformedAvatarFile = async (file: File) => {
+  const imageUrl = URL.createObjectURL(file)
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => resolve(img)
+      img.onerror = () => reject(new Error('头像图片加载失败'))
+      img.src = imageUrl
+    })
+
+    const canvas = document.createElement('canvas')
+    canvas.width = image.width
+    canvas.height = image.height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      throw new Error('无法创建头像画布')
+    }
+
+    const previewScale = Math.min(
+      avatarPreviewViewportWidth / image.width,
+      avatarPreviewViewportHeight / image.height
+    )
+    const offsetScale = previewScale > 0 ? 1 / previewScale : 1
+
+    ctx.clearRect(0, 0, image.width, image.height)
+    ctx.save()
+    ctx.translate(image.width / 2, image.height / 2)
+    ctx.translate(avatarOffsetX.value * offsetScale, avatarOffsetY.value * offsetScale)
+    ctx.rotate((avatarRotate.value * Math.PI) / 180)
+    ctx.scale(avatarZoom.value, avatarZoom.value)
+    ctx.drawImage(image, -image.width / 2, -image.height / 2, image.width, image.height)
+    ctx.restore()
+
+    const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
+    const quality = outputType === 'image/jpeg' ? 0.92 : undefined
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((result) => {
+        if (result) {
+          resolve(result)
+          return
+        }
+        reject(new Error('头像导出失败'))
+      }, outputType, quality)
+    })
+
+    const extension = outputType === 'image/png' ? 'png' : 'jpg'
+    return new File([blob], `avatar-${Date.now()}.${extension}`, { type: outputType })
+  } finally {
+    URL.revokeObjectURL(imageUrl)
+  }
+}
+
+const uploadAvatarFile = async (file: File) => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  loading.value = true
+  try {
+    const res = await axios.post('/api/files/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    const uploadedUrl = res.data.fileUrl
+    user.value.avatarUrl = uploadedUrl
+
+    const token = localStorage.getItem('token')
+    if (token) {
+      const updateRes = await axios.put('/api/user/profile', { avatarUrl: uploadedUrl }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      authState.updateProfile(updateRes.data)
+      user.value = { ...user.value, avatarUrl: updateRes.data.avatarUrl || uploadedUrl }
+      originalUser.value = { ...user.value }
+    }
+
+    showToast({ message: '头像上传成功', type: 'success' })
+  } catch (e: any) {
+    console.error('Failed to upload avatar', e)
+    showToast({ message: e.response?.data?.error || '头像上传失败', type: 'error' })
+  } finally {
+    loading.value = false
+  }
+}
+
+const confirmAvatarUpload = async () => {
+  if (!pendingAvatarFile) return
+  try {
+    const transformed = await buildTransformedAvatarFile(pendingAvatarFile)
+    await uploadAvatarFile(transformed)
+  } catch (error) {
+    console.error('Failed to process avatar transform', error)
+    showToast({ message: '头像处理失败，已使用原图上传', type: 'error' })
+    await uploadAvatarFile(pendingAvatarFile)
+  }
+  resetAvatarPreview()
+}
+
 const handleFileChange = async (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files[0]) {
@@ -144,36 +320,14 @@ const handleFileChange = async (event: Event) => {
         return
     }
 
-    const formData = new FormData()
-    formData.append('file', file)
-
-    try {
-      loading.value = true
-      const res = await axios.post('/api/files/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
-      const uploadedUrl = res.data.fileUrl
-      user.value.avatarUrl = uploadedUrl
-
-      const token = localStorage.getItem('token')
-      if (token) {
-        const updateRes = await axios.put('/api/user/profile', { avatarUrl: uploadedUrl }, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        authState.updateProfile(updateRes.data)
-        user.value = { ...user.value, avatarUrl: updateRes.data.avatarUrl || uploadedUrl }
-        originalUser.value = { ...user.value }
-      }
-
-      showToast({ message: '头像上传成功', type: 'success' })
-    } catch (e: any) {
-      console.error('Failed to upload avatar', e)
-      showToast({ message: e.response?.data?.error || '头像上传失败', type: 'error' })
-    } finally {
-      loading.value = false
-    }
+    pendingAvatarFile = file
+    avatarPreviewUrl.value = URL.createObjectURL(file)
+    avatarZoom.value = 1
+    avatarRotate.value = 0
+    avatarOffsetX.value = 0
+    avatarOffsetY.value = 0
+    showAvatarPreviewModal.value = true
+    target.value = ''
   }
 }
 
@@ -209,16 +363,47 @@ const handleSendEmailVerify = async () => {
     showToast({ message: '请输入有效的邮箱地址', type: 'error' })
     return
   }
+  if (!emailVerifyPassword.value) {
+    showToast({ message: '请输入当前密码后再发送验证码', type: 'error' })
+    return
+  }
+  if (emailVerifyCooldown.value > 0) {
+    showToast({ message: `请 ${emailVerifyCooldown.value} 秒后再试`, type: 'warning' })
+    return
+  }
   emailVerifyLoading.value = true
   try {
     const token = localStorage.getItem('token')
-    await axios.post('/api/user/send-email-verification', { email: user.value.email }, {
+    await axios.post('/api/user/send-email-verification', {
+      email: user.value.email,
+      currentPassword: emailVerifyPassword.value
+    }, {
       headers: { Authorization: `Bearer ${token}` }
     })
     emailVerifySent.value = true
+    emailVerifyCooldown.value = 60
+    if (emailCooldownTimer) {
+      clearInterval(emailCooldownTimer)
+    }
+    emailCooldownTimer = setInterval(() => {
+      if (emailVerifyCooldown.value <= 1) {
+        emailVerifyCooldown.value = 0
+        if (emailCooldownTimer) {
+          clearInterval(emailCooldownTimer)
+          emailCooldownTimer = null
+        }
+        return
+      }
+      emailVerifyCooldown.value -= 1
+    }, 1000)
     showToast({ message: '验证码已发送到邮箱，请查收', type: 'success' })
   } catch (e: any) {
-    showToast({ message: e.response?.data || '验证码发送失败', type: 'error' })
+    const serverData = e.response?.data
+    const message =
+      typeof serverData === 'string'
+        ? serverData
+        : serverData?.message || serverData?.error || '验证码发送失败'
+    showToast({ message, type: 'error' })
   } finally {
     emailVerifyLoading.value = false
   }
@@ -232,7 +417,12 @@ const handleEmailVerifySubmit = async () => {
   loading.value = true
   try {
     const token = localStorage.getItem('token')
-    const payload = { ...user.value, emailVerifyCode: emailVerifyCode.value }
+    const payload = {
+      ...user.value,
+      ...preferences.value,
+      currentPassword: emailVerifyPassword.value,
+      emailVerifyCode: emailVerifyCode.value
+    }
     const response = await axios.put('/api/user/profile', payload, {
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -241,11 +431,34 @@ const handleEmailVerifySubmit = async () => {
     showToast({ message: '邮箱已验证并更新', type: 'success' })
     showEmailVerifyModal.value = false
     emailVerifyCode.value = ''
+    emailVerifyPassword.value = ''
     emailVerifySent.value = false
+    emailVerifyCooldown.value = 0
+    if (emailCooldownTimer) {
+      clearInterval(emailCooldownTimer)
+      emailCooldownTimer = null
+    }
   } catch (e: any) {
-    showToast({ message: e.response?.data || '邮箱验证失败', type: 'error' })
+    const serverData = e.response?.data
+    const message =
+      typeof serverData === 'string'
+        ? serverData
+        : serverData?.message || serverData?.error || '邮箱验证失败'
+    showToast({ message, type: 'error' })
   } finally {
     loading.value = false
+  }
+}
+
+const closeEmailVerifyModal = () => {
+  showEmailVerifyModal.value = false
+  emailVerifyPassword.value = ''
+  emailVerifyCode.value = ''
+  emailVerifySent.value = false
+  emailVerifyCooldown.value = 0
+  if (emailCooldownTimer) {
+    clearInterval(emailCooldownTimer)
+    emailCooldownTimer = null
   }
 }
 </script>
@@ -371,72 +584,136 @@ const handleEmailVerifySubmit = async () => {
       </div>
     </div>
 
-    <!-- Password Change Modal -->
-    <div v-if="showPasswordModal" class="modal-backdrop" @click="showPasswordModal = false">
-      <div class="line-modal" @click.stop>
-        <div class="modal-header">
-          <h2>修改密码</h2>
-          <button class="close-btn" @click="showPasswordModal = false">×</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="oldPass">当前密码</label>
-            <input v-model="passwordForm.oldPassword" type="password" id="oldPass" class="line-input" required />
+    <Teleport to="body">
+      <!-- Password Change Modal -->
+      <div v-if="showPasswordModal" class="modal-backdrop" @click="showPasswordModal = false">
+        <div class="line-modal" @click.stop>
+          <div class="modal-header">
+            <h2>修改密码</h2>
+            <button class="close-btn" @click="showPasswordModal = false">×</button>
           </div>
-          <div class="form-group">
-            <label for="newPass">新密码</label>
-            <input v-model="passwordForm.newPassword" type="password" id="newPass" class="line-input" required />
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="oldPass">当前密码</label>
+              <input v-model="passwordForm.oldPassword" type="password" id="oldPass" class="line-input" required />
+            </div>
+            <div class="form-group">
+              <label for="newPass">新密码</label>
+              <input v-model="passwordForm.newPassword" type="password" id="newPass" class="line-input" required />
+            </div>
+            <div class="form-group">
+              <label for="confirmPass">确认新密码</label>
+              <input v-model="passwordForm.confirmPassword" type="password" id="confirmPass" class="line-input" required />
+            </div>
           </div>
-          <div class="form-group">
-            <label for="confirmPass">确认新密码</label>
-            <input v-model="passwordForm.confirmPassword" type="password" id="confirmPass" class="line-input" required />
+          <div class="modal-footer">
+            <button @click="showPasswordModal = false" class="line-btn text-btn">取消</button>
+            <button @click="handlePasswordUpdate" :disabled="loading" class="line-btn primary-btn">更新密码</button>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button @click="showPasswordModal = false" class="line-btn text-btn">取消</button>
-          <button @click="handlePasswordUpdate" :disabled="loading" class="line-btn primary-btn">更新密码</button>
         </div>
       </div>
-    </div>
 
-    <!-- Verify Password Modal -->
-    <div v-if="showVerifyModal" class="modal-backdrop" @click="showVerifyModal = false">
-      <div class="line-modal" @click.stop>
-        <div class="modal-header">
-          <h2>身份验证</h2>
-          <button class="close-btn" @click="showVerifyModal = false">×</button>
-        </div>
-        <div class="modal-body">
-          <p class="modal-desc">您正在修改敏感信息，请输入当前密码以确认。</p>
-          <div class="form-group">
-            <label for="verifyPass">当前密码</label>
-            <input v-model="verifyPassword" type="password" id="verifyPass" class="line-input" required />
+      <!-- Verify Password Modal -->
+      <div v-if="showVerifyModal" class="modal-backdrop" @click="showVerifyModal = false">
+        <div class="line-modal" @click.stop>
+          <div class="modal-header">
+            <h2>身份验证</h2>
+            <button class="close-btn" @click="showVerifyModal = false">×</button>
+          </div>
+          <div class="modal-body">
+            <p class="modal-desc">您正在修改敏感信息，请输入当前密码以确认。</p>
+            <div class="form-group">
+              <label for="verifyPass">当前密码</label>
+              <input v-model="verifyPassword" type="password" id="verifyPass" class="line-input" required />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button @click="showVerifyModal = false" class="line-btn text-btn">取消</button>
+            <button @click="submitProfileUpdate" :disabled="loading" class="line-btn primary-btn">确认修改</button>
           </div>
         </div>
-        <div class="modal-footer">
-          <button @click="showVerifyModal = false" class="line-btn text-btn">取消</button>
-          <button @click="submitProfileUpdate" :disabled="loading" class="line-btn primary-btn">确认修改</button>
-        </div>
       </div>
-    </div>
 
-    <!-- Email Verify Modal -->
-    <div v-if="showEmailVerifyModal" class="modal-overlay">
-      <div class="modal-card">
-        <h2>邮箱验证</h2>
-        <p>请输入发送到新邮箱的验证码以完成邮箱修改。</p>
-        <div class="form-group">
-          <input v-model="emailVerifyCode" type="text" class="line-input" placeholder="输入验证码" />
-          <button class="line-btn outline-btn" :disabled="emailVerifyLoading" @click="handleSendEmailVerify">
-            {{ emailVerifySent ? '重新发送' : '发送验证码' }}
-          </button>
-        </div>
-        <div class="form-actions">
-          <button class="line-btn primary-btn" :disabled="loading" @click="handleEmailVerifySubmit">验证并保存</button>
-          <button class="line-btn text-btn" @click="showEmailVerifyModal = false">取消</button>
+      <!-- Email Verify Modal -->
+      <div v-if="showEmailVerifyModal" class="modal-overlay">
+        <div class="modal-card email-verify-card">
+          <h2>邮箱验证</h2>
+          <p>请输入发送到新邮箱的验证码以完成邮箱修改。</p>
+          <div class="form-group compact-group">
+            <input
+              v-model="emailVerifyPassword"
+              type="password"
+              class="line-input"
+              placeholder="输入当前密码"
+            />
+          </div>
+          <div class="form-group compact-group verify-code-row">
+            <input v-model="emailVerifyCode" type="text" class="line-input" placeholder="输入验证码" />
+            <button
+              class="line-btn outline-btn send-code-btn"
+              :disabled="emailVerifyLoading || emailVerifyCooldown > 0"
+              @click="handleSendEmailVerify"
+            >
+              {{
+                emailVerifyCooldown > 0
+                  ? `重新发送(${emailVerifyCooldown}s)`
+                  : (emailVerifySent ? '重新发送' : '发送验证码')
+              }}
+            </button>
+          </div>
+          <div class="form-actions">
+            <button class="line-btn primary-btn" :disabled="loading" @click="handleEmailVerifySubmit">验证并保存</button>
+            <button
+              class="line-btn text-btn"
+              @click="closeEmailVerifyModal"
+            >
+              取消
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      <!-- Avatar Preview Modal -->
+      <div v-if="showAvatarPreviewModal" class="modal-overlay" @click.self="resetAvatarPreview" @mouseup="onAvatarDragEnd">
+        <div class="modal-card avatar-modal">
+          <h2>头像预览编辑</h2>
+          <p>这里展示上传后的圆形头像效果，可拖拽微调位置。</p>
+          <div class="avatar-preview-stage">
+            <div class="avatar-preview-frame" @mousemove="onAvatarDragMove" @mouseup="onAvatarDragEnd" @mouseleave="onAvatarDragEnd">
+              <img
+                v-if="avatarPreviewUrl"
+                :src="avatarPreviewUrl"
+                alt="avatar preview"
+                class="avatar-preview-img"
+                :style="{ transform: `translate(${avatarOffsetX}px, ${avatarOffsetY}px) scale(${avatarZoom}) rotate(${avatarRotate}deg)` }"
+                @mousedown="onAvatarDragStart"
+              />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>缩放</label>
+            <input v-model.number="avatarZoom" type="range" min="0.5" max="3" step="0.01" class="line-range" />
+          </div>
+          <div class="form-group">
+            <label>旋转</label>
+            <input v-model.number="avatarRotate" type="range" min="-180" max="180" step="1" class="line-range" />
+          </div>
+          <div class="form-group">
+            <label>水平位置</label>
+            <input v-model.number="avatarOffsetX" type="range" min="-180" max="180" step="1" class="line-range" />
+          </div>
+          <div class="form-group">
+            <label>垂直位置</label>
+            <input v-model.number="avatarOffsetY" type="range" min="-180" max="180" step="1" class="line-range" />
+          </div>
+          <div class="form-actions">
+            <button class="line-btn outline-btn" @click="resetAvatarAdjustments">重置调整</button>
+            <button class="line-btn primary-btn" :disabled="loading" @click="confirmAvatarUpload">确认上传</button>
+            <button class="line-btn text-btn" @click="resetAvatarPreview">取消</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -571,7 +848,7 @@ const handleEmailVerifySubmit = async () => {
   justify-content: flex-end;
   gap: 12px;
   padding-top: 24px;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
 }
 
 /* Security Connect & Side Cards */
@@ -692,11 +969,91 @@ input:focus + .slider {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 2147483000;
   animation: fadeIn 0.2s ease;
 }
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2147483000;
+  padding: 16px;
+}
+
+.modal-card {
+  position: relative;
+  z-index: 2147483001;
+  width: 100%;
+  max-width: 460px;
+  background: var(--line-bg);
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-lg);
+  box-shadow: var(--line-shadow-xl);
+  padding: 24px;
+}
+
+.modal-card h2 {
+  margin: 0 0 8px;
+  color: var(--line-text);
+}
+
+.modal-card p {
+  margin: 0 0 16px;
+  color: var(--line-text-secondary);
+  font-size: 14px;
+}
+
+.avatar-modal {
+  max-width: 560px;
+}
+
+.avatar-preview-stage {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.avatar-preview-frame {
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  border: 2px solid var(--line-border);
+  overflow: hidden;
+  background:
+    linear-gradient(45deg, #f6f8fb 25%, transparent 25%),
+    linear-gradient(-45deg, #f6f8fb 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f6f8fb 75%),
+    linear-gradient(-45deg, transparent 75%, #f6f8fb 75%);
+  background-size: 18px 18px;
+  background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-preview-img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: transform 0.15s ease;
+  cursor: grab;
+  user-select: none;
+}
+
+.avatar-preview-img:active {
+  cursor: grabbing;
+}
+
 .line-modal {
+  position: relative;
+  z-index: 2147483001;
   background: var(--line-bg);
   border-radius: var(--line-radius-lg);
   width: 100%;
@@ -704,6 +1061,77 @@ input:focus + .slider {
   box-shadow: var(--line-shadow-xl);
   border: 1px solid var(--line-border);
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.email-verify-card {
+  max-width: 640px;
+}
+
+.compact-group {
+  margin-bottom: 10px;
+}
+
+.verify-code-row {
+  display: grid;
+  grid-template-columns: 1fr 132px;
+  gap: 10px;
+  align-items: center;
+}
+
+.send-code-btn {
+  height: 42px;
+  white-space: nowrap;
+}
+
+.line-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 24px;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.line-range:focus,
+.line-range:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.line-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #d7dee8;
+}
+
+.line-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #0f8b8d;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  margin-top: -6px;
+}
+
+.line-range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #d7dee8;
+}
+
+.line-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #0f8b8d;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .modal-header {
@@ -745,11 +1173,11 @@ input:focus + .slider {
 
 .modal-footer {
   padding: 16px 24px;
-  background-color: var(--line-bg-soft);
+  background-color: transparent;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
   border-bottom-left-radius: var(--line-radius-lg);
   border-bottom-right-radius: var(--line-radius-lg);
 }

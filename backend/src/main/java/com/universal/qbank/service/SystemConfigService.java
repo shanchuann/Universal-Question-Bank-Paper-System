@@ -32,9 +32,12 @@ public class SystemConfigService {
   public static final String SYSTEM_EMAIL = "SYSTEM_EMAIL";
   public static final String SITE_NAME = "SITE_NAME";
   public static final String SITE_DESCRIPTION = "SITE_DESCRIPTION";
+  public static final String SITE_LOGO_URL = "SITE_LOGO_URL";
+  public static final String COPYRIGHT_TEXT = "COPYRIGHT_TEXT";
 
   // 默认值
   private static final Map<String, String> DEFAULTS = new HashMap<>();
+
   static {
     DEFAULTS.put(SYSTEM_ENABLED, "true");
     DEFAULTS.put(MAINTENANCE_MODE, "false");
@@ -53,6 +56,8 @@ public class SystemConfigService {
     DEFAULTS.put(SYSTEM_EMAIL, "admin@example.com");
     DEFAULTS.put(SITE_NAME, "UQBank 题库系统");
     DEFAULTS.put(SITE_DESCRIPTION, "通用题库与组卷系统");
+    DEFAULTS.put(SITE_LOGO_URL, "");
+    DEFAULTS.put(COPYRIGHT_TEXT, "© UQBank 题库系统");
   }
 
   public boolean isSystemEnabled() {
@@ -81,13 +86,14 @@ public class SystemConfigService {
   public int getIntConfig(String key, int defaultValue) {
     return systemConfigRepository
         .findById(key)
-        .map(config -> {
-          try {
-            return Integer.parseInt(config.getConfigValue());
-          } catch (NumberFormatException e) {
-            return defaultValue;
-          }
-        })
+        .map(
+            config -> {
+              try {
+                return Integer.parseInt(config.getConfigValue());
+              } catch (NumberFormatException e) {
+                return defaultValue;
+              }
+            })
         .orElse(defaultValue);
   }
 
@@ -117,6 +123,19 @@ public class SystemConfigService {
     settings.put("systemEmail", getConfig(SYSTEM_EMAIL));
     settings.put("siteName", getConfig(SITE_NAME));
     settings.put("siteDescription", getConfig(SITE_DESCRIPTION));
+    settings.put("siteLogoUrl", getConfig(SITE_LOGO_URL));
+    settings.put("copyrightText", getConfig(COPYRIGHT_TEXT));
+    return settings;
+  }
+
+  public Map<String, Object> getPublicSettings() {
+    Map<String, Object> settings = new HashMap<>();
+    settings.put("siteName", getConfig(SITE_NAME));
+    settings.put("siteDescription", getConfig(SITE_DESCRIPTION));
+    settings.put("siteLogoUrl", getConfig(SITE_LOGO_URL));
+    settings.put("copyrightText", getConfig(COPYRIGHT_TEXT));
+    settings.put("maintenanceMode", getBooleanConfig(MAINTENANCE_MODE, false));
+    settings.put("maintenanceMessage", getConfig(MAINTENANCE_MESSAGE));
     return settings;
   }
 
@@ -135,7 +154,8 @@ public class SystemConfigService {
       setConfig(ALLOW_REGISTRATION, String.valueOf(settings.get("allowRegistration")));
     }
     if (settings.containsKey("requireEmailVerification")) {
-      setConfig(REQUIRE_EMAIL_VERIFICATION, String.valueOf(settings.get("requireEmailVerification")));
+      setConfig(
+          REQUIRE_EMAIL_VERIFICATION, String.valueOf(settings.get("requireEmailVerification")));
     }
     if (settings.containsKey("sessionTimeout")) {
       setConfig(SESSION_TIMEOUT, String.valueOf(settings.get("sessionTimeout")));
@@ -172,6 +192,12 @@ public class SystemConfigService {
     }
     if (settings.containsKey("siteDescription")) {
       setConfig(SITE_DESCRIPTION, String.valueOf(settings.get("siteDescription")));
+    }
+    if (settings.containsKey("siteLogoUrl")) {
+      setConfig(SITE_LOGO_URL, String.valueOf(settings.get("siteLogoUrl")));
+    }
+    if (settings.containsKey("copyrightText")) {
+      setConfig(COPYRIGHT_TEXT, String.valueOf(settings.get("copyrightText")));
     }
   }
 }

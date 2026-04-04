@@ -34,6 +34,7 @@ const form = ref({
   title: '自动生成试卷',
   total: 5,
   difficulty: '', // Optional: EASY, MEDIUM, HARD
+  keepGeneratedPaper: true,
   typeCounts: {
     SINGLE_CHOICE: 0,
     MULTI_CHOICE: 0,
@@ -79,8 +80,23 @@ const handleSubmit = async () => {
         Authorization: `Bearer ${token}`
       }
     })
-    generatedPaper.value = response.data
-    message.value = `试卷「${response.data.title}」已生成，共 ${response.data.questions.length} 道题目！`
+    const paper = response.data
+    if (form.value.keepGeneratedPaper) {
+      generatedPaper.value = paper
+      message.value = `试卷「${paper.title}」已生成，共 ${paper.questions.length} 道题目！`
+    } else {
+      generatedPaper.value = null
+      try {
+        await axios.delete(`/api/papers/${paper.id}`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        })
+        message.value = `已生成并清理临时试卷，共 ${paper.questions.length} 道题目。`
+      } catch {
+        message.value = `试卷已生成（未保留模式），共 ${paper.questions.length} 道题目。`
+      }
+    }
   } catch (err) {
     error.value = '生成试卷失败，请重试。'
     console.error(err)
@@ -159,6 +175,14 @@ const editPaper = () => {
           </div>
         </div>
 
+        <div class="advanced-settings keep-setting">
+          <label class="keep-paper-label">
+            <input v-model="form.keepGeneratedPaper" type="checkbox" />
+            保留生成后的试卷
+          </label>
+          <p class="hint">关闭后系统会在生成完成后尝试自动清理该试卷。</p>
+        </div>
+
         <div class="form-actions">
           <button type="submit" :disabled="loading" class="google-btn primary-btn full-width">
             {{ loading ? '正在生成...' : '生成试卷' }}
@@ -167,7 +191,9 @@ const editPaper = () => {
       </form>
 
       <div v-if="message" class="message success">
-        <span class="material-icon">check_circle</span>
+        <svg class="status-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 6L9 17l-5-5"></path>
+        </svg>
         {{ message }}
       </div>
       <div v-if="error" class="message error">
@@ -278,9 +304,17 @@ const editPaper = () => {
 
 .full-width {
   width: 100%;
+  height: 48px;
   justify-content: center;
-  padding: 14px;
+  padding: 0 24px;
   font-size: 16px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 12px;
 }
 
 .message {
@@ -292,6 +326,10 @@ const editPaper = () => {
   gap: 12px;
   font-size: 14px;
   font-weight: 500;
+}
+
+.status-icon {
+  flex-shrink: 0;
 }
 
 .success {
@@ -428,6 +466,23 @@ const editPaper = () => {
   border: 1px solid var(--line-border);
 }
 
+.keep-setting {
+  margin-top: -8px;
+}
+
+.keep-paper-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--line-text-primary);
+}
+
+.keep-paper-label input {
+  width: 16px;
+  height: 16px;
+}
+
 .advanced-settings h3 {
   font-size: 16px;
   margin-bottom: 4px;
@@ -507,6 +562,10 @@ const editPaper = () => {
   }
   
   .result-header button {
+    width: 100%;
+  }
+
+  .full-width {
     width: 100%;
   }
 }

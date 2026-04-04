@@ -5,9 +5,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * 考试计划实体
- */
+/** 考试计划实体 */
 @Entity
 @Table(name = "exam_plans")
 public class ExamPlanEntity {

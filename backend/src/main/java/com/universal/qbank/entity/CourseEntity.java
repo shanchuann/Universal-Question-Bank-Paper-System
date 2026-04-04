@@ -4,9 +4,7 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * 课程实体
- */
+/** 课程实体 */
 @Entity
 @Table(name = "courses")
 public class CourseEntity {

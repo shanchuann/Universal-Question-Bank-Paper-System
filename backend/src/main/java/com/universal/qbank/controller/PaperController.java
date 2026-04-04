@@ -376,7 +376,7 @@ public class PaperController {
   @PostMapping("/manual")
   public ResponseEntity<PaperResponse> createManual(@RequestBody ManualCreateRequest req) {
     PaperEntity paper;
-    
+
     // Support OpenAPI format: questions array with questionId and score
     if (req.questions != null && !req.questions.isEmpty()) {
       List<PaperItemEntity> entities = new java.util.ArrayList<>();

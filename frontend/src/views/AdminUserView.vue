@@ -26,23 +26,75 @@ const totalElements = ref(0)
 const totalPages = ref(0)
 const currentTab = ref('ALL')
 const searchKeyword = ref('')
+const errorMessage = ref('')
+const roleCounts = ref({
+  ALL: 0,
+  TEACHER: 0,
+  USER: 0
+})
+
+const getDisplayedCount = () => {
+  if (currentTab.value === 'ALL') return roleCounts.value.ALL
+  if (currentTab.value === 'TEACHER') return roleCounts.value.TEACHER
+  if (currentTab.value === 'USER') return roleCounts.value.USER
+  return users.value.length
+}
+
+const applyClientFilters = (list: User[]) => {
+  const keyword = searchKeyword.value.trim().toLowerCase()
+  return list.filter((u) => {
+    if (u.role === 'ADMIN') return false
+    if (!keyword) return true
+    return (u.username || '').toLowerCase().includes(keyword) || (u.nickname || '').toLowerCase().includes(keyword)
+  })
+}
+
+const fetchRoleCounts = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const [teacherRes, userRes] = await Promise.all([
+      axios.get('/api/admin/users?page=0&size=1&role=TEACHER', {
+        headers: { Authorization: `Bearer ${token}` }
+      }),
+      axios.get('/api/admin/users?page=0&size=1&role=USER', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    ])
+
+    const teacherCount = teacherRes.data?.totalElements || 0
+    const userCount = userRes.data?.totalElements || 0
+    roleCounts.value = {
+      ALL: teacherCount + userCount,
+      TEACHER: teacherCount,
+      USER: userCount
+    }
+  } catch (error) {
+    console.error('Failed to fetch role counts', error)
+  }
+}
 
 const fetchUsers = async () => {
   loading.value = true
+  errorMessage.value = ''
   try {
     const token = localStorage.getItem('token')
     let url = `/api/admin/users?page=${page.value}&size=${size.value}`
-    if (currentTab.value !== 'ALL') {
+    if (currentTab.value !== 'ALL' && currentTab.value !== 'ADMIN') {
       url += `&role=${currentTab.value}`
     }
     const response = await axios.get(url, {
       headers: { Authorization: `Bearer ${token}` }
     })
-    users.value = response.data.content
-    totalElements.value = response.data.totalElements
+    users.value = applyClientFilters(response.data.content || [])
+    totalElements.value = getDisplayedCount()
     totalPages.value = response.data.totalPages
   } catch (error) {
     console.error('Failed to fetch users', error)
+    users.value = []
+    totalElements.value = 0
+    totalPages.value = 0
+    errorMessage.value = '获取用户列表失败，请检查权限或后端服务状态'
+    showToast({ message: errorMessage.value, type: 'error' })
   } finally {
     loading.value = false
   }
@@ -132,6 +184,7 @@ const handleSearch = () => {
 }
 
 const refresh = () => {
+  fetchRoleCounts()
   fetchUsers()
 }
 
@@ -149,6 +202,7 @@ const getStatusLabel = (status: string) => {
 }
 
 onMounted(() => {
+  fetchRoleCounts()
   fetchUsers()
 })
 </script>
@@ -172,19 +226,17 @@ onMounted(() => {
         <button :class="['tab-btn', currentTab === 'ALL' ? 'active' : '']" @click="setTab('ALL')">
           <Users :size="16" />
           全部
-          <span class="tab-count" v-if="currentTab === 'ALL'">{{ totalElements }}</span>
+          <span class="tab-count">{{ roleCounts.ALL }}</span>
         </button>
         <button :class="['tab-btn', currentTab === 'TEACHER' ? 'active' : '']" @click="setTab('TEACHER')">
           <GraduationCap :size="16" />
           教师
+          <span class="tab-count">{{ roleCounts.TEACHER }}</span>
         </button>
         <button :class="['tab-btn', currentTab === 'USER' ? 'active' : '']" @click="setTab('USER')">
           <UserIcon :size="16" />
           学生
-        </button>
-        <button :class="['tab-btn', currentTab === 'ADMIN' ? 'active' : '']" @click="setTab('ADMIN')">
-          <Shield :size="16" />
-          管理员
+          <span class="tab-count">{{ roleCounts.USER }}</span>
         </button>
       </div>
       <div class="search-box">
@@ -199,7 +251,12 @@ onMounted(() => {
       </div>
     </div>
 
+    <div v-if="errorMessage" class="error-banner">
+      {{ errorMessage }}
+    </div>
+
     <div class="google-card table-card">
+      <div class="count-hint">当前筛选共 {{ getDisplayedCount() }} 人（不含管理员）</div>
       <div v-if="loading" class="loading-state">
         <div class="spinner"></div>
         <p>加载中...</p>
@@ -207,15 +264,15 @@ onMounted(() => {
       <table v-else-if="users.length > 0" class="google-table">
         <thead>
           <tr>
-            <th>用户信息</th>
-            <th>角色</th>
-            <th>状态</th>
-            <th>操作</th>
+            <th class="col-user">用户信息</th>
+            <th class="col-role">角色</th>
+            <th class="col-status">状态</th>
+            <th class="col-actions">操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="user in users" :key="user.id">
-            <td>
+            <td class="col-user">
               <div class="user-info">
                 <img 
                   v-if="user.avatarUrl" 
@@ -232,36 +289,38 @@ onMounted(() => {
                 </div>
               </div>
             </td>
-            <td>
+            <td class="col-role">
               <span :class="['role-badge', `role-${user.role.toLowerCase()}`]">
                 <component :is="user.role === 'ADMIN' ? Shield : user.role === 'TEACHER' ? GraduationCap : UserIcon" :size="14" />
                 {{ getRoleLabel(user.role) }}
               </span>
             </td>
-            <td>
+            <td class="col-status">
               <span :class="['status-badge', user.status === 'ACTIVE' ? 'status-active' : 'status-banned']">
                 <span class="status-dot"></span>
                 {{ getStatusLabel(user.status || 'ACTIVE') }}
               </span>
             </td>
-            <td class="actions">
-              <button 
-                class="action-btn" 
-                :class="user.status === 'ACTIVE' ? 'warning' : 'success'" 
-                @click="toggleStatus(user)"
-                :title="user.status === 'ACTIVE' ? '禁用用户' : '启用用户'"
-              >
-                <component :is="user.status === 'ACTIVE' ? UserX : UserCheck" :size="16" />
-                {{ user.status === 'ACTIVE' ? '禁用' : '启用' }}
-              </button>
-              <button class="action-btn primary" @click="toggleRole(user)" title="更改角色">
-                <RefreshCw :size="16" />
-                更改角色
-              </button>
-              <button class="action-btn danger" @click="deleteUser(user.id)" title="删除用户">
-                <Trash2 :size="16" />
-                删除
-              </button>
+            <td class="col-actions">
+              <div class="actions">
+                <button 
+                  class="action-btn" 
+                  :class="user.status === 'ACTIVE' ? 'warning' : 'success'" 
+                  @click="toggleStatus(user)"
+                  :title="user.status === 'ACTIVE' ? '禁用用户' : '启用用户'"
+                >
+                  <component :is="user.status === 'ACTIVE' ? UserX : UserCheck" :size="16" />
+                  {{ user.status === 'ACTIVE' ? '禁用' : '启用' }}
+                </button>
+                <button class="action-btn primary" @click="toggleRole(user)" title="更改角色">
+                  <RefreshCw :size="16" />
+                  更改角色
+                </button>
+                <button class="action-btn danger" @click="deleteUser(user.id)" title="删除用户">
+                  <Trash2 :size="16" />
+                  删除
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -430,6 +489,15 @@ onMounted(() => {
   box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
 }
 
+.error-banner {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: var(--line-error);
+  border: 1px solid color-mix(in srgb, var(--line-error) 30%, transparent);
+  background: color-mix(in srgb, var(--line-error) 10%, white);
+}
+
 /* Table Card */
 .google-card {
   background: var(--line-bg);
@@ -442,9 +510,18 @@ onMounted(() => {
   padding: 0;
 }
 
+.count-hint {
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--line-border);
+  color: var(--line-text-secondary);
+  font-size: 13px;
+  background: var(--line-bg-soft);
+}
+
 .google-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .google-table th {
@@ -459,9 +536,28 @@ onMounted(() => {
 .google-table th,
 .google-table td {
   padding: 16px 24px;
-  text-align: left;
+  text-align: center;
   border-bottom: 1px solid var(--line-border);
   vertical-align: middle;
+}
+
+.col-user {
+  width: 32%;
+  text-align: left !important;
+}
+
+.col-role {
+  width: 12%;
+}
+
+.col-status {
+  width: 12%;
+}
+
+.col-actions {
+  width: 44%;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .google-table tbody tr {
@@ -495,7 +591,7 @@ onMounted(() => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--line-primary) 0%, #4285f4 100%);
+  background: linear-gradient(135deg, var(--line-primary) 0%, var(--line-primary-hover) 100%);
   color: white;
   display: flex;
   align-items: center;
@@ -537,8 +633,8 @@ onMounted(() => {
 }
 
 .role-teacher {
-  background: rgba(251, 188, 4, 0.1);
-  color: #f9a825;
+  background: color-mix(in srgb, var(--line-warning) 18%, white);
+  color: color-mix(in srgb, var(--line-warning) 85%, black);
 }
 
 .role-user {
@@ -564,40 +660,44 @@ onMounted(() => {
 }
 
 .status-active {
-  background: rgba(52, 168, 83, 0.1);
-  color: #34a853;
+  background: color-mix(in srgb, var(--line-success) 16%, white);
+  color: var(--line-success);
 }
 
 .status-active .status-dot {
-  background: #34a853;
+  background: var(--line-success);
 }
 
 .status-banned {
-  background: rgba(234, 67, 53, 0.1);
-  color: #ea4335;
+  background: color-mix(in srgb, var(--line-error) 14%, white);
+  color: var(--line-error);
 }
 
 .status-banned .status-dot {
-  background: #ea4335;
+  background: var(--line-error);
 }
 
 /* Actions */
 .actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  width: 100%;
 }
 
 .action-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
+  padding: 7px 10px;
   height: auto;
   border-radius: 8px;
   border: none;
   background-color: transparent;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   transition: all 0.2s ease;
   font-family: inherit;
@@ -609,38 +709,38 @@ onMounted(() => {
 
 .action-btn.primary {
   color: var(--line-primary);
-  background-color: rgba(26, 115, 232, 0.1);
+  background-color: color-mix(in srgb, var(--line-primary) 10%, transparent);
 }
 .action-btn.primary:hover {
-  background-color: rgba(26, 115, 232, 0.2);
-  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.2);
+  background-color: color-mix(in srgb, var(--line-primary) 18%, transparent);
+  box-shadow: var(--line-shadow-sm);
 }
 
 .action-btn.warning {
-  color: #e37400;
-  background-color: rgba(251, 188, 4, 0.1);
+  color: color-mix(in srgb, var(--line-warning) 85%, black);
+  background-color: color-mix(in srgb, var(--line-warning) 18%, white);
 }
 .action-btn.warning:hover {
-  background-color: rgba(251, 188, 4, 0.2);
-  box-shadow: 0 2px 8px rgba(251, 188, 4, 0.2);
+  background-color: color-mix(in srgb, var(--line-warning) 26%, white);
+  box-shadow: var(--line-shadow-sm);
 }
 
 .action-btn.success {
-  color: #1e8e3e;
-  background-color: rgba(52, 168, 83, 0.1);
+  color: var(--line-success);
+  background-color: color-mix(in srgb, var(--line-success) 16%, white);
 }
 .action-btn.success:hover {
-  background-color: rgba(52, 168, 83, 0.2);
-  box-shadow: 0 2px 8px rgba(52, 168, 83, 0.2);
+  background-color: color-mix(in srgb, var(--line-success) 24%, white);
+  box-shadow: var(--line-shadow-sm);
 }
 
 .action-btn.danger {
-  color: #d93025;
-  background-color: rgba(234, 67, 53, 0.1);
+  color: var(--line-error);
+  background-color: color-mix(in srgb, var(--line-error) 14%, white);
 }
 .action-btn.danger:hover {
-  background-color: rgba(234, 67, 53, 0.2);
-  box-shadow: 0 2px 8px rgba(234, 67, 53, 0.2);
+  background-color: color-mix(in srgb, var(--line-error) 22%, white);
+  box-shadow: var(--line-shadow-sm);
 }
 
 /* Pagination */
@@ -650,7 +750,7 @@ onMounted(() => {
   justify-content: flex-end;
   align-items: center;
   gap: 16px;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
   background: var(--line-bg-soft);
 }
 
@@ -763,3 +863,4 @@ onMounted(() => {
   }
 }
 </style>
+

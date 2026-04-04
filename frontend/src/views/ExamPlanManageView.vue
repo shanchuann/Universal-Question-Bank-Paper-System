@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
+import GoogleSelect from '@/components/GoogleSelect.vue'
 
 const { confirm } = useConfirm()
 const { showToast } = useToast()
@@ -15,6 +16,7 @@ interface ExamPlan {
   startTime: string
   endTime: string
   durationMins: number
+  maxAttempts?: number
   passScore: number
   createdBy: string
   createdAt: string
@@ -67,6 +69,34 @@ const form = ref({
   passScore: 60,
   maxAttempts: 1,
   classIds: [] as string[]
+})
+
+const paperOptions = computed(() => {
+  return [
+    { label: '请选择试卷', value: '' },
+    ...papers.value.map(paper => ({ label: paper.title, value: String(paper.id) }))
+  ]
+})
+
+const examTypeOptions = [
+  { label: '正式考试', value: 'FORMAL' },
+  { label: '补考', value: 'MAKEUP' },
+  { label: '重考', value: 'RETAKE' }
+]
+
+const paperSelectValue = computed({
+  get: () => (form.value.paperId == null ? '' : String(form.value.paperId)),
+  set: (value: string | number) => {
+    const selected = String(value)
+    form.value.paperId = selected ? Number(selected) : null
+  }
+})
+
+const examTypeSelectValue = computed({
+  get: () => form.value.examType,
+  set: (value: string | number) => {
+    form.value.examType = String(value) as 'FORMAL' | 'MAKEUP' | 'RETAKE'
+  }
 })
 
 const getAuthHeaders = () => ({
@@ -147,7 +177,7 @@ function openEditForm(plan: ExamPlan) {
     endTime: plan.endTime ? formatDateTimeLocal(plan.endTime) : '',
     durationMins: plan.durationMins,
     passScore: plan.passScore,
-    maxAttempts: 1,
+    maxAttempts: plan.maxAttempts ?? 1,
     classIds: []
   }
   // 获取已关联的班级
@@ -191,6 +221,11 @@ function getPaperName(paperId: number | null): string {
 
 async function submitForm() {
   try {
+    if (!form.value.paperId) {
+      showToast({ message: '请选择关联试卷', type: 'warning' })
+      return
+    }
+
     const url = editingPlan.value ? `/api/exam-plans/${editingPlan.value.id}` : '/api/exam-plans'
     const method = editingPlan.value ? 'PUT' : 'POST'
 
@@ -378,6 +413,7 @@ const statusLabels: Record<string, string> = {
             <th>考试类型</th>
             <th>开始时间</th>
             <th>持续时长</th>
+            <th>可进入次数</th>
             <th>及格分数</th>
             <th>状态</th>
             <th>操作</th>
@@ -390,6 +426,7 @@ const statusLabels: Record<string, string> = {
             <td>{{ examTypeLabels[plan.examType] || plan.examType }}</td>
             <td>{{ plan.startTime ? new Date(plan.startTime).toLocaleString('zh-CN') : '-' }}</td>
             <td>{{ plan.durationMins }} 分钟</td>
+            <td>{{ plan.maxAttempts ?? 1 }} 次</td>
             <td>{{ plan.passScore }} 分</td>
             <td>
               <span :class="['status-badge', (plan.status || 'draft').toLowerCase()]">
@@ -466,9 +503,10 @@ const statusLabels: Record<string, string> = {
       </div>
     </div>
 
-    <!-- Form Modal -->
-    <div v-if="showForm" class="modal-overlay" @click.self="showForm = false">
-      <div class="modal-content">
+    <Teleport to="body">
+      <!-- Form Modal -->
+      <div v-if="showForm" class="modal-overlay" @click.self="showForm = false">
+        <div class="modal-content">
         <h2>{{ editingPlan ? '编辑考试计划' : '创建考试计划' }}</h2>
         <form @submit.prevent="submitForm">
           <div class="form-group">
@@ -479,20 +517,19 @@ const statusLabels: Record<string, string> = {
           <div class="form-row">
             <div class="form-group">
               <label>关联试卷 <span class="required">*</span></label>
-              <select v-model="form.paperId" class="google-input" required>
-                <option :value="null" disabled>请选择试卷</option>
-                <option v-for="paper in papers" :key="paper.id" :value="paper.id">
-                  {{ paper.title }}
-                </option>
-              </select>
+              <GoogleSelect
+                v-model="paperSelectValue"
+                :options="paperOptions"
+                placeholder="请选择试卷"
+              />
             </div>
             <div class="form-group">
               <label>考试类型</label>
-              <select v-model="form.examType" class="google-input">
-                <option value="FORMAL">正式考试</option>
-                <option value="MAKEUP">补考</option>
-                <option value="RETAKE">重考</option>
-              </select>
+              <GoogleSelect
+                v-model="examTypeSelectValue"
+                :options="examTypeOptions"
+                placeholder="请选择考试类型"
+              />
             </div>
           </div>
 
@@ -520,6 +557,15 @@ const statusLabels: Record<string, string> = {
             </div>
           </div>
 
+          <div class="form-row">
+            <div class="form-group">
+              <label>允许进入答题次数</label>
+              <input v-model.number="form.maxAttempts" type="number" class="google-input" required min="1" />
+              <small class="hint">达到次数上限后不可再次进入考试</small>
+            </div>
+            <div class="form-group"></div>
+          </div>
+
           <div class="form-group">
             <label>下发班级</label>
             <div class="class-select-box">
@@ -545,12 +591,12 @@ const statusLabels: Record<string, string> = {
             <button type="submit" class="google-btn primary-btn">保存</button>
           </div>
         </form>
+        </div>
       </div>
-    </div>
 
-    <!-- Enroll Modal -->
-    <div v-if="showEnrollModal" class="modal-overlay" @click.self="showEnrollModal = false">
-      <div class="modal-content enroll-modal">
+      <!-- Enroll Modal -->
+      <div v-if="showEnrollModal" class="modal-overlay" @click.self="showEnrollModal = false">
+        <div class="modal-content enroll-modal">
         <h2>报名管理 - {{ enrollingPlan?.name }}</h2>
         
         <div class="enroll-section">
@@ -591,7 +637,7 @@ const statusLabels: Record<string, string> = {
               <div class="student-info">
                 <div class="student-avatar" :class="{ 'has-img': e.avatarUrl }">
                   <img v-if="e.avatarUrl" :src="e.avatarUrl" :alt="e.studentName || ''" @error="($event.target as HTMLImageElement).style.display = 'none'" />
-                  <span v-else>{{ (e.studentName || e.studentId || 'U')[0].toUpperCase() }}</span>
+                  <span v-else>{{ (e.studentName || e.studentId || 'U').charAt(0).toUpperCase() }}</span>
                 </div>
                 <span class="student-name">{{ e.studentName || e.studentId }}</span>
               </div>
@@ -600,11 +646,12 @@ const statusLabels: Record<string, string> = {
           </div>
         </div>
 
-        <div class="form-actions">
-          <button type="button" class="google-btn text-btn" @click="showEnrollModal = false">关闭</button>
+          <div class="form-actions">
+            <button type="button" class="google-btn text-btn" @click="showEnrollModal = false">关闭</button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
@@ -671,7 +718,7 @@ const statusLabels: Record<string, string> = {
 
 .plan-table th {
   padding: 16px 20px;
-  text-align: left;
+  text-align: center;
   font-weight: 600;
   color: var(--line-text-primary);
   border-bottom: 1px solid var(--line-border);
@@ -683,6 +730,7 @@ const statusLabels: Record<string, string> = {
   border-bottom: 1px solid var(--line-border);
   color: var(--line-text-secondary);
   vertical-align: middle;
+  text-align: center;
 }
 
 .plan-table tr:last-child td {
@@ -730,6 +778,7 @@ const statusLabels: Record<string, string> = {
 .action-buttons {
   display: flex;
   gap: 8px;
+  justify-content: center;
 }
 
 .icon-btn {
@@ -776,7 +825,7 @@ const statusLabels: Record<string, string> = {
   gap: 24px;
   margin-top: 32px;
   padding-top: 32px;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
 }
 
 .page-info {
@@ -1115,3 +1164,4 @@ const statusLabels: Record<string, string> = {
   to { opacity: 1; transform: translateY(0); }
 }
 </style>
+

@@ -1,6 +1,7 @@
 package com.universal.qbank.repository;
 
 import com.universal.qbank.entity.StudentStatsEntity;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -17,15 +18,20 @@ public interface StudentStatsRepository extends JpaRepository<StudentStatsEntity
   Page<StudentStatsEntity> findByTotalQuestionsAnsweredGreaterThan(Long count, Pageable pageable);
 
   /** 只获取学生角色的排行榜（排除教师和管理员） */
-  @Query("SELECT s FROM StudentStatsEntity s WHERE s.totalQuestionsAnswered > 0 " +
-         "AND s.userId IN (SELECT u.id FROM UserEntity u WHERE u.role = 'USER' OR u.role = 'STUDENT') " +
-         "ORDER BY s.correctAnswers DESC, s.totalQuestionsAnswered DESC")
+  @Query(
+      "SELECT s FROM StudentStatsEntity s WHERE s.totalQuestionsAnswered > 0 "
+          + "AND s.userId IN (SELECT u.id FROM UserEntity u WHERE u.role = 'USER' OR u.role = 'STUDENT') "
+          + "ORDER BY s.correctAnswers DESC, s.totalQuestionsAnswered DESC")
   List<StudentStatsEntity> findStudentLeaderboard(Pageable pageable);
 
   /** 获取指定班级的学生排行榜（包含所有班级成员，即使未答题） */
-  @Query("SELECT s FROM StudentStatsEntity s WHERE " +
-         "s.userId IN (SELECT uo.userId FROM UserOrganizationEntity uo WHERE uo.organizationId = :orgId) " +
-         "AND s.userId IN (SELECT u.id FROM UserEntity u WHERE u.role = 'USER' OR u.role = 'STUDENT') " +
-         "ORDER BY s.correctAnswers DESC, s.totalQuestionsAnswered DESC")
-  List<StudentStatsEntity> findStudentLeaderboardByOrganization(@Param("orgId") String orgId, Pageable pageable);
+  @Query(
+      "SELECT s FROM StudentStatsEntity s WHERE "
+          + "s.userId IN (SELECT uo.userId FROM UserOrganizationEntity uo WHERE uo.organizationId = :orgId) "
+          + "AND s.userId IN (SELECT u.id FROM UserEntity u WHERE u.role = 'USER' OR u.role = 'STUDENT') "
+          + "ORDER BY s.correctAnswers DESC, s.totalQuestionsAnswered DESC")
+  List<StudentStatsEntity> findStudentLeaderboardByOrganization(
+      @Param("orgId") String orgId, Pageable pageable);
+
+  List<StudentStatsEntity> findByUserIdIn(Collection<String> userIds);
 }

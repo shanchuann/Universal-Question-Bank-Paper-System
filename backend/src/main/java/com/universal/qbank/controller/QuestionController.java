@@ -10,7 +10,6 @@ import com.universal.qbank.api.generated.model.QuestionResponse;
 import com.universal.qbank.api.generated.model.QuestionSummary;
 import com.universal.qbank.api.generated.model.QuestionUpdateRequest;
 import com.universal.qbank.entity.QuestionEntity;
-import com.universal.qbank.entity.UserEntity;
 import com.universal.qbank.repository.QuestionRepository;
 import com.universal.qbank.repository.UserRepository;
 import com.universal.qbank.service.OrganizationService;
@@ -44,7 +43,7 @@ public class QuestionController implements QuestionBankApi {
     if (authHeader != null && authHeader.startsWith("Bearer dummy-jwt-token-")) {
       userId = authHeader.replace("Bearer dummy-jwt-token-", "");
     }
-    
+
     // 检查用户是否加入了任何组织（班级）
     if (userId != null) {
       var userOrgs = organizationService.getUserOrganizations(userId);
@@ -54,7 +53,7 @@ public class QuestionController implements QuestionBankApi {
     } else {
       return ResponseEntity.status(401).build();
     }
-    
+
     QuestionEntity q = new QuestionEntity();
     q.setSubjectId(req.getSubjectId());
     q.setType(req.getType().getValue());
@@ -88,7 +87,7 @@ public class QuestionController implements QuestionBankApi {
       q.setTags(req.getTags());
     }
     q.setKnowledgePointIds(req.getKnowledgePointIds());
-    
+
     // 根据用户角色设置初始状态：学生创建的为待审核，教师/管理员创建的直接激活
     String initialStatus = "APPROVED";
     if (userId != null) {
@@ -117,7 +116,7 @@ public class QuestionController implements QuestionBankApi {
     resp.setKnowledgePointIds(entity.getKnowledgePointIds());
     resp.setStem(entity.getStem());
     resp.setAnalysis(entity.getAnalysis());
-    
+
     // 设置 answerSchema
     if (entity.getAnswerSchema() != null) {
       resp.setAnswerSchema(entity.getAnswerSchema());

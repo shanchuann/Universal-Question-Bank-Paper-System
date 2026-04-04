@@ -418,11 +418,14 @@ const handleDelete = async (id: string) => {
   margin-top: 24px;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 12px;
 }
 
 .form-actions button {
   width: 100%;
+  height: 44px;
+  padding: 0 20px;
   justify-content: center;
 }
 

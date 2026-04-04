@@ -17,6 +17,17 @@
     </div>
 
     <div v-else-if="analyticsData">
+      <div class="insight-bar mb-4">
+        <div class="insight-item">
+          <span class="insight-label">最高错误率题目</span>
+          <span class="insight-value">{{ topErrorQuestionTitle }}</span>
+        </div>
+        <div class="insight-item">
+          <span class="insight-label">最薄弱知识点</span>
+          <span class="insight-value">{{ weakestKnowledgePoint }}</span>
+        </div>
+      </div>
+
       <!-- Summary Cards -->
       <div class="row mb-4">
         <div class="col-md-3">
@@ -160,7 +171,7 @@
             <div class="options-list">
               <div v-for="(opt, idx) in selectedQuestion.options" :key="idx" class="option-item">
                 <span class="option-label">{{ String.fromCharCode(65 + idx) }}.</span>
-                <span class="option-content" v-html="opt.content"></span>
+                <span class="option-content" v-html="opt.text || ''"></span>
               </div>
             </div>
           </div>
@@ -321,6 +332,23 @@ const closeDetailModal = () => {
   selectedQuestion.value = null
 }
 
+const topErrorQuestionTitle = computed(() => {
+  if (!analyticsData.value?.errorRates?.length) return '暂无数据'
+  const top = analyticsData.value.errorRates[0]
+  if (!top?.questionId) return '暂无数据'
+  return truncateText(getQuestionStem(top.questionId), 16)
+})
+
+const weakestKnowledgePoint = computed(() => {
+  if (!analyticsData.value?.knowledgeMastery?.length) return '暂无数据'
+  const sorted = [...analyticsData.value.knowledgeMastery].sort(
+    (a, b) => (a.masteryRate || 0) - (b.masteryRate || 0)
+  )
+  const point = sorted[0]
+  if (!point?.knowledgePointId) return '暂无数据'
+  return `${point.knowledgePointId} (${formatPercent(point.masteryRate)})`
+})
+
 // Fetch question details for error rate items
 const fetchQuestionDetails = async (questionIds: string[]) => {
   const promises = questionIds.map(async (id) => {
@@ -430,6 +458,32 @@ onMounted(() => {
 <style scoped>
 .card {
   box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.insight-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.insight-item {
+  border: 1px solid var(--line-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--line-bg-soft);
+}
+
+.insight-label {
+  display: block;
+  font-size: 12px;
+  color: var(--line-text-secondary);
+  margin-bottom: 4px;
+}
+
+.insight-value {
+  font-size: 14px;
+  color: var(--line-text);
+  font-weight: 600;
 }
 
 .question-name-link {

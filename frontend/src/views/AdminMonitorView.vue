@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
-import { Server, Database, Cpu, HardDrive, Wifi, Clock, CheckCircle, AlertTriangle, XCircle, RefreshCw } from 'lucide-vue-next'
+import { Server, Cpu, HardDrive, Wifi, Clock, CheckCircle, AlertTriangle, XCircle, RefreshCw } from 'lucide-vue-next'
 
 interface ServiceStatus {
   name: string
@@ -26,6 +26,7 @@ interface SystemMetrics {
 const loading = ref(false)
 const autoRefresh = ref(true)
 const lastUpdate = ref('')
+const error = ref('')
 let refreshInterval: ReturnType<typeof setInterval> | null = null
 
 const services = ref<ServiceStatus[]>([])
@@ -43,6 +44,7 @@ const metrics = ref<SystemMetrics>({
 
 const fetchMonitorData = async () => {
   loading.value = true
+  error.value = ''
   try {
     const token = localStorage.getItem('token')
     const response = await axios.get('/api/admin/monitor', {
@@ -50,29 +52,9 @@ const fetchMonitorData = async () => {
     })
     services.value = response.data.services
     metrics.value = response.data.metrics
-  } catch (error) {
-    console.error('Failed to fetch monitor data', error)
-    // 模拟数据用于展示
-    services.value = [
-      { name: 'API 服务', status: 'online', responseTime: 45, uptime: '99.9%', lastCheck: '刚刚' },
-      { name: '数据库', status: 'online', responseTime: 12, uptime: '99.8%', lastCheck: '刚刚' },
-      { name: '缓存服务', status: 'online', responseTime: 3, uptime: '99.9%', lastCheck: '刚刚' },
-      { name: '文件存储', status: 'warning', responseTime: 156, uptime: '98.5%', lastCheck: '刚刚' },
-      { name: '邮件服务', status: 'online', responseTime: 89, uptime: '99.2%', lastCheck: '刚刚' },
-      { name: '定时任务', status: 'online', responseTime: 0, uptime: '100%', lastCheck: '刚刚' }
-    ]
-    
-    metrics.value = {
-      cpuUsage: 35 + Math.random() * 20,
-      memoryUsage: 62 + Math.random() * 10,
-      memoryTotal: '16 GB',
-      memoryUsed: '10.2 GB',
-      diskUsage: 45,
-      diskTotal: '500 GB',
-      diskUsed: '225 GB',
-      networkIn: '1.2 MB/s',
-      networkOut: '856 KB/s'
-    }
+  } catch (err) {
+    console.error('Failed to fetch monitor data', err)
+    error.value = '获取系统监控数据失败，请检查后端服务状态后重试'
   } finally {
     loading.value = false
     lastUpdate.value = new Date().toLocaleTimeString()
@@ -136,6 +118,7 @@ onUnmounted(() => {
       <div class="header-left">
         <h1 class="page-title">系统监控</h1>
         <p class="page-subtitle">服务健康状态实时监控</p>
+        <p class="data-note">数据来源：CPU/内存/磁盘为实时采集；网络吞吐为基于近 1 分钟行为日志的估算值。</p>
       </div>
       <div class="header-actions">
         <span class="last-update">最后更新: {{ lastUpdate }}</span>
@@ -154,6 +137,8 @@ onUnmounted(() => {
     </div>
 
     <!-- 系统资源 -->
+    <div v-if="error" class="error-banner">{{ error }}</div>
+
     <div class="google-card metrics-card">
       <h3 class="section-title">系统资源</h3>
       <div class="metrics-grid">
@@ -244,7 +229,7 @@ onUnmounted(() => {
               <span class="stat-value">{{ service.responseTime }}ms</span>
             </div>
             <div class="service-stat">
-              <span class="stat-label">可用率</span>
+              <span class="stat-label">运行信息</span>
               <span class="stat-value">{{ service.uptime }}</span>
             </div>
           </div>
@@ -299,6 +284,12 @@ onUnmounted(() => {
   margin-top: 8px;
 }
 
+.data-note {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--line-text-secondary);
+}
+
 .header-actions {
   display: flex;
   align-items: center;
@@ -308,6 +299,15 @@ onUnmounted(() => {
 .last-update {
   font-size: 13px;
   color: var(--line-text-secondary);
+}
+
+.error-banner {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: var(--line-error);
+  border: 1px solid color-mix(in srgb, var(--line-error) 30%, transparent);
+  background: color-mix(in srgb, var(--line-error) 10%, white);
 }
 
 .spinning {
@@ -391,15 +391,15 @@ onUnmounted(() => {
 }
 
 .progress-fill.normal {
-  background: linear-gradient(90deg, #1e8e3e, #34a853);
+  background: linear-gradient(90deg, var(--line-success), color-mix(in srgb, var(--line-success) 78%, white));
 }
 
 .progress-fill.warning {
-  background: linear-gradient(90deg, #f9ab00, #fbbc04);
+  background: linear-gradient(90deg, var(--line-warning), color-mix(in srgb, var(--line-warning) 80%, white));
 }
 
 .progress-fill.danger {
-  background: linear-gradient(90deg, #d93025, #ea4335);
+  background: linear-gradient(90deg, var(--line-error), color-mix(in srgb, var(--line-error) 80%, white));
 }
 
 .network-stats {
@@ -425,8 +425,8 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-.network-value.in { color: #1e8e3e; }
-.network-value.out { color: #1a73e8; }
+.network-value.in { color: var(--line-success); }
+.network-value.out { color: var(--line-primary); }
 
 /* Services Card */
 .services-card {
@@ -462,19 +462,19 @@ onUnmounted(() => {
 
 .service-item:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--line-shadow-md);
 }
 
 .service-item.status-online {
-  border-left: 4px solid #1e8e3e;
+  border-left: 4px solid var(--line-success);
 }
 
 .service-item.status-warning {
-  border-left: 4px solid #f9ab00;
+  border-left: 4px solid var(--line-warning);
 }
 
 .service-item.status-offline {
-  border-left: 4px solid #d93025;
+  border-left: 4px solid var(--line-error);
 }
 
 .service-header {
@@ -488,9 +488,9 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.status-online .status-icon { color: #1e8e3e; }
-.status-warning .status-icon { color: #f9ab00; }
-.status-offline .status-icon { color: #d93025; }
+.status-online .status-icon { color: var(--line-success); }
+.status-warning .status-icon { color: var(--line-warning); }
+.status-offline .status-icon { color: var(--line-error); }
 
 .service-name {
   font-size: 15px;
@@ -528,7 +528,7 @@ onUnmounted(() => {
   font-size: 12px;
   color: var(--line-text-secondary);
   padding-top: 12px;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
 }
 
 /* Status Legend */
@@ -553,9 +553,9 @@ onUnmounted(() => {
   border-radius: 50%;
 }
 
-.legend-dot.online { background: #1e8e3e; }
-.legend-dot.warning { background: #f9ab00; }
-.legend-dot.offline { background: #d93025; }
+.legend-dot.online { background: var(--line-success); }
+.legend-dot.warning { background: var(--line-warning); }
+.legend-dot.offline { background: var(--line-error); }
 
 /* Buttons */
 .google-btn {
@@ -577,7 +577,7 @@ onUnmounted(() => {
 }
 
 .text-btn:hover:not(:disabled) {
-  background: rgba(26, 115, 232, 0.1);
+  background: color-mix(in srgb, var(--line-primary) 10%, transparent);
 }
 
 .text-btn:disabled {
@@ -591,6 +591,7 @@ onUnmounted(() => {
 }
 
 .primary-btn:hover {
-  background: #1557b0;
+  background: var(--line-primary-hover);
 }
 </style>
+

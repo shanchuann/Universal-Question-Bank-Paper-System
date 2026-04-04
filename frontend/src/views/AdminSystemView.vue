@@ -24,6 +24,8 @@ interface SystemSettings {
   systemEmail: string
   siteName: string
   siteDescription: string
+  siteLogoUrl: string
+  copyrightText: string
 }
 
 const loading = ref(false)
@@ -71,7 +73,9 @@ const settings = reactive<SystemSettings>({
   enableNotifications: true,
   systemEmail: 'admin@example.com',
   siteName: 'UQBank 题库系统',
-  siteDescription: '通用题库与组卷系统'
+  siteDescription: '通用题库与组卷系统',
+  siteLogoUrl: '',
+  copyrightText: '© UQBank 题库系统'
 })
 
 const sections = [
@@ -223,8 +227,6 @@ onMounted(() => {
         <template v-else>
           <!-- 基本设置 -->
           <div v-show="activeSection === 'general'" class="settings-section">
-            <h2 class="section-title">基本设置</h2>
-            
             <div class="setting-card">
               <div class="setting-item">
                 <div class="setting-info">
@@ -281,13 +283,41 @@ onMounted(() => {
                 </div>
                 <input type="text" v-model="settings.siteName" class="google-input short-input" />
               </div>
+
+              <div class="setting-item column">
+                <label class="input-label">站点描述</label>
+                <textarea
+                  v-model="settings.siteDescription"
+                  class="google-input"
+                  rows="2"
+                  placeholder="用于登录页、欢迎页的系统简介"
+                ></textarea>
+              </div>
+
+              <div class="setting-item column">
+                <label class="input-label">站点 Logo URL</label>
+                <input
+                  type="text"
+                  v-model="settings.siteLogoUrl"
+                  class="google-input"
+                  placeholder="输入可访问的图片地址，例如 https://example.com/logo.png"
+                />
+              </div>
+
+              <div class="setting-item column">
+                <label class="input-label">版权信息</label>
+                <input
+                  type="text"
+                  v-model="settings.copyrightText"
+                  class="google-input"
+                  placeholder="例如：© 2026 UQBank. All rights reserved."
+                />
+              </div>
             </div>
           </div>
 
           <!-- 安全设置 -->
           <div v-show="activeSection === 'security'" class="settings-section">
-            <h2 class="section-title">安全设置</h2>
-            
             <div class="setting-card">
               <div class="setting-item">
                 <div class="setting-info">
@@ -359,8 +389,6 @@ onMounted(() => {
 
           <!-- 考试设置 -->
           <div v-show="activeSection === 'exam'" class="settings-section">
-            <h2 class="section-title">考试设置</h2>
-            
             <div class="setting-card">
               <div class="setting-item">
                 <div class="setting-info">
@@ -388,8 +416,6 @@ onMounted(() => {
 
           <!-- 上传设置 -->
           <div v-show="activeSection === 'upload'" class="settings-section">
-            <h2 class="section-title">上传设置</h2>
-            
             <div class="setting-card">
               <div class="setting-item">
                 <div class="setting-info">
@@ -417,8 +443,6 @@ onMounted(() => {
 
           <!-- 通知设置 -->
           <div v-show="activeSection === 'notification'" class="settings-section">
-            <h2 class="section-title">通知设置</h2>
-            
             <div class="setting-card">
               <div class="setting-item">
                 <div class="setting-info">
@@ -541,29 +565,32 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 220px 1fr;
   gap: 24px;
+  align-items: start;
 }
 
 /* Settings Navigation */
 .settings-nav {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 8px;
   background: var(--line-bg);
   border: 1px solid var(--line-border);
   border-radius: 12px;
-  padding: 12px;
+  padding: 16px 12px;
   height: fit-content;
-  position: sticky;
-  top: 24px;
+  position: static;
+  margin-top: 0;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 10px;
-  padding: 12px 20px;
+  min-height: 52px;
+  padding: 0 20px 0 34px;
   border: none;
   background: transparent;
   border-radius: 8px;
@@ -572,7 +599,7 @@ onMounted(() => {
   color: var(--line-text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
-  text-align: center;
+  text-align: left;
   width: 100%;
 }
 
@@ -839,6 +866,7 @@ textarea.google-input {
     position: static;
     padding: 8px;
     gap: 8px;
+    margin-top: 0;
   }
   
   .nav-item {
@@ -865,6 +893,7 @@ textarea.google-input {
     align-items: flex-start;
     gap: 12px;
   }
+
   
   .short-input {
     width: 100%;

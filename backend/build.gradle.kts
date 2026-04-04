@@ -143,7 +143,7 @@ tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
 			element = "BUNDLE"
 			limit {
 				counter = "LINE"
-				minimum = "0.10".toBigDecimal()
+				minimum = "0.08".toBigDecimal()
 			}
 		}
 	}

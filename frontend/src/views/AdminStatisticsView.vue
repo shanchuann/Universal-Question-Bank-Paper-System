@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import { Users, FileText, BookOpen, GraduationCap, TrendingUp, TrendingDown, Activity } from 'lucide-vue-next'
+import GoogleSelect from '@/components/GoogleSelect.vue'
 
 interface StatsOverview {
   totalUsers: number
@@ -19,6 +20,8 @@ interface TrendData {
   value: number
 }
 
+type RangeOption = '7d' | '30d' | '90d' | '180d'
+
 const loading = ref(false)
 const stats = ref<StatsOverview>({
   totalUsers: 0,
@@ -35,23 +38,41 @@ const userTrend = ref<TrendData[]>([])
 const questionTrend = ref<TrendData[]>([])
 const examTrend = ref<TrendData[]>([])
 const error = ref('')
+const selectedRange = ref<RangeOption>('30d')
+
+const rangeLabelMap: Record<RangeOption, string> = {
+  '7d': '近7天',
+  '30d': '近30天',
+  '90d': '近90天',
+  '180d': '近180天'
+}
+
+const rangeOptions: Array<{ value: RangeOption; label: string }> = [
+  { value: '7d', label: '近7天' },
+  { value: '30d', label: '近30天' },
+  { value: '90d', label: '近90天' },
+  { value: '180d', label: '近180天' }
+]
 
 const fetchStatistics = async () => {
   loading.value = true
   error.value = ''
   try {
     const token = localStorage.getItem('token')
+    const params = { range: selectedRange.value }
     
     // 获取概览统计
     const statsResponse = await axios.get('/api/admin/statistics', {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
+      params
     })
     stats.value = statsResponse.data
     
     // 获取趋势数据
     try {
       const trendsResponse = await axios.get('/api/admin/statistics/trends', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        params
       })
       userTrend.value = trendsResponse.data.userTrend || []
       questionTrend.value = trendsResponse.data.questionTrend || []
@@ -73,8 +94,54 @@ const fetchStatistics = async () => {
 const maxUserTrend = computed(() => userTrend.value.length > 0 ? Math.max(...userTrend.value.map(d => d.value)) : 0)
 const maxQuestionTrend = computed(() => questionTrend.value.length > 0 ? Math.max(...questionTrend.value.map(d => d.value)) : 0)
 const maxExamTrend = computed(() => examTrend.value.length > 0 ? Math.max(...examTrend.value.map(d => d.value)) : 0)
+const rangeLabel = computed(() => rangeLabelMap[selectedRange.value])
+
+type TrendDirection = 'up' | 'down' | 'flat'
+
+const calcTrendMeta = (series: TrendData[]) => {
+  if (!series || series.length < 2) {
+    return { direction: 'flat' as TrendDirection, text: '数据不足' }
+  }
+
+  const firstPoint = series[0]
+  const lastPoint = series[series.length - 1]
+  if (!firstPoint || !lastPoint) {
+    return { direction: 'flat' as TrendDirection, text: '数据不足' }
+  }
+
+  const first = firstPoint.value
+  const last = lastPoint.value
+  if (first === 0) {
+    if (last === 0) return { direction: 'flat' as TrendDirection, text: '无变化' }
+    return { direction: 'up' as TrendDirection, text: '新增趋势' }
+  }
+
+  const delta = ((last - first) / first) * 100
+  if (Math.abs(delta) < 0.1) {
+    return { direction: 'flat' as TrendDirection, text: '无变化' }
+  }
+  const sign = delta > 0 ? '+' : ''
+  return {
+    direction: delta > 0 ? ('up' as TrendDirection) : ('down' as TrendDirection),
+    text: `${sign}${delta.toFixed(1)}%`
+  }
+}
+
+const questionTrendMeta = computed(() => calcTrendMeta(questionTrend.value))
+const examTrendMeta = computed(() => calcTrendMeta(examTrend.value))
+
+const calcBarHeight = (value: number, max: number) => {
+  if (max <= 0) {
+    return '0%'
+  }
+  return `${Math.max(6, (value / max) * 100)}%`
+}
 
 onMounted(() => {
+  fetchStatistics()
+})
+
+watch(selectedRange, () => {
   fetchStatistics()
 })
 </script>
@@ -82,8 +149,17 @@ onMounted(() => {
 <template>
   <div class="admin-container container">
     <div class="header-row">
-      <h1 class="page-title">数据统计</h1>
-      <p class="page-subtitle">全局数据分析概览</p>
+      <div>
+        <h1 class="page-title">数据统计</h1>
+        <p class="page-subtitle">全局数据分析概览</p>
+      </div>
+      <div class="header-actions">
+        <GoogleSelect
+          v-model="selectedRange"
+          :options="rangeOptions"
+          placeholder="选择时间范围"
+        />
+      </div>
     </div>
 
     <div v-if="loading" class="loading-state">
@@ -127,9 +203,11 @@ onMounted(() => {
             <span class="stat-value">{{ stats.totalQuestions.toLocaleString() }}</span>
             <span class="stat-label">题目总数</span>
           </div>
-          <div class="stat-trend up">
-            <TrendingUp :size="16" />
-            <span>+12.5%</span>
+          <div class="stat-trend" :class="questionTrendMeta.direction">
+            <TrendingUp v-if="questionTrendMeta.direction === 'up'" :size="16" />
+            <TrendingDown v-else-if="questionTrendMeta.direction === 'down'" :size="16" />
+            <Activity v-else :size="16" />
+            <span>{{ questionTrendMeta.text }}</span>
           </div>
         </div>
 
@@ -141,10 +219,7 @@ onMounted(() => {
             <span class="stat-value">{{ stats.totalPapers }}</span>
             <span class="stat-label">试卷总数</span>
           </div>
-          <div class="stat-trend up">
-            <TrendingUp :size="16" />
-            <span>+8.3%</span>
-          </div>
+          <div class="stat-note">当前范围累计</div>
         </div>
 
         <div class="stat-card">
@@ -155,9 +230,11 @@ onMounted(() => {
             <span class="stat-value">{{ stats.totalExams }}</span>
             <span class="stat-label">考试场次</span>
           </div>
-          <div class="stat-trend down">
-            <TrendingDown :size="16" />
-            <span>-3.2%</span>
+          <div class="stat-trend" :class="examTrendMeta.direction">
+            <TrendingUp v-if="examTrendMeta.direction === 'up'" :size="16" />
+            <TrendingDown v-else-if="examTrendMeta.direction === 'down'" :size="16" />
+            <Activity v-else :size="16" />
+            <span>{{ examTrendMeta.text }}</span>
           </div>
         </div>
 
@@ -167,7 +244,7 @@ onMounted(() => {
           </div>
           <div class="stat-content">
             <span class="stat-value">{{ stats.activeUsersToday }}</span>
-            <span class="stat-label">今日活跃用户</span>
+            <span class="stat-label">{{ rangeLabel }}活跃用户</span>
           </div>
         </div>
 
@@ -177,7 +254,7 @@ onMounted(() => {
           </div>
           <div class="stat-content">
             <span class="stat-value">{{ stats.newUsersThisWeek }}</span>
-            <span class="stat-label">本周新增用户</span>
+            <span class="stat-label">{{ rangeLabel }}新增用户</span>
           </div>
         </div>
       </div>
@@ -185,51 +262,54 @@ onMounted(() => {
       <!-- 趋势图表 -->
       <div class="charts-grid">
         <div class="google-card chart-card">
-          <h3 class="chart-title">用户活跃趋势 (本周)</h3>
-          <div class="bar-chart">
+          <h3 class="chart-title">用户活跃趋势 ({{ rangeLabel }})</h3>
+          <div v-if="userTrend.length > 0" class="bar-chart">
             <div 
               v-for="item in userTrend" 
               :key="item.label" 
               class="bar-item"
             >
-              <div class="bar" :style="{ height: (item.value / maxUserTrend * 100) + '%' }">
+              <div class="bar" :style="{ height: calcBarHeight(item.value, maxUserTrend) }">
                 <span class="bar-value">{{ item.value }}</span>
               </div>
               <span class="bar-label">{{ item.label }}</span>
             </div>
           </div>
+          <div v-else class="chart-empty">暂无用户趋势数据</div>
         </div>
 
         <div class="google-card chart-card">
-          <h3 class="chart-title">题目增长趋势 (近6月)</h3>
-          <div class="bar-chart">
+          <h3 class="chart-title">题目增长趋势 ({{ rangeLabel }})</h3>
+          <div v-if="questionTrend.length > 0" class="bar-chart">
             <div 
               v-for="item in questionTrend" 
               :key="item.label" 
               class="bar-item"
             >
-              <div class="bar success" :style="{ height: (item.value / maxQuestionTrend * 100) + '%' }">
+              <div class="bar success" :style="{ height: calcBarHeight(item.value, maxQuestionTrend) }">
                 <span class="bar-value">{{ item.value }}</span>
               </div>
               <span class="bar-label">{{ item.label }}</span>
             </div>
           </div>
+          <div v-else class="chart-empty">暂无题目趋势数据</div>
         </div>
 
         <div class="google-card chart-card">
-          <h3 class="chart-title">考试场次趋势 (近6月)</h3>
-          <div class="bar-chart">
+          <h3 class="chart-title">考试场次趋势 ({{ rangeLabel }})</h3>
+          <div v-if="examTrend.length > 0" class="bar-chart">
             <div 
               v-for="item in examTrend" 
               :key="item.label" 
               class="bar-item"
             >
-              <div class="bar warning" :style="{ height: (item.value / maxExamTrend * 100) + '%' }">
+              <div class="bar warning" :style="{ height: calcBarHeight(item.value, maxExamTrend) }">
                 <span class="bar-value">{{ item.value }}</span>
               </div>
               <span class="bar-label">{{ item.label }}</span>
             </div>
           </div>
+          <div v-else class="chart-empty">暂无考试趋势数据</div>
         </div>
       </div>
     </template>
@@ -244,7 +324,32 @@ onMounted(() => {
 }
 
 .header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 32px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  margin-right: 16px;
+}
+
+@media (max-width: 768px) {
+  .header-actions {
+    margin-right: 0;
+  }
+}
+
+.google-select {
+  min-width: 128px;
+  padding: 10px 14px;
+  border: 1px solid var(--line-border);
+  border-radius: 10px;
+  background: var(--line-card-bg);
+  color: var(--line-text);
 }
 
 .page-subtitle {
@@ -273,7 +378,7 @@ onMounted(() => {
 
 .error-state p {
   margin: 0;
-  color: #ea4335;
+  color: var(--line-error);
 }
 
 .spinner {
@@ -292,14 +397,14 @@ onMounted(() => {
 /* Stats Grid */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
   margin-bottom: 32px;
 }
 
 @media (max-width: 1024px) {
   .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -322,11 +427,11 @@ onMounted(() => {
 
 .stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--line-shadow-md);
 }
 
 .stat-card.highlight {
-  background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+  background: linear-gradient(135deg, var(--line-primary) 0%, var(--line-primary-hover) 100%);
   color: white;
 }
 
@@ -343,12 +448,12 @@ onMounted(() => {
   justify-content: center;
 }
 
-.users-icon { background: #e8f0fe; color: #1a73e8; }
-.questions-icon { background: #e6f4ea; color: #1e8e3e; }
-.papers-icon { background: #fef7e0; color: #f9ab00; }
-.exams-icon { background: #fce8e6; color: #d93025; }
+.users-icon { background: color-mix(in srgb, var(--line-accent) 14%, white); color: var(--line-accent); }
+.questions-icon { background: color-mix(in srgb, var(--line-success) 14%, white); color: var(--line-success); }
+.papers-icon { background: color-mix(in srgb, var(--line-warning) 18%, white); color: color-mix(in srgb, var(--line-warning) 85%, black); }
+.exams-icon { background: color-mix(in srgb, var(--line-error) 14%, white); color: var(--line-error); }
 .active-icon { background: rgba(255, 255, 255, 0.2); color: white; }
-.new-icon { background: #f3e8fd; color: #9334e6; }
+.new-icon { background: color-mix(in srgb, var(--line-primary) 12%, white); color: var(--line-primary); }
 
 .stat-content {
   display: flex;
@@ -375,7 +480,7 @@ onMounted(() => {
   display: flex;
   gap: 24px;
   padding-top: 12px;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
 }
 
 .detail-item {
@@ -403,17 +508,26 @@ onMounted(() => {
 }
 
 .stat-trend.up {
-  color: #1e8e3e;
+  color: var(--line-success);
 }
 
 .stat-trend.down {
-  color: #d93025;
+  color: var(--line-error);
+}
+
+.stat-trend.flat {
+  color: var(--line-text-secondary);
+}
+
+.stat-note {
+  font-size: 13px;
+  color: var(--line-text-secondary);
 }
 
 /* Charts Grid */
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -425,6 +539,8 @@ onMounted(() => {
 
 .chart-card {
   padding: 24px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .chart-title {
@@ -439,11 +555,14 @@ onMounted(() => {
   justify-content: space-between;
   align-items: flex-end;
   height: 200px;
-  gap: 12px;
+  gap: 6px;
+  width: 100%;
+  overflow: hidden;
 }
 
 .bar-item {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -453,7 +572,7 @@ onMounted(() => {
 .bar {
   width: 100%;
   max-width: 40px;
-  background: linear-gradient(180deg, #1a73e8 0%, #4285f4 100%);
+  background: linear-gradient(180deg, var(--line-primary) 0%, var(--line-primary-hover) 100%);
   border-radius: 6px 6px 0 0;
   display: flex;
   align-items: flex-start;
@@ -464,11 +583,11 @@ onMounted(() => {
 }
 
 .bar.success {
-  background: linear-gradient(180deg, #1e8e3e 0%, #34a853 100%);
+  background: linear-gradient(180deg, var(--line-success) 0%, color-mix(in srgb, var(--line-success) 78%, white) 100%);
 }
 
 .bar.warning {
-  background: linear-gradient(180deg, #f9ab00 0%, #fbbc04 100%);
+  background: linear-gradient(180deg, var(--line-warning) 0%, color-mix(in srgb, var(--line-warning) 80%, white) 100%);
 }
 
 .bar-value {
@@ -479,7 +598,24 @@ onMounted(() => {
 
 .bar-label {
   margin-top: 8px;
-  font-size: 12px;
+  font-size: 10px;
   color: var(--line-text-secondary);
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chart-empty {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--line-text-secondary);
+  border: 1px dashed var(--line-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--line-bg-soft) 60%, white);
 }
 </style>
+

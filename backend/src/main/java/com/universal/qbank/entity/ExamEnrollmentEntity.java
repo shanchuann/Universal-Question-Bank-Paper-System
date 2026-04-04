@@ -5,9 +5,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * 考试报名/名单实体
- */
+/** 考试报名/名单实体 */
 @Entity
 @Table(name = "exam_enrollments")
 public class ExamEnrollmentEntity {

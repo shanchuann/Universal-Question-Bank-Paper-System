@@ -279,7 +279,7 @@ onMounted(fetchPapers)
   align-items: center;
   padding: 12px 20px;
   background: var(--line-bg-soft);
-  border-top: 1px solid var(--line-border);
+  border-top: none;
 }
 
 .action-group {
@@ -334,3 +334,4 @@ onMounted(fetchPapers)
   margin: 0 0 24px 0;
 }
 </style>
+

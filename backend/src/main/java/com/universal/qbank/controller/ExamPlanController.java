@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class ExamPlanController {
 
   @Autowired private ExamPlanService examPlanService;
-  
+
   @Autowired private UserRepository userRepository;
 
   /** 报名信息DTO，包含学生详细信息 */
@@ -33,7 +33,7 @@ public class ExamPlanController {
     public String avatarUrl;
     public String status;
     public String statusLabel;
-    
+
     public EnrollmentDTO(ExamEnrollmentEntity enrollment, UserEntity user) {
       this.id = enrollment.getId();
       this.studentId = enrollment.getStudentId();
@@ -46,15 +46,20 @@ public class ExamPlanController {
         this.studentName = enrollment.getStudentId();
       }
     }
-    
+
     private String getStatusLabel(String status) {
       if (status == null) return "未知";
       switch (status) {
-        case "ENROLLED": return "已报名";
-        case "EXEMPTED": return "免考";
-        case "ABSENT": return "缺考";
-        case "COMPLETED": return "已完成";
-        default: return status;
+        case "ENROLLED":
+          return "已报名";
+        case "EXEMPTED":
+          return "免考";
+        case "ABSENT":
+          return "缺考";
+        case "COMPLETED":
+          return "已完成";
+        default:
+          return status;
       }
     }
   }
@@ -75,10 +80,10 @@ public class ExamPlanController {
     }
     ExamPlanEntity plan = planOpt.get();
     List<String> classIds = examPlanService.getExamPlanClassIds(id);
-    return ResponseEntity.ok(Map.of(
-        "plan", plan,
-        "classIds", classIds
-    ));
+    return ResponseEntity.ok(
+        Map.of(
+            "plan", plan,
+            "classIds", classIds));
   }
 
   /** 创建考试计划 */
@@ -91,6 +96,9 @@ public class ExamPlanController {
     }
     plan.setExamType((String) request.getOrDefault("examType", "FORMAL"));
     plan.setDurationMins((Integer) request.getOrDefault("durationMins", 120));
+    if (request.get("maxAttempts") != null) {
+      plan.setMaxAttempts(Integer.valueOf(request.get("maxAttempts").toString()));
+    }
     if (request.get("passScore") != null) {
       plan.setPassScore(new java.math.BigDecimal(request.get("passScore").toString()));
     }
@@ -100,10 +108,10 @@ public class ExamPlanController {
     if (request.get("endTime") != null) {
       plan.setEndTime(java.time.OffsetDateTime.parse(request.get("endTime").toString()));
     }
-    
+
     @SuppressWarnings("unchecked")
     List<String> classIds = (List<String>) request.get("classIds");
-    
+
     ExamPlanEntity created = examPlanService.create(plan, classIds);
     return ResponseEntity.status(HttpStatus.CREATED).body(created);
   }
@@ -119,6 +127,9 @@ public class ExamPlanController {
     }
     plan.setExamType((String) request.getOrDefault("examType", "FORMAL"));
     plan.setDurationMins((Integer) request.getOrDefault("durationMins", 120));
+    if (request.get("maxAttempts") != null) {
+      plan.setMaxAttempts(Integer.valueOf(request.get("maxAttempts").toString()));
+    }
     if (request.get("passScore") != null) {
       plan.setPassScore(new java.math.BigDecimal(request.get("passScore").toString()));
     }
@@ -128,16 +139,16 @@ public class ExamPlanController {
     if (request.get("endTime") != null) {
       plan.setEndTime(java.time.OffsetDateTime.parse(request.get("endTime").toString()));
     }
-    
+
     ExamPlanEntity updated = examPlanService.update(id, plan);
-    
+
     // 更新班级关联
     @SuppressWarnings("unchecked")
     List<String> classIds = (List<String>) request.get("classIds");
     if (classIds != null) {
       examPlanService.saveExamPlanClasses(id, classIds);
     }
-    
+
     return ResponseEntity.ok(updated);
   }
 
@@ -159,12 +170,14 @@ public class ExamPlanController {
   @GetMapping("/{id}/enrollments")
   public ResponseEntity<List<EnrollmentDTO>> getEnrollments(@PathVariable String id) {
     List<ExamEnrollmentEntity> enrollments = examPlanService.getEnrollments(id);
-    List<EnrollmentDTO> result = enrollments.stream()
-        .map(enrollment -> {
-          UserEntity user = userRepository.findById(enrollment.getStudentId()).orElse(null);
-          return new EnrollmentDTO(enrollment, user);
-        })
-        .collect(Collectors.toList());
+    List<EnrollmentDTO> result =
+        enrollments.stream()
+            .map(
+                enrollment -> {
+                  UserEntity user = userRepository.findById(enrollment.getStudentId()).orElse(null);
+                  return new EnrollmentDTO(enrollment, user);
+                })
+            .collect(Collectors.toList());
     return ResponseEntity.ok(result);
   }
 
@@ -207,26 +220,28 @@ public class ExamPlanController {
     if (studentId == null) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid token");
     }
-    
+
     List<ExamEnrollmentEntity> enrollments = examPlanService.getStudentExams(studentId);
-    
+
     // 获取每个报名对应的考试计划详情
-    List<Map<String, Object>> result = enrollments.stream()
-        .map(enrollment -> {
-          Optional<ExamPlanEntity> planOpt = examPlanService.getById(enrollment.getExamPlanId());
-          if (planOpt.isPresent()) {
-            ExamPlanEntity plan = planOpt.get();
-            return Map.<String, Object>of(
-                "enrollmentId", enrollment.getId(),
-                "enrollmentStatus", enrollment.getStatus(),
-                "examPlan", plan
-            );
-          }
-          return null;
-        })
-        .filter(item -> item != null)
-        .collect(Collectors.toList());
-    
+    List<Map<String, Object>> result =
+        enrollments.stream()
+            .map(
+                enrollment -> {
+                  Optional<ExamPlanEntity> planOpt =
+                      examPlanService.getById(enrollment.getExamPlanId());
+                  if (planOpt.isPresent()) {
+                    ExamPlanEntity plan = planOpt.get();
+                    return Map.<String, Object>of(
+                        "enrollmentId", enrollment.getId(),
+                        "enrollmentStatus", enrollment.getStatus(),
+                        "examPlan", plan);
+                  }
+                  return null;
+                })
+            .filter(item -> item != null)
+            .collect(Collectors.toList());
+
     return ResponseEntity.ok(result);
   }
 

@@ -4,9 +4,7 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * 题目审核记录实体
- */
+/** 题目审核记录实体 */
 @Entity
 @Table(name = "question_reviews")
 public class QuestionReviewEntity {

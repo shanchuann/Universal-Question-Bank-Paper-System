@@ -1,6 +1,8 @@
 package com.universal.qbank.repository;
 
 import com.universal.qbank.entity.UserEntity;
+import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,4 +16,9 @@ public interface UserRepository extends JpaRepository<UserEntity, String> {
   Optional<UserEntity> findByEmail(String email);
 
   Page<UserEntity> findByRole(String role, Pageable pageable);
+
+  long countByRoleIn(List<String> roles);
+
+  long countByRoleInAndCreatedAtBetween(
+      List<String> roles, OffsetDateTime start, OffsetDateTime end);
 }

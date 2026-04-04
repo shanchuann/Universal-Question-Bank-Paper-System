@@ -136,7 +136,7 @@ onMounted(fetchExams)
                     :alt="exam.nickname || exam.username || ''"
                     @error="($event.target as HTMLImageElement).style.display = 'none'"
                   />
-                  <span v-else>{{ (exam.nickname || exam.username || exam.userId || 'U')[0].toUpperCase() }}</span>
+                  <span v-else>{{ (exam.nickname || exam.username || exam.userId || 'U').charAt(0).toUpperCase() }}</span>
                 </div>
                 <span>{{ exam.nickname || exam.username || exam.userId }}</span>
               </div>
@@ -351,7 +351,7 @@ onMounted(fetchExams)
   justify-content: flex-end;
   align-items: center;
   gap: 16px;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
   background: var(--line-bg);
 }
 

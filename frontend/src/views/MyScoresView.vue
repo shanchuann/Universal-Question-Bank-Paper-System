@@ -200,8 +200,8 @@ onMounted(() => {
 
 <style scoped>
 .my-scores-view {
-  padding: 24px;
-  max-width: 900px;
+  padding: 28px 24px;
+  max-width: 980px;
   margin: 0 auto;
 }
 
@@ -225,6 +225,11 @@ onMounted(() => {
 .content-card {
   padding: 24px;
   min-height: 400px;
+  border-radius: 16px;
+  border: 1px solid var(--line-border);
+  background:
+    radial-gradient(circle at top right, rgba(26, 115, 232, 0.06), transparent 40%),
+    var(--line-bg);
 }
 
 .loading-state {
@@ -293,16 +298,17 @@ onMounted(() => {
 }
 
 .score-card {
-  background: var(--line-bg);
+  background: color-mix(in srgb, var(--line-bg) 92%, white 8%);
   border: 1px solid var(--line-border);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 14px;
+  padding: 22px;
   transition: all 0.2s;
 }
 
 .score-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
   border-color: var(--line-primary);
+  transform: translateY(-1px);
 }
 
 .score-card.excellent {
@@ -389,7 +395,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding-top: 16px;
-  border-top: 1px solid var(--line-border);
+  border-top: 1px dashed var(--line-border);
 }
 
 .status-badge {
@@ -399,6 +405,7 @@ onMounted(() => {
   border-radius: 16px;
   font-size: 12px;
   font-weight: 500;
+  letter-spacing: 0.2px;
 }
 
 .status-badge.graded {
@@ -462,9 +469,9 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   gap: 16px;
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line-border);
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: none;
 }
 
 .page-info {
@@ -487,3 +494,4 @@ onMounted(() => {
   }
 }
 </style>
+

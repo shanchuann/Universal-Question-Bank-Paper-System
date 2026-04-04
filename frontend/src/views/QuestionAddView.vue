@@ -767,10 +767,19 @@ label {
 }
 
 .form-actions {
-  margin-top: 40px;
+  margin-top: 32px;
   display: flex;
-  gap: 16px;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 16px 0 0;
+  border-top: none;
+}
+
+.form-actions .google-btn {
+  width: 100%;
+  height: 44px;
+  padding: 0 20px;
 }
 
 /* Toast 提示样式 */
@@ -841,3 +850,4 @@ label {
     to { opacity: 1; transform: translateY(0); }
 }
 </style>
+

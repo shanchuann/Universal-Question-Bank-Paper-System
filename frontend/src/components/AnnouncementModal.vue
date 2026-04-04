@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { X, Megaphone, ChevronLeft, ChevronRight, Clock, Eye, AlertCircle, Info, AlertTriangle } from 'lucide-vue-next'
+import { ref, computed } from 'vue'
+import { X, Megaphone, ChevronLeft, ChevronRight, Clock, Eye, AlertCircle, Info } from 'lucide-vue-next'
 import axios from 'axios'
 
 interface Announcement {
@@ -17,8 +17,13 @@ const announcements = ref<Announcement[]>([])
 const currentIndex = ref(0)
 const loading = ref(false)
 
-// 存储已读公告ID的 localStorage key
-const READ_ANNOUNCEMENTS_KEY = 'read_announcements'
+const getCurrentUserId = () => {
+  const token = localStorage.getItem('token') || ''
+  const prefix = 'dummy-jwt-token-'
+  return token.startsWith(prefix) ? token.slice(prefix.length) : 'anonymous'
+}
+
+const getReadAnnouncementsKey = () => `read_announcements_${getCurrentUserId()}`
 
 const currentAnnouncement = computed(() => {
   return announcements.value[currentIndex.value] || null
@@ -85,9 +90,9 @@ const nextAnnouncement = () => {
 
 const closeModal = () => {
   // 记录所有公告为已读
-  const readIds = JSON.parse(localStorage.getItem(READ_ANNOUNCEMENTS_KEY) || '[]')
+  const readIds = JSON.parse(localStorage.getItem(getReadAnnouncementsKey()) || '[]')
   const newReadIds = [...new Set([...readIds, ...announcements.value.map(a => a.id)])]
-  localStorage.setItem(READ_ANNOUNCEMENTS_KEY, JSON.stringify(newReadIds))
+  localStorage.setItem(getReadAnnouncementsKey(), JSON.stringify(newReadIds))
   
   visible.value = false
 }
@@ -105,7 +110,7 @@ const fetchAnnouncements = async () => {
     const allAnnouncements = response.data || []
     
     // 过滤出未读的公告
-    const readIds = JSON.parse(localStorage.getItem(READ_ANNOUNCEMENTS_KEY) || '[]')
+    const readIds = JSON.parse(localStorage.getItem(getReadAnnouncementsKey()) || '[]')
     const unreadAnnouncements = allAnnouncements.filter(
       (a: Announcement) => !readIds.includes(a.id)
     )
@@ -211,7 +216,7 @@ defineExpose({ checkAnnouncements })
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 2147483640;
 }
 
 .announcement-modal {
@@ -222,6 +227,8 @@ defineExpose({ checkAnnouncements })
   max-height: 80vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 2147483641;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   animation: modalSlideIn 0.3s ease-out;
 }
@@ -363,8 +370,8 @@ defineExpose({ checkAnnouncements })
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  border-top: 1px solid var(--line-border);
-  background: var(--line-bg-soft);
+  border-top: none;
+  background: transparent;
   border-radius: 0 0 12px 12px;
 }
 
@@ -414,3 +421,4 @@ defineExpose({ checkAnnouncements })
   background: #1557b0;
 }
 </style>
+

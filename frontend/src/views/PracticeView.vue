@@ -5,7 +5,7 @@ import axios from 'axios'
 import 'katex/dist/katex.min.css';
 import katex from 'katex';
 import { authState } from '@/states/authState'
-import { Flag, Check, Square, CheckSquare } from 'lucide-vue-next'
+import { Flag, Square, CheckSquare } from 'lucide-vue-next'
 
 interface Question {
   id: string

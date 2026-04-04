@@ -677,7 +677,7 @@ const resetDragState = () => {
   gap: 16px;
   margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
 }
 
 .loading-state, .error-state {
@@ -863,7 +863,7 @@ const resetDragState = () => {
   padding: 16px;
   display: flex;
   justify-content: flex-end;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
 }
 
 .pagination-controls {
@@ -871,7 +871,7 @@ const resetDragState = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
 }
 
 .pagination-btn {
@@ -987,7 +987,7 @@ const resetDragState = () => {
 
 .modal-actions {
   padding: 16px 24px;
-  border-top: 1px solid var(--line-border);
+  border-top: none;
   display: flex;
   justify-content: flex-end;
   gap: 16px;
@@ -1004,3 +1004,4 @@ const resetDragState = () => {
   to { opacity: 1; }
 }
 </style>
+

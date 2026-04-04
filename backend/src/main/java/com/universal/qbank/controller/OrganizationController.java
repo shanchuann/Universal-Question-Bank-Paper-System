@@ -85,7 +85,8 @@ public class OrganizationController {
 
   /** 通过邀请码加入组织 (学生) */
   @PostMapping("/join")
-  public ResponseEntity<?> joinByInviteCode(@RequestBody Map<String, String> request,
+  public ResponseEntity<?> joinByInviteCode(
+      @RequestBody Map<String, String> request,
       @RequestHeader(value = "Authorization", required = false) String token) {
     String inviteCode = request.get("inviteCode");
     if (inviteCode == null || inviteCode.trim().isEmpty()) {
@@ -93,19 +94,19 @@ public class OrganizationController {
       error.put("message", "请输入班级识别码");
       return ResponseEntity.badRequest().body(error);
     }
-    
+
     // 从Authorization token中获取userId
     String userId = getUserIdFromToken(token);
-    
+
     try {
       OrganizationEntity org = organizationService.joinByInviteCode(userId, inviteCode.trim());
-      
+
       // 自动将学生报名到班级关联的已发布考试
       examPlanService.enrollStudentToClassExams(userId, org.getId());
-      
+
       // 初始化学生统计记录（确保出现在排行榜）
       studentStatsService.initializeStudentStats(userId);
-      
+
       return ResponseEntity.ok(org);
     } catch (RuntimeException e) {
       Map<String, String> error = new HashMap<>();

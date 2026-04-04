@@ -3,9 +3,7 @@ package com.universal.qbank.entity;
 import jakarta.persistence.*;
 import java.util.UUID;
 
-/**
- * 权限点实体
- */
+/** 权限点实体 */
 @Entity
 @Table(name = "permissions")
 public class PermissionEntity {

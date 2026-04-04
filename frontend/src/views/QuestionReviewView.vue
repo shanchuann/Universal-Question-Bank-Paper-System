@@ -963,7 +963,7 @@ const emptyText = computed(() => {
 textarea.google-input { resize: vertical; min-height: 80px; }
 select.google-input { cursor: pointer; }
 
-.form-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 20px 24px; border-top: 1px solid var(--line-border); background: var(--line-bg-soft); margin: 0 -24px -24px; border-radius: 0 0 16px 16px; }
+.form-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 20px 24px; border-top: none; background: transparent; margin: 0 -24px -24px; border-radius: 0 0 16px 16px; }
 .modal-content form .form-actions { margin: 0; padding: 24px 0 0; border-top: none; background: transparent; border-radius: 0; }
 
 .google-btn { padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; min-width: 100px; }
@@ -1073,7 +1073,7 @@ select.google-input { cursor: pointer; }
 .fill-answer-row { display: flex; align-items: center; gap: 12px; }
 .fill-label { width: 48px; font-size: 13px; color: var(--line-text-secondary); font-weight: 500; flex-shrink: 0; }
 
-.edit-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 20px 24px; border-top: 1px solid var(--line-border); background: var(--line-bg-soft); border-radius: 0 0 16px 16px; }
+.edit-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 20px 24px; border-top: none; background: var(--line-bg-soft); border-radius: 0 0 16px 16px; }
 .text-btn { background: transparent; color: var(--line-text-secondary); border: 1px solid var(--line-border); }
 .text-btn:hover { background: var(--line-bg); border-color: var(--line-text-secondary); color: var(--line-text); }
 .btn-spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
@@ -1085,3 +1085,4 @@ select.google-input { cursor: pointer; }
   .edit-row { grid-template-columns: 1fr; }
 }
 </style>
+

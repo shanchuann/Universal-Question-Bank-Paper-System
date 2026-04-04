@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { authState, type UserRole } from '@/states/authState'
 import { ChevronDown, LogOut } from 'lucide-vue-next'
+import { useNotifications } from '@/composables/useNotifications'
 import GlobalToast from '@/components/GlobalToast.vue'
 import AnnouncementModal from '@/components/AnnouncementModal.vue'
 import Breadcrumb from '@/components/Breadcrumb.vue'
@@ -13,22 +14,24 @@ const route = useRoute()
 
 // 站点名称
 const siteName = ref('UQBank')
+const siteLogoUrl = ref('')
+const copyrightText = ref('© UQBank')
 
 // 公告弹窗引用
 const announcementModalRef = ref<InstanceType<typeof AnnouncementModal> | null>(null)
+let pollingTimer: ReturnType<typeof setInterval> | null = null
+let announcementCheckTick = 0
+const { unreadCount, refreshUnreadCount } = useNotifications()
 
-const fetchSiteName = async () => {
+const fetchSiteSettings = async () => {
   try {
-    const token = localStorage.getItem('token')
-    if (token) {
-      const response = await axios.get('/api/admin/system/settings', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (response.data.siteName) {
-        siteName.value = response.data.siteName
-        document.title = response.data.siteName
-      }
+    const response = await axios.get('/api/system/public-settings')
+    if (response.data.siteName) {
+      siteName.value = response.data.siteName
+      document.title = response.data.siteName
     }
+    siteLogoUrl.value = response.data.siteLogoUrl || ''
+    copyrightText.value = response.data.copyrightText || '© UQBank'
   } catch (error) {
     // 如果获取失败，使用默认值
   }
@@ -41,12 +44,40 @@ const checkAnnouncements = () => {
   }
 }
 
+const startNotificationPolling = () => {
+  if (pollingTimer) {
+    clearInterval(pollingTimer)
+  }
+  announcementCheckTick = 0
+  pollingTimer = setInterval(() => {
+    refreshUnreadCount()
+    announcementCheckTick += 1
+    if (announcementCheckTick >= 4) {
+      checkAnnouncements()
+      announcementCheckTick = 0
+    }
+  }, 30000)
+}
+
+const stopNotificationPolling = () => {
+  if (pollingTimer) {
+    clearInterval(pollingTimer)
+    pollingTimer = null
+  }
+}
+
+onUnmounted(() => {
+  stopNotificationPolling()
+})
+
 onMounted(() => {
+  fetchSiteSettings()
   if (authState.isAuthenticated) {
     authState.fetchUser()
-    fetchSiteName()
     // 登录后检查公告
     checkAnnouncements()
+    refreshUnreadCount()
+    startNotificationPolling()
   }
 })
 
@@ -56,7 +87,12 @@ watch(() => authState.isAuthenticated, (isAuth) => {
     // 延迟一点点确保路由跳转完成
     setTimeout(() => {
       checkAnnouncements()
+      refreshUnreadCount()
+      startNotificationPolling()
     }, 500)
+  } else {
+    unreadCount.value = 0
+    stopNotificationPolling()
   }
 })
 
@@ -78,6 +114,7 @@ const navGroups = computed<NavGroup[]>(() => {
 
   const groups: NavGroup[] = [
     { to: '/', label: '首页' },
+    ...(!isAdmin ? [{ to: '/messages', label: '消息中心' }] : []),
     // 教师专属业务菜单
     {
       label: '题库管理',
@@ -207,19 +244,39 @@ const isRouteActive = (path: string) => {
 const isExactActive = (path: string) => {
   return route.path === path
 }
+
+const breadcrumbHiddenRoutes = ['/login', '/register', '/forgot-password']
+const authEntryRoutes = ['/login', '/register', '/forgot-password']
+const showBreadcrumb = computed(() => {
+  if (!authState.isAuthenticated) return false
+  if (route.path === '/') return false
+  return !breadcrumbHiddenRoutes.includes(route.path)
+})
+
+const showGuestActions = computed(() => {
+  if (authState.isAuthenticated) return false
+  return !authEntryRoutes.includes(route.path)
+})
+
+const showUserProfileActions = computed(() => {
+  if (!authState.isAuthenticated) return false
+  return !authEntryRoutes.includes(route.path)
+})
+
+const showHeaderActions = computed(() => showGuestActions.value || showUserProfileActions.value)
 </script>
 
 <template>
   <div class="app-background">
     <div class="interactive-circle circle-1"></div>
     <div class="interactive-circle circle-2"></div>
-    <div class="grid-decoration"></div>
   </div>
 
   <header class="line-header">
     <div class="header-content">
       <!-- Logo -->
       <div class="logo" @click="$router.push('/')">
+        <img v-if="siteLogoUrl" :src="siteLogoUrl" alt="site-logo" class="logo-image" />
         <span class="logo-text">{{ siteName }}</span>
       </div>
 
@@ -230,6 +287,11 @@ const isExactActive = (path: string) => {
             <!-- 单个链接 -->
             <div v-if="group.to" class="nav-item" :class="{ 'active-nav': isRouteActive(group.to) }" @click="navigateTo(group.to)">
               {{ group.label }}
+              <span
+                v-if="group.to === '/messages' && unreadCount > 0"
+                class="nav-dot"
+                aria-label="有未读消息"
+              ></span>
             </div>
             
             <!-- 下拉菜单 -->
@@ -265,12 +327,12 @@ const isExactActive = (path: string) => {
       </nav>
 
       <!-- User Actions -->
-      <div class="user-actions">
-        <template v-if="!authState.isAuthenticated">
+      <div v-if="showHeaderActions" class="user-actions">
+        <template v-if="showGuestActions">
           <button class="line-btn text-btn" @click="$router.push('/login')">登录</button>
           <button class="line-btn primary-btn" @click="$router.push('/register')">注册</button>
         </template>
-        <template v-else>
+        <template v-else-if="showUserProfileActions">
           <div class="user-profile">
             <div
               class="avatar"
@@ -297,11 +359,13 @@ const isExactActive = (path: string) => {
   </header>
 
   <!-- 面包屑导航 -->
-  <Breadcrumb v-if="authState.isAuthenticated" />
+  <Breadcrumb v-if="showBreadcrumb" />
 
-  <main class="main-container">
+  <main class="main-container" :class="{ 'with-breadcrumb': showBreadcrumb }">
     <RouterView />
   </main>
+
+  <footer class="app-footer">{{ copyrightText }}</footer>
 
   <!-- 全局 Toast 通知 -->
   <GlobalToast />
@@ -322,16 +386,6 @@ const isExactActive = (path: string) => {
   background-color: var(--line-bg-soft);
   overflow: hidden;
   pointer-events: none;
-}
-
-.grid-decoration {
-  position: absolute;
-  inset: 0;
-  background-image: 
-    linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
 }
 
 .interactive-circle {
@@ -381,7 +435,9 @@ const isExactActive = (path: string) => {
   -webkit-backdrop-filter: blur(12px) saturate(180%);
   border-bottom: 1px solid rgba(226, 232, 240, 0.6);
   height: 64px;
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
   top: 0;
   z-index: 1000;
   transition: all 0.3s ease;
@@ -411,6 +467,15 @@ const isExactActive = (path: string) => {
   white-space: nowrap;
   letter-spacing: -0.05em;
   gap: 2px;
+}
+
+.logo-image {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--line-border);
+  background: #fff;
 }
 
 .logo-text { 
@@ -443,6 +508,7 @@ const isExactActive = (path: string) => {
   align-items: center;
   gap: 6px;
   border: 1px solid transparent;
+  position: relative;
 }
 
 .nav-item:hover {
@@ -455,6 +521,18 @@ const isExactActive = (path: string) => {
   background-color: rgba(15, 23, 42, 0.06);
   color: var(--line-primary);
   font-weight: 600;
+}
+
+.nav-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
 }
 
 .nav-dropdown {
@@ -601,9 +679,19 @@ const isExactActive = (path: string) => {
 .main-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 32px 24px;
+  padding: 96px 24px 32px;
   position: relative;
-  z-index: 1;
+}
+
+.main-container.with-breadcrumb {
+  padding-top: 136px;
+}
+
+.app-footer {
+  text-align: center;
+  color: var(--line-text-secondary);
+  font-size: 12px;
+  padding: 12px 16px 18px;
 }
 
 @media (max-width: 1024px) {

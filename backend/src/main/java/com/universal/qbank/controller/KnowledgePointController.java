@@ -5,9 +5,9 @@ import com.universal.qbank.entity.UserEntity;
 import com.universal.qbank.repository.KnowledgePointRepository;
 import com.universal.qbank.service.UserService;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -41,7 +41,8 @@ public class KnowledgePointController {
       return true; // fallback admin
     }
     Optional<UserEntity> user = userService.getUserById(userId);
-    return user.map(u -> "TEACHER".equalsIgnoreCase(u.getRole()) || "ADMIN".equalsIgnoreCase(u.getRole()))
+    return user.map(
+            u -> "TEACHER".equalsIgnoreCase(u.getRole()) || "ADMIN".equalsIgnoreCase(u.getRole()))
         .orElse(false);
   }
 

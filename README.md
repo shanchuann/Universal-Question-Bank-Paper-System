@@ -47,6 +47,9 @@ cd backend
 ./gradlew test
 ```
 
+提示：数据库与 SMTP 等敏感配置建议放在项目根目录 `.env`（已被 `.gitignore` 忽略），
+后端配置通过 `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`SMTP_*` 等环境变量读取。
+
 ### Frontend
 
 ```bash
