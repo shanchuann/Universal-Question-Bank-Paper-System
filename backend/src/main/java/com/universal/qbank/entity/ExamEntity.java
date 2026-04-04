@@ -36,6 +36,9 @@ public class ExamEntity {
   // 是否已发送成绩通知邮件
   private Boolean scoreNotified = false;
 
+  // 是否启用 AI 自动阅卷（从考试计划复制）
+  private Boolean aiAutoGradingEnabled = false;
+
   @PrePersist
   public void prePersist() {
     if (this.startTime == null) {
@@ -129,5 +132,13 @@ public class ExamEntity {
 
   public void setScoreNotified(Boolean scoreNotified) {
     this.scoreNotified = scoreNotified;
+  }
+
+  public Boolean getAiAutoGradingEnabled() {
+    return aiAutoGradingEnabled;
+  }
+
+  public void setAiAutoGradingEnabled(Boolean aiAutoGradingEnabled) {
+    this.aiAutoGradingEnabled = aiAutoGradingEnabled;
   }
 }

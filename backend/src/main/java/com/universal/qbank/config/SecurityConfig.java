@@ -51,6 +51,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/api/notifications/**", "/api/system/**")
                     .permitAll()
+                    .requestMatchers("/api/ai/**")
+                    .permitAll()
                     .requestMatchers("/api/roles/**", "/api/permissions/**", "/api/users/**")
                     .permitAll()
                     .requestMatchers("/api/universities/**")

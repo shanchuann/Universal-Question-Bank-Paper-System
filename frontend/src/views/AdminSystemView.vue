@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue'
 import axios from 'axios'
-import { Settings, Power, Clock, Shield, Bell, Mail, Upload, Download, Save, RefreshCw } from 'lucide-vue-next'
+import { Settings, Power, Clock, Shield, Bell, Mail, Upload, Download, Save, RefreshCw, Bot } from 'lucide-vue-next'
 import { useToast } from '@/composables/useToast'
+import GoogleSelect from '@/components/GoogleSelect.vue'
 
 const { showToast } = useToast()
 
@@ -21,6 +22,11 @@ interface SystemSettings {
   examAutoSaveInterval: number
   showLeaderboard: boolean
   enableNotifications: boolean
+  aiEnabled: boolean
+  aiAssistantEnabled: boolean
+  aiAutoGradingEnabled: boolean
+  aiAutoStartOllama: boolean
+  aiModel: string
   systemEmail: string
   siteName: string
   siteDescription: string
@@ -31,6 +37,7 @@ interface SystemSettings {
 const loading = ref(false)
 const saving = ref(false)
 const activeSection = ref('general')
+const aiModelOptions = ref<Array<{ label: string; value: string | number }>>([])
 
 // 确认弹窗
 const confirmDialog = reactive({
@@ -71,6 +78,11 @@ const settings = reactive<SystemSettings>({
   examAutoSaveInterval: 60,
   showLeaderboard: true,
   enableNotifications: true,
+  aiEnabled: false,
+  aiAssistantEnabled: true,
+  aiAutoGradingEnabled: false,
+  aiAutoStartOllama: true,
+  aiModel: 'gemma4',
   systemEmail: 'admin@example.com',
   siteName: 'UQBank 题库系统',
   siteDescription: '通用题库与组卷系统',
@@ -82,6 +94,7 @@ const sections = [
   { id: 'general', label: '基本设置', icon: Settings },
   { id: 'security', label: '安全设置', icon: Shield },
   { id: 'exam', label: '考试设置', icon: Clock },
+  { id: 'ai', label: 'AI设置', icon: Bot },
   { id: 'upload', label: '上传设置', icon: Upload },
   { id: 'notification', label: '通知设置', icon: Bell }
 ]
@@ -99,6 +112,24 @@ const fetchSettings = async () => {
     showToast({ message: '加载设置失败', type: 'error' })
   } finally {
     loading.value = false
+  }
+}
+
+const fetchAiModels = async () => {
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.get('/api/admin/ai/models', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    const models: string[] = response.data?.models || []
+    const currentModel: string = response.data?.currentModel || settings.aiModel || 'gemma4'
+    settings.aiModel = currentModel
+
+    const list = Array.from(new Set([currentModel, ...models].filter(Boolean)))
+    aiModelOptions.value = list.map(model => ({ label: model, value: model }))
+  } catch (error) {
+    aiModelOptions.value = [{ label: settings.aiModel || 'gemma4', value: settings.aiModel || 'gemma4' }]
+    showToast({ message: '读取模型列表失败', type: 'warning' })
   }
 }
 
@@ -181,6 +212,7 @@ const exportSettings = () => {
 
 onMounted(() => {
   fetchSettings()
+  fetchAiModels()
 })
 </script>
 
@@ -414,6 +446,70 @@ onMounted(() => {
             </div>
           </div>
 
+          <!-- AI 设置 -->
+          <div v-show="activeSection === 'ai'" class="settings-section">
+            <div class="setting-card">
+              <div class="setting-item">
+                <div class="setting-info">
+                  <h3>启用 AI 功能</h3>
+                  <p>全局 AI 开关，关闭后教师/学生都无法发起 AI 问答和 AI 评分</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" v-model="settings.aiEnabled">
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="setting-item">
+                <div class="setting-info">
+                  <h3>启用悬浮学习助手</h3>
+                  <p>为学生和教师显示可拖动圆形 AI 入口（管理员不显示）</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" v-model="settings.aiAssistantEnabled">
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="setting-item">
+                <div class="setting-info">
+                  <h3>启用 AI 自动阅卷</h3>
+                  <p>仅对考试计划中“开启 AI 自动阅卷”的试卷生效</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" v-model="settings.aiAutoGradingEnabled">
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="setting-item">
+                <div class="setting-info">
+                  <h3>后端启动时自动启动 Ollama</h3>
+                  <p>当 AI 开启时，后端启动会尝试执行 ollama serve（需本机已安装 ollama）</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" v-model="settings.aiAutoStartOllama">
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="setting-item">
+                <div class="setting-info">
+                  <h3>AI 模型</h3>
+                  <p>从 Ollama 自动读取模型列表并选择默认模型</p>
+                </div>
+                <div class="model-select-row">
+                  <GoogleSelect
+                    v-model="settings.aiModel"
+                    :options="aiModelOptions"
+                    placeholder="请选择模型"
+                  />
+                  <button class="google-btn text-btn" type="button" @click="fetchAiModels">刷新模型</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- 上传设置 -->
           <div v-show="activeSection === 'upload'" class="settings-section">
             <div class="setting-card">
@@ -616,6 +712,14 @@ onMounted(() => {
 /* Settings Content */
 .settings-content {
   min-height: 500px;
+}
+
+.model-select-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 10px;
+  width: 100%;
+  max-width: 460px;
 }
 
 .settings-section {

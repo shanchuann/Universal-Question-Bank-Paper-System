@@ -7,6 +7,7 @@ import { useNotifications } from '@/composables/useNotifications'
 import GlobalToast from '@/components/GlobalToast.vue'
 import AnnouncementModal from '@/components/AnnouncementModal.vue'
 import Breadcrumb from '@/components/Breadcrumb.vue'
+import AiFloatingAssistant from '@/components/AiFloatingAssistant.vue'
 import axios from 'axios'
 
 const router = useRouter()
@@ -16,6 +17,8 @@ const route = useRoute()
 const siteName = ref('UQBank')
 const siteLogoUrl = ref('')
 const copyrightText = ref('© UQBank')
+const aiEnabled = ref(false)
+const aiAssistantEnabled = ref(false)
 
 // 公告弹窗引用
 const announcementModalRef = ref<InstanceType<typeof AnnouncementModal> | null>(null)
@@ -32,6 +35,8 @@ const fetchSiteSettings = async () => {
     }
     siteLogoUrl.value = response.data.siteLogoUrl || ''
     copyrightText.value = response.data.copyrightText || '© UQBank'
+    aiEnabled.value = Boolean(response.data.aiEnabled)
+    aiAssistantEnabled.value = Boolean(response.data.aiAssistantEnabled)
   } catch (error) {
     // 如果获取失败，使用默认值
   }
@@ -264,6 +269,16 @@ const showUserProfileActions = computed(() => {
 })
 
 const showHeaderActions = computed(() => showGuestActions.value || showUserProfileActions.value)
+
+const floatingAiMode = computed<'teacher' | 'student'>(() => {
+  return authState.user.role === 'TEACHER' ? 'teacher' : 'student'
+})
+
+const showFloatingAi = computed(() => {
+  if (!authState.isAuthenticated) return false
+  if (authState.user.role === 'ADMIN') return false
+  return aiEnabled.value && aiAssistantEnabled.value
+})
 </script>
 
 <template>
@@ -372,6 +387,11 @@ const showHeaderActions = computed(() => showGuestActions.value || showUserProfi
   
   <!-- 公告弹窗 -->
   <AnnouncementModal ref="announcementModalRef" />
+
+  <AiFloatingAssistant
+    v-if="showFloatingAi"
+    :mode="floatingAiMode"
+  />
 </template>
 
 <style scoped>

@@ -53,6 +53,9 @@ public class ExamPlanEntity {
   /** 选项乱序 */
   private Boolean shuffleOptions = false;
 
+  /** 发布后是否启用 AI 自动阅卷（主观题） */
+  private Boolean aiAutoGradingEnabled = false;
+
   /** 创建人 */
   private String createdBy;
 
@@ -183,6 +186,14 @@ public class ExamPlanEntity {
 
   public void setShuffleOptions(Boolean shuffleOptions) {
     this.shuffleOptions = shuffleOptions;
+  }
+
+  public Boolean getAiAutoGradingEnabled() {
+    return aiAutoGradingEnabled;
+  }
+
+  public void setAiAutoGradingEnabled(Boolean aiAutoGradingEnabled) {
+    this.aiAutoGradingEnabled = aiAutoGradingEnabled;
   }
 
   public String getCreatedBy() {

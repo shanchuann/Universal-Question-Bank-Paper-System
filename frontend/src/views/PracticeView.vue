@@ -306,6 +306,28 @@ const isFlagged = (qId: string) => {
     return flaggedQuestions.value.has(qId)
 }
 
+const buildQuestionDragPayload = (question: Question) => {
+  const userRaw = answers.value[question.id]
+  const userAnswer = Array.isArray(userRaw) ? userRaw.join(', ') : (userRaw || '')
+  return {
+    source: 'practice',
+    questionId: question.id,
+    type: question.type,
+    stem: question.stem,
+    userAnswer: userAnswer || '(未作答)',
+    reference: question.options?.length ? question.options.join('\n') : '(无)'
+  }
+}
+
+const onQuestionDragStart = (event: DragEvent, question: Question) => {
+  const dt = event.dataTransfer
+  if (!dt) return
+  dt.effectAllowed = 'copy'
+  const payload = buildQuestionDragPayload(question)
+  dt.setData('application/x-uqbank-question', JSON.stringify(payload))
+  dt.setData('text/plain', `题目ID: ${payload.questionId}\n题型: ${payload.type}\n题干: ${payload.stem}\n学生答案: ${payload.userAnswer}`)
+}
+
 onMounted(() => {
     if (paperId.value) {
         startPractice()
@@ -365,7 +387,13 @@ onMounted(() => {
           </div>
           
           <template v-for="(itemData, index) in section?.items" :key="index">
-            <div v-if="itemData.item.type === 'QUESTION' && itemData.item.data" class="google-card question-card" :class="submitted ? getQuestionStatus(itemData.item.data.id) : ''">
+            <div
+              v-if="itemData.item.type === 'QUESTION' && itemData.item.data"
+              class="google-card question-card"
+              :class="submitted ? getQuestionStatus(itemData.item.data.id) : ''"
+              draggable="true"
+              @dragstart="onQuestionDragStart($event, itemData.item.data)"
+            >
               <div class="question-header">
                 <div class="q-info">
                     <span class="q-number">第 {{ itemData.questionNumber }} 题</span>

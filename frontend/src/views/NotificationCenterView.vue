@@ -59,6 +59,8 @@ const recipients = ref<RecipientItem[]>([])
 const activePeerId = ref('')
 const messageContent = ref('')
 const chatScrollRef = ref<HTMLElement | null>(null)
+const expireNotice = ref('')
+const MESSAGE_TTL_MS = 3 * 24 * 60 * 60 * 1000
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('token')
@@ -103,6 +105,20 @@ const sidebarItems = computed<SidebarItem[]>(() => {
 
 const activeConversation = computed(() => {
   return sidebarItems.value.find(item => item.peerId === activePeerId.value)
+})
+
+const visibleMessages = computed(() => {
+  const now = Date.now()
+  return messages.value.map(item => {
+    const ts = new Date(item.createdAt || 0).getTime()
+    if (ts > 0 && now - ts > MESSAGE_TTL_MS) {
+      return {
+        ...item,
+        content: '消息已过期'
+      }
+    }
+    return item
+  })
 })
 
 const formatTime = (value?: string) => {
@@ -174,6 +190,12 @@ const fetchMessages = async (peerId: string) => {
       headers: getAuthHeaders()
     })
     messages.value = response.data || []
+    expireNotice.value = messages.value.some(item => {
+      const ts = new Date(item.createdAt || 0).getTime()
+      return ts > 0 && Date.now() - ts > MESSAGE_TTL_MS
+    })
+      ? '该会话存在超过3天的历史消息，已显示为“消息已过期”。'
+      : ''
     await markConversationRead(peerId)
     await scrollToBottom()
   } catch (error: any) {
@@ -265,6 +287,8 @@ onMounted(async () => {
       </div>
     </div>
 
+    <div class="retention-tip">会话消息仅保留3天，超过后提示为“消息已过期”。</div>
+
     <div class="wechat-layout line-card">
       <aside class="conversation-sidebar">
         <div class="sidebar-title">
@@ -307,17 +331,19 @@ onMounted(async () => {
         </div>
 
         <div ref="chatScrollRef" class="chat-body">
+          <div v-if="expireNotice" class="expire-notice">{{ expireNotice }}</div>
           <div v-if="!activePeerId" class="empty">请先从左侧选择联系人</div>
           <div v-else-if="loadingMessages" class="loading">加载消息中...</div>
           <div v-else-if="messages.length === 0" class="empty">暂无消息，发送第一条开始沟通</div>
 
           <div v-else class="message-stream">
             <div
-              v-for="item in messages"
+              v-for="item in visibleMessages"
               :key="item.id"
               class="bubble-row"
               :class="{ mine: isMyMessage(item) }"
             >
+              <div class="sender-dot">{{ isMyMessage(item) ? '你' : '对方' }}</div>
               <div class="bubble">
                 <p>{{ item.content }}</p>
                 <span class="meta">{{ formatTime(item.createdAt) }}</span>
@@ -347,6 +373,12 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.retention-tip {
+  font-size: 12px;
+  color: #6b7280;
+  padding: 0 2px;
 }
 
 .page-header {
@@ -492,7 +524,7 @@ onMounted(async () => {
 .chat-main {
   display: grid;
   grid-template-rows: auto 1fr auto;
-  background: var(--line-bg-soft);
+  background: #ffffff;
 }
 
 .chat-head {
@@ -501,8 +533,8 @@ onMounted(async () => {
   justify-content: space-between;
   gap: 14px;
   padding: 14px 18px;
-  border-bottom: 1px solid var(--line-border);
-  background: var(--line-bg);
+  border-bottom: 1px solid #ececf1;
+  background: #f7f7f8;
 }
 
 .chat-head .title {
@@ -519,6 +551,17 @@ onMounted(async () => {
 .chat-body {
   padding: 14px;
   overflow: auto;
+  background: #ffffff;
+}
+
+.expire-notice {
+  margin-bottom: 10px;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  font-size: 12px;
+  padding: 8px 10px;
 }
 
 .message-stream {
@@ -530,24 +573,44 @@ onMounted(async () => {
 .bubble-row {
   display: flex;
   justify-content: flex-start;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .bubble-row.mine {
   justify-content: flex-end;
 }
 
+.sender-dot {
+  min-width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #10a37f;
+  color: white;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bubble-row.mine .sender-dot {
+  order: 2;
+  background: #64748b;
+}
+
 .bubble {
   max-width: 62%;
-  border-radius: 14px;
-  background: var(--line-bg);
-  border: 1px solid var(--line-border);
+  border-radius: 12px;
+  background: #10a37f;
+  border: 1px solid #10a37f;
+  color: #ffffff;
   padding: 10px 12px;
 }
 
 .bubble-row.mine .bubble {
-  background: var(--line-primary);
-  border-color: var(--line-primary);
-  color: white;
+  background: #f7f7f8;
+  border-color: #ececf1;
+  color: #111827;
 }
 
 .bubble p {
@@ -560,17 +623,17 @@ onMounted(async () => {
   display: inline-block;
   margin-top: 6px;
   font-size: 11px;
-  color: var(--line-text-secondary);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .bubble-row.mine .meta {
-  color: rgba(255, 255, 255, 0.75);
+  color: #6b7280;
 }
 
 .chat-composer {
   border-top: none;
   padding: 12px 14px;
-  background: var(--line-bg);
+  background: #f7f7f8;
 }
 
 .send-btn {

@@ -152,7 +152,7 @@
         <div class="modal-body" v-if="selectedQuestion">
           <div class="detail-section">
             <label>题干：</label>
-            <div class="detail-value stem-content" v-html="selectedQuestion.stem"></div>
+            <div class="detail-value stem-content" v-html="renderHtml(selectedQuestion.stem)"></div>
           </div>
           <div class="detail-row">
             <div class="detail-section">
@@ -171,7 +171,7 @@
             <div class="options-list">
               <div v-for="(opt, idx) in selectedQuestion.options" :key="idx" class="option-item">
                 <span class="option-label">{{ String.fromCharCode(65 + idx) }}.</span>
-                <span class="option-content" v-html="opt.text || ''"></span>
+                <span class="option-content" v-html="renderHtml(opt.text || '')"></span>
               </div>
             </div>
           </div>
@@ -181,7 +181,7 @@
           </div>
           <div class="detail-section" v-if="selectedQuestion.analysis">
             <label>解析：</label>
-            <div class="detail-value analysis-content" v-html="selectedQuestion.analysis"></div>
+            <div class="detail-value analysis-content" v-html="renderHtml(selectedQuestion.analysis)"></div>
           </div>
         </div>
         <div class="modal-body" v-else>
@@ -301,11 +301,30 @@ const getDifficultyClass = (difficulty?: string) => {
 // Format answer for display
 const formatAnswer = (answerSchema: any) => {
   if (!answerSchema) return '无'
-  if (typeof answerSchema === 'string') return answerSchema
-  if (answerSchema.correctAnswer) return answerSchema.correctAnswer
-  if (answerSchema.correctAnswers) return answerSchema.correctAnswers.join(', ')
-  if (Array.isArray(answerSchema)) return answerSchema.join(', ')
-  return JSON.stringify(answerSchema)
+  if (typeof answerSchema === 'string') return stripHtml(answerSchema)
+  if (answerSchema.correctAnswer) return stripHtml(answerSchema.correctAnswer)
+  if (answerSchema.correctAnswers) return answerSchema.correctAnswers.map((v: string) => stripHtml(v)).join(', ')
+  if (Array.isArray(answerSchema)) return answerSchema.map((v: string) => stripHtml(v)).join(', ')
+  return stripHtml(JSON.stringify(answerSchema))
+}
+
+const decodeEntities = (raw: string) => {
+  const txt = document.createElement('textarea')
+  txt.innerHTML = raw
+  return txt.value
+}
+
+const renderHtml = (raw?: string) => {
+  if (!raw) return ''
+  const decoded = decodeEntities(raw)
+  return decoded
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+}
+
+const stripHtml = (raw?: string) => {
+  if (!raw) return ''
+  return decodeEntities(raw).replace(/<[^>]*>/g, '').trim()
 }
 
 // Show question detail modal

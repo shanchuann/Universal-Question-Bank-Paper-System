@@ -38,6 +38,12 @@ public class ExamService {
 
   @Autowired private EmailService emailService;
 
+  @Autowired private OllamaAiService ollamaAiService;
+
+  @Autowired private SystemConfigService systemConfigService;
+
+  @Autowired private AiAuditLogService aiAuditLogService;
+
   private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
       new com.fasterxml.jackson.databind.ObjectMapper();
 
@@ -46,6 +52,7 @@ public class ExamService {
         paperRepository
             .findById(paperId)
             .orElseThrow(() -> new IllegalArgumentException("Paper not found"));
+    boolean aiAutoGradingEnabled = false;
 
     if (planId != null && !planId.isBlank()) {
       ExamPlanEntity plan =
@@ -77,6 +84,8 @@ public class ExamService {
 
       enrollment.setAttemptsUsed(used + 1);
       examEnrollmentRepository.save(enrollment);
+
+      aiAutoGradingEnabled = Boolean.TRUE.equals(plan.getAiAutoGradingEnabled());
     }
 
     ExamEntity exam = new ExamEntity();
@@ -85,6 +94,7 @@ public class ExamService {
     exam.setType(type != null ? type : "EXAM");
     exam.setStartTime(OffsetDateTime.now());
     exam.setRandomSeed(System.currentTimeMillis());
+    exam.setAiAutoGradingEnabled(aiAutoGradingEnabled);
 
     return examRepository.save(exam);
   }
@@ -118,10 +128,12 @@ public class ExamService {
     List<QuestionEntity> questions = questionRepository.findAllById(paper.getQuestionIds());
     Map<String, QuestionEntity> questionMap =
         questions.stream().collect(Collectors.toMap(QuestionEntity::getId, q -> q));
+    Map<String, Double> maxScoreMap = buildMaxScoreMap(paper);
+    double totalMaxScore = maxScoreMap.values().stream().mapToDouble(Double::doubleValue).sum();
 
     List<ExamRecordEntity> records = new ArrayList<>();
-    int objectiveCorrectCount = 0;
-    int objectiveTotal = 0;
+    double objectiveUserScore = 0.0;
+    int objectiveAnsweredCount = 0;
     boolean hasSubjectiveQuestions = false;
 
     for (Map.Entry<String, String> entry : answers.entrySet()) {
@@ -147,7 +159,7 @@ public class ExamService {
         continue;
       }
 
-      objectiveTotal++;
+      objectiveAnsweredCount++;
       boolean isCorrect = false;
       if (q.getOptionsJson() != null) {
         try {
@@ -193,7 +205,13 @@ public class ExamService {
       }
 
       record.setIsCorrect(isCorrect);
-      if (isCorrect) objectiveCorrectCount++;
+      if (isCorrect) {
+        double qMax = maxScoreMap.getOrDefault(qId, 1.0);
+        record.setScore(qMax);
+        objectiveUserScore += qMax;
+      } else {
+        record.setScore(0.0);
+      }
 
       records.add(record);
     }
@@ -203,11 +221,20 @@ public class ExamService {
 
     // 如果有主观题，设置为待阅卷状态，暂不计算总分
     if (hasSubjectiveQuestions) {
-      exam.setGradingStatus("PENDING");
-      exam.setScore(null); // 总分待阅卷后确定
+      if (shouldUseAiAutoGrading(exam)) {
+        autoGradeSubjectiveRecords(exam, records, questionMap, maxScoreMap);
+        double totalUserScore =
+            records.stream().map(ExamRecordEntity::getScore).filter(s -> s != null).mapToDouble(Double::doubleValue).sum();
+        int percentage = totalMaxScore == 0 ? 0 : (int) ((totalUserScore / totalMaxScore) * 100);
+        exam.setScore(percentage);
+        exam.setGradingStatus("GRADED");
+      } else {
+        exam.setGradingStatus("PENDING");
+        exam.setScore(null); // 总分待阅卷后确定
+      }
     } else {
       // 纯客观题试卷，直接计算分数
-      int score = objectiveTotal == 0 ? 0 : (objectiveCorrectCount * 100 / objectiveTotal);
+      int score = totalMaxScore == 0 ? 0 : (int) ((objectiveUserScore / totalMaxScore) * 100);
       exam.setScore(score);
       exam.setGradingStatus("GRADED");
     }
@@ -215,7 +242,7 @@ public class ExamService {
     ExamEntity savedExam = examRepository.save(exam);
 
     // Update Student Stats (只统计客观题，主观题待阅卷后再统计)
-    if (exam.getUserId() != null && objectiveTotal > 0) {
+    if (exam.getUserId() != null && objectiveAnsweredCount > 0) {
       StudentStatsEntity stats =
           studentStatsRepository.findByUserId(exam.getUserId()).orElse(new StudentStatsEntity());
       stats.setUserId(exam.getUserId());
@@ -228,8 +255,13 @@ public class ExamService {
                 stats.setNickname(u.getNickname() != null ? u.getNickname() : u.getUsername());
               });
 
-      stats.setTotalQuestionsAnswered(stats.getTotalQuestionsAnswered() + objectiveTotal);
-      stats.setCorrectAnswers(stats.getCorrectAnswers() + objectiveCorrectCount);
+        int objectiveCorrectCount =
+          (int)
+            records.stream()
+              .filter(r -> r.getIsCorrect() != null && r.getIsCorrect())
+              .count();
+        stats.setTotalQuestionsAnswered(stats.getTotalQuestionsAnswered() + objectiveAnsweredCount);
+        stats.setCorrectAnswers(stats.getCorrectAnswers() + objectiveCorrectCount);
 
       java.time.LocalDate today = java.time.LocalDate.now();
       java.time.LocalDate lastDate = stats.getLastPracticeDate();
@@ -248,6 +280,89 @@ public class ExamService {
     }
 
     return savedExam;
+  }
+
+  private Map<String, Double> buildMaxScoreMap(PaperEntity paper) {
+    Map<String, Double> maxScoreMap = new java.util.HashMap<>();
+    if (paper.getItems() != null && !paper.getItems().isEmpty()) {
+      for (PaperItemEntity item : paper.getItems()) {
+        if ("QUESTION".equals(item.getItemType()) && item.getQuestionId() != null) {
+          maxScoreMap.put(item.getQuestionId(), item.getScore() == null ? 1.0 : item.getScore());
+        }
+      }
+      return maxScoreMap;
+    }
+    if (paper.getQuestionIds() != null) {
+      for (String qId : paper.getQuestionIds()) {
+        maxScoreMap.put(qId, 1.0);
+      }
+    }
+    return maxScoreMap;
+  }
+
+  private boolean shouldUseAiAutoGrading(ExamEntity exam) {
+    if (!Boolean.TRUE.equals(exam.getAiAutoGradingEnabled())) {
+      return false;
+    }
+    if (!systemConfigService.getBooleanConfig(SystemConfigService.AI_ENABLED, false)) {
+      return false;
+    }
+    if (!systemConfigService.getBooleanConfig(SystemConfigService.AI_AUTO_GRADING_ENABLED, false)) {
+      return false;
+    }
+    return Boolean.TRUE.equals(ollamaAiService.status().get("enabled"));
+  }
+
+  private void autoGradeSubjectiveRecords(
+      ExamEntity exam,
+      List<ExamRecordEntity> records,
+      Map<String, QuestionEntity> questionMap,
+      Map<String, Double> maxScoreMap) {
+    for (ExamRecordEntity record : records) {
+      QuestionEntity question = questionMap.get(record.getQuestionId());
+      if (question == null || isObjectiveQuestion(question.getType())) {
+        continue;
+      }
+      try {
+        long start = System.currentTimeMillis();
+        Double maxScore = maxScoreMap.getOrDefault(record.getQuestionId(), 1.0);
+        Map<String, Object> suggestion =
+            ollamaAiService.suggestSubjectiveScore(question, record.getUserAnswer(), maxScore, "");
+        Double aiScore =
+            suggestion.get("score") instanceof Number
+                ? ((Number) suggestion.get("score")).doubleValue()
+                : 0.0;
+        record.setScore(Math.max(0.0, Math.min(maxScore, aiScore)));
+        String reason = String.valueOf(suggestion.getOrDefault("reason", ""));
+        String feedback = String.valueOf(suggestion.getOrDefault("feedback", ""));
+        record.setNotes(("AI自动阅卷建议：" + reason + " " + feedback).trim());
+        aiAuditLogService.log(
+            "AUTO_SUBJECTIVE_GRADE",
+            exam.getUserId(),
+            "STUDENT",
+            question.getStem(),
+            String.valueOf(suggestion),
+            "",
+            "exam:" + exam.getId() + "#q:" + record.getQuestionId(),
+            String.valueOf(ollamaAiService.status().get("model")),
+            true,
+            null,
+            System.currentTimeMillis() - start);
+      } catch (Exception ex) {
+        aiAuditLogService.log(
+            "AUTO_SUBJECTIVE_GRADE",
+            exam.getUserId(),
+            "STUDENT",
+            question == null ? record.getQuestionId() : question.getStem(),
+            null,
+            "",
+            "exam:" + exam.getId() + "#q:" + record.getQuestionId(),
+            String.valueOf(ollamaAiService.status().get("model")),
+            false,
+            ex.getMessage(),
+            0L);
+      }
+    }
   }
 
   public org.springframework.data.domain.Page<ExamEntity> listExams(

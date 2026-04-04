@@ -108,6 +108,10 @@ public class ExamPlanController {
     if (request.get("endTime") != null) {
       plan.setEndTime(java.time.OffsetDateTime.parse(request.get("endTime").toString()));
     }
+    if (request.get("aiAutoGradingEnabled") != null) {
+      plan.setAiAutoGradingEnabled(
+          Boolean.parseBoolean(request.get("aiAutoGradingEnabled").toString()));
+    }
 
     @SuppressWarnings("unchecked")
     List<String> classIds = (List<String>) request.get("classIds");
@@ -138,6 +142,10 @@ public class ExamPlanController {
     }
     if (request.get("endTime") != null) {
       plan.setEndTime(java.time.OffsetDateTime.parse(request.get("endTime").toString()));
+    }
+    if (request.get("aiAutoGradingEnabled") != null) {
+      plan.setAiAutoGradingEnabled(
+          Boolean.parseBoolean(request.get("aiAutoGradingEnabled").toString()));
     }
 
     ExamPlanEntity updated = examPlanService.update(id, plan);

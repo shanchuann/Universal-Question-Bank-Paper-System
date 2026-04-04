@@ -91,6 +91,7 @@ public class ExamPlanService {
     existing.setAllowReview(plan.getAllowReview());
     existing.setShuffleQuestions(plan.getShuffleQuestions());
     existing.setShuffleOptions(plan.getShuffleOptions());
+    existing.setAiAutoGradingEnabled(plan.getAiAutoGradingEnabled());
 
     return examPlanRepository.save(existing);
   }

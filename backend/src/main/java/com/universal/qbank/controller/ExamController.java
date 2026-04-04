@@ -604,14 +604,19 @@ public class ExamController {
     List<QuestionOption> result = new ArrayList<>();
     if (json == null) return result;
 
-    // Debug logging
-    System.out.println("DEBUG: Parsing optionsJson: " + json);
-
     try {
       // Try 1: Standard List<QuestionOption>
       result =
           objectMapper.readValue(
               json, new com.fasterxml.jackson.core.type.TypeReference<List<QuestionOption>>() {});
+      for (QuestionOption opt : result) {
+        if (opt != null) {
+          opt.setText(normalizeOptionText(opt.getText()));
+          if (opt.getKey() != null) {
+            opt.setKey(normalizeOptionText(opt.getKey()));
+          }
+        }
+      }
     } catch (Exception e) {
       try {
         // Try 2: List<String>
@@ -620,7 +625,7 @@ public class ExamController {
                 json, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
         for (String s : strings) {
           QuestionOption opt = new QuestionOption();
-          opt.setText(s);
+          opt.setText(normalizeOptionText(s));
           result.add(opt);
         }
       } catch (Exception e2) {
@@ -634,13 +639,13 @@ public class ExamController {
           for (Map<String, Object> map : maps) {
             QuestionOption opt = new QuestionOption();
             // Try to find text content
-            if (map.containsKey("text")) opt.setText(String.valueOf(map.get("text")));
-            else if (map.containsKey("content")) opt.setText(String.valueOf(map.get("content")));
-            else if (map.containsKey("value")) opt.setText(String.valueOf(map.get("value")));
-            else if (map.containsKey("label")) opt.setText(String.valueOf(map.get("label")));
+            if (map.containsKey("text")) opt.setText(normalizeOptionText(String.valueOf(map.get("text"))));
+            else if (map.containsKey("content")) opt.setText(normalizeOptionText(String.valueOf(map.get("content"))));
+            else if (map.containsKey("value")) opt.setText(normalizeOptionText(String.valueOf(map.get("value"))));
+            else if (map.containsKey("label")) opt.setText(normalizeOptionText(String.valueOf(map.get("label"))));
 
             // Try to find key/label
-            if (map.containsKey("key")) opt.setKey(String.valueOf(map.get("key")));
+            if (map.containsKey("key")) opt.setKey(normalizeOptionText(String.valueOf(map.get("key"))));
 
             // Try to find isCorrect
             if (map.containsKey("isCorrect"))
@@ -649,7 +654,7 @@ public class ExamController {
             result.add(opt);
           }
         } catch (Exception e3) {
-          System.err.println("Failed to parse optionsJson: " + json);
+          System.err.println("Failed to parse optionsJson");
           e3.printStackTrace();
         }
       }
@@ -659,5 +664,16 @@ public class ExamController {
       java.util.Collections.shuffle(result, rng);
     }
     return result;
+  }
+
+  private String normalizeOptionText(String value) {
+    if (value == null) {
+      return null;
+    }
+    String cleaned = value.replaceAll("<[^>]*>", "").replace("&nbsp;", " ").trim();
+    if (cleaned.contains("锟斤拷")) {
+      cleaned = cleaned.replace("锟斤拷", "?");
+    }
+    return cleaned;
   }
 }

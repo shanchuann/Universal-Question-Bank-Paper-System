@@ -29,6 +29,11 @@ public class SystemConfigService {
   public static final String EXAM_AUTO_SAVE_INTERVAL = "EXAM_AUTO_SAVE_INTERVAL";
   public static final String SHOW_LEADERBOARD = "SHOW_LEADERBOARD";
   public static final String ENABLE_NOTIFICATIONS = "ENABLE_NOTIFICATIONS";
+  public static final String AI_ENABLED = "AI_ENABLED";
+  public static final String AI_ASSISTANT_ENABLED = "AI_ASSISTANT_ENABLED";
+  public static final String AI_AUTO_GRADING_ENABLED = "AI_AUTO_GRADING_ENABLED";
+  public static final String AI_AUTO_START_OLLAMA = "AI_AUTO_START_OLLAMA";
+  public static final String AI_MODEL = "AI_MODEL";
   public static final String SYSTEM_EMAIL = "SYSTEM_EMAIL";
   public static final String SITE_NAME = "SITE_NAME";
   public static final String SITE_DESCRIPTION = "SITE_DESCRIPTION";
@@ -53,6 +58,11 @@ public class SystemConfigService {
     DEFAULTS.put(EXAM_AUTO_SAVE_INTERVAL, "60");
     DEFAULTS.put(SHOW_LEADERBOARD, "true");
     DEFAULTS.put(ENABLE_NOTIFICATIONS, "true");
+    DEFAULTS.put(AI_ENABLED, "false");
+    DEFAULTS.put(AI_ASSISTANT_ENABLED, "true");
+    DEFAULTS.put(AI_AUTO_GRADING_ENABLED, "false");
+    DEFAULTS.put(AI_AUTO_START_OLLAMA, "true");
+    DEFAULTS.put(AI_MODEL, "gemma4");
     DEFAULTS.put(SYSTEM_EMAIL, "admin@example.com");
     DEFAULTS.put(SITE_NAME, "UQBank 题库系统");
     DEFAULTS.put(SITE_DESCRIPTION, "通用题库与组卷系统");
@@ -120,6 +130,11 @@ public class SystemConfigService {
     settings.put("examAutoSaveInterval", getIntConfig(EXAM_AUTO_SAVE_INTERVAL, 60));
     settings.put("showLeaderboard", getBooleanConfig(SHOW_LEADERBOARD, true));
     settings.put("enableNotifications", getBooleanConfig(ENABLE_NOTIFICATIONS, true));
+    settings.put("aiEnabled", getBooleanConfig(AI_ENABLED, false));
+    settings.put("aiAssistantEnabled", getBooleanConfig(AI_ASSISTANT_ENABLED, true));
+    settings.put("aiAutoGradingEnabled", getBooleanConfig(AI_AUTO_GRADING_ENABLED, false));
+    settings.put("aiAutoStartOllama", getBooleanConfig(AI_AUTO_START_OLLAMA, true));
+    settings.put("aiModel", getConfig(AI_MODEL));
     settings.put("systemEmail", getConfig(SYSTEM_EMAIL));
     settings.put("siteName", getConfig(SITE_NAME));
     settings.put("siteDescription", getConfig(SITE_DESCRIPTION));
@@ -136,6 +151,8 @@ public class SystemConfigService {
     settings.put("copyrightText", getConfig(COPYRIGHT_TEXT));
     settings.put("maintenanceMode", getBooleanConfig(MAINTENANCE_MODE, false));
     settings.put("maintenanceMessage", getConfig(MAINTENANCE_MESSAGE));
+    settings.put("aiEnabled", getBooleanConfig(AI_ENABLED, false));
+    settings.put("aiAssistantEnabled", getBooleanConfig(AI_ASSISTANT_ENABLED, true));
     return settings;
   }
 
@@ -183,6 +200,21 @@ public class SystemConfigService {
     }
     if (settings.containsKey("enableNotifications")) {
       setConfig(ENABLE_NOTIFICATIONS, String.valueOf(settings.get("enableNotifications")));
+    }
+    if (settings.containsKey("aiEnabled")) {
+      setConfig(AI_ENABLED, String.valueOf(settings.get("aiEnabled")));
+    }
+    if (settings.containsKey("aiAssistantEnabled")) {
+      setConfig(AI_ASSISTANT_ENABLED, String.valueOf(settings.get("aiAssistantEnabled")));
+    }
+    if (settings.containsKey("aiAutoGradingEnabled")) {
+      setConfig(AI_AUTO_GRADING_ENABLED, String.valueOf(settings.get("aiAutoGradingEnabled")));
+    }
+    if (settings.containsKey("aiAutoStartOllama")) {
+      setConfig(AI_AUTO_START_OLLAMA, String.valueOf(settings.get("aiAutoStartOllama")));
+    }
+    if (settings.containsKey("aiModel")) {
+      setConfig(AI_MODEL, String.valueOf(settings.get("aiModel")));
     }
     if (settings.containsKey("systemEmail")) {
       setConfig(SYSTEM_EMAIL, String.valueOf(settings.get("systemEmail")));

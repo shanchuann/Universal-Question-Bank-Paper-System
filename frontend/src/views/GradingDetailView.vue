@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { examApi } from '@/api/client'
 import type { ExamSessionResponse, ManualGradeRequest } from '@/api/generated'
 import { useToast } from '@/composables/useToast'
+import axios from 'axios'
 
 const { showToast } = useToast()
 const route = useRoute()
@@ -15,6 +16,8 @@ const paperTitle = ref('')
 const loading = ref(false)
 const error = ref('')
 const saving = ref(false)
+const aiSuggesting = ref<Record<string, boolean>>({})
+const aiBatchSuggesting = ref(false)
 
 // Local state for grades to allow editing
 const grades = ref<Record<string, { score: number | null, notes: string, maxScore: number }>>({})
@@ -54,7 +57,39 @@ const getCorrectAnswer = (options: any[] | undefined) => {
   if (!options || options.length === 0) return null
   const correct = options.filter(o => o.isCorrect)
   if (correct.length === 0) return null
-  return correct.map(o => o.key || o.text).join(', ')
+  return correct.map(o => sanitizePlainText(String(o.key || o.text || ''))).join(', ')
+}
+
+const sanitizePlainText = (value: string) => {
+  if (!value) return ''
+  return value
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/锟斤拷/g, '?')
+    .trim()
+}
+
+const sanitizeRichText = (value: string) => {
+  if (!value) return ''
+  return value
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/锟斤拷/g, '?')
+}
+
+const handleQuestionDragStart = (q: any, event: DragEvent) => {
+  if (!event.dataTransfer) return
+  const payload = {
+    questionId: q?.questionId,
+    type: q?.type,
+    stem: sanitizePlainText(String(q?.stem || '')),
+    userAnswer: sanitizePlainText(String(q?.userAnswer || '')),
+    reference: sanitizePlainText(String(getCorrectAnswer(q?.options) || ''))
+  }
+  const plain = `题目ID: ${payload.questionId || '-'}\n题型: ${getTypeName(payload.type)}\n题干: ${payload.stem}\n学生答案: ${payload.userAnswer || '(未作答)'}\n参考答案: ${payload.reference || '(无)'}\n`
+  event.dataTransfer.effectAllowed = 'copy'
+  event.dataTransfer.setData('application/x-uqbank-question', JSON.stringify(payload))
+  event.dataTransfer.setData('text/plain', plain)
 }
 
 const fetchExam = async () => {
@@ -103,6 +138,132 @@ const giveZeroScore = (questionId: string) => {
   }
 }
 
+const askAiSuggestion = async (q: any) => {
+  const questionId = q?.questionId
+  if (!questionId || !grades.value[questionId]) {
+    return
+  }
+
+  aiSuggesting.value[questionId] = true
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.post(
+      '/api/ai/teacher/subjective-grade',
+      {
+        questionId,
+        studentAnswer: q?.userAnswer || '',
+        maxScore: grades.value[questionId].maxScore,
+        rubric: grades.value[questionId].notes || ''
+      },
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      }
+    )
+
+    const aiScoreRaw = Number(response.data?.score)
+    const aiScore = Number.isFinite(aiScoreRaw)
+      ? Math.max(0, Math.min(grades.value[questionId].maxScore, aiScoreRaw))
+      : 0
+    grades.value[questionId].score = Number(aiScore.toFixed(1))
+
+    const reason = response.data?.reason || ''
+    const feedback = response.data?.feedback || ''
+    const mergedNotes = [
+      reason ? `AI评分依据：${reason}` : '',
+      feedback ? `AI建议评语：${feedback}` : ''
+    ]
+      .filter(Boolean)
+      .join('\n')
+      .trim()
+
+    if (mergedNotes) {
+      grades.value[questionId].notes = mergedNotes
+    }
+
+    const auditId = response.data?.auditId
+    if (auditId) {
+      await axios.post(
+        '/api/ai/audit/accept',
+        { auditIds: [auditId] },
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        }
+      )
+    }
+
+    showToast({ message: 'AI 已生成评分建议，可继续人工微调', type: 'success' })
+  } catch (error: any) {
+    const msg = error?.response?.data?.error || 'AI 评分建议失败'
+    showToast({ message: msg, type: 'error' })
+  } finally {
+    aiSuggesting.value[questionId] = false
+  }
+}
+
+const batchAiSuggest = async () => {
+  const token = localStorage.getItem('token')
+  aiBatchSuggesting.value = true
+  try {
+    const response = await axios.post(
+      '/api/ai/teacher/batch-subjective-grade',
+      {
+        examId: Number(examId),
+        includeAlreadyGraded: false,
+        maxQuestions: 120
+      },
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      }
+    )
+
+    const suggestions: any[] = response.data?.suggestions || []
+    const acceptedAuditIds: string[] = []
+    suggestions.forEach((item) => {
+      const questionId = item?.questionId
+      if (!questionId || !grades.value[questionId]) return
+
+      const scoreRaw = Number(item?.score)
+      const boundedScore = Number.isFinite(scoreRaw)
+        ? Math.max(0, Math.min(grades.value[questionId].maxScore, scoreRaw))
+        : 0
+      grades.value[questionId].score = Number(boundedScore.toFixed(1))
+
+      const notes = [
+        item?.reason ? `AI评分依据：${item.reason}` : '',
+        item?.feedback ? `AI建议评语：${item.feedback}` : ''
+      ]
+        .filter(Boolean)
+        .join('\n')
+        .trim()
+
+      if (notes) {
+        grades.value[questionId].notes = notes
+      }
+
+      if (item?.auditId) {
+        acceptedAuditIds.push(String(item.auditId))
+      }
+    })
+
+    if (acceptedAuditIds.length > 0) {
+      await axios.post(
+        '/api/ai/audit/accept',
+        { auditIds: acceptedAuditIds },
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        }
+      )
+    }
+
+    showToast({ message: `批量 AI 预评分完成：${suggestions.length} 题`, type: 'success' })
+  } catch (error: any) {
+    const msg = error?.response?.data?.error || '批量 AI 预评分失败'
+    showToast({ message: msg, type: 'error' })
+  } finally {
+    aiBatchSuggesting.value = false
+  }
+}
+
 const submitGrades = async () => {
   saving.value = true
   try {
@@ -135,9 +296,14 @@ onMounted(fetchExam)
         <span class="icon">←</span> 返回
       </button>
       <h1 class="page-title">阅卷: 考试 #{{ examId }}</h1>
-      <button @click="submitGrades" class="google-btn primary-btn" :disabled="saving || !exam?.questions?.length">
-        {{ saving ? '保存中...' : '提交评分' }}
-      </button>
+      <div class="top-actions">
+        <button @click="batchAiSuggest" class="google-btn secondary-btn" :disabled="aiBatchSuggesting || !exam?.questions?.length">
+          {{ aiBatchSuggesting ? 'AI批量建议中...' : 'AI批量预评分' }}
+        </button>
+        <button @click="submitGrades" class="google-btn primary-btn" :disabled="saving || !exam?.questions?.length">
+          {{ saving ? '保存中...' : '提交评分' }}
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="loading-state">
@@ -193,7 +359,13 @@ onMounted(fetchExam)
       </div>
 
       <!-- 题目列表 -->
-      <div v-for="(q, index) in exam.questions" :key="q.questionId" class="question-card google-card">
+      <div
+        v-for="(q, index) in exam.questions"
+        :key="q.questionId"
+        class="question-card google-card"
+        draggable="true"
+        @dragstart="handleQuestionDragStart(q, $event)"
+      >
         <div class="q-header">
           <span class="q-num">第{{ index + 1 }}题</span>
           <span class="q-type" :class="q.type?.toLowerCase()">{{ getTypeName(q.type) }}</span>
@@ -215,7 +387,7 @@ onMounted(fetchExam)
                  'wrong-selected': (q.userAnswer === opt.text || q.userAnswer === opt.key) && !opt.isCorrect
                }">
             <span class="option-key" v-if="opt.key">{{ opt.key }}.</span>
-            <span class="option-text">{{ opt.text }}</span>
+            <span class="option-text" v-html="sanitizeRichText(String(opt.text || ''))"></span>
             <span v-if="opt.isCorrect" class="badge-correct">✓ 正确答案</span>
             <span v-if="q.userAnswer === opt.text || q.userAnswer === opt.key" class="badge-user">用户选择</span>
           </div>
@@ -239,6 +411,13 @@ onMounted(fetchExam)
           <div class="grading-header">
             <span>评分</span>
             <div class="quick-actions" v-if="needsManualGrading(q.type)">
+              <button
+                @click="askAiSuggestion(q)"
+                class="quick-btn ai"
+                :disabled="!!aiSuggesting[q.questionId!]"
+              >
+                {{ aiSuggesting[q.questionId!] ? 'AI建议中...' : 'AI建议' }}
+              </button>
               <button @click="giveFullScore(q.questionId!)" class="quick-btn full">满分</button>
               <button @click="giveZeroScore(q.questionId!)" class="quick-btn zero">零分</button>
             </div>
@@ -305,12 +484,26 @@ onMounted(fetchExam)
   color: var(--line-text);
 }
 
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .google-card { 
   background: white; 
   border-radius: 8px; 
   padding: 20px; 
   margin-bottom: 20px; 
   box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+}
+
+.question-card[draggable='true'] {
+  cursor: grab;
+}
+
+.question-card[draggable='true']:active {
+  cursor: grabbing;
 }
 
 .info-card .info-grid {
@@ -527,6 +720,22 @@ onMounted(fetchExam)
 .quick-btn.full:hover {
   background: #34a853;
   color: white;
+}
+
+.quick-btn.ai {
+  background: color-mix(in srgb, var(--line-primary) 10%, white);
+  border-color: var(--line-primary);
+  color: var(--line-primary);
+}
+
+.quick-btn.ai:hover {
+  background: var(--line-primary);
+  color: white;
+}
+
+.quick-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .quick-btn.zero {

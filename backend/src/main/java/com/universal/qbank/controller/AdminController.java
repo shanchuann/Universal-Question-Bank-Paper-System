@@ -9,6 +9,7 @@ import com.universal.qbank.service.StatisticsService;
 import com.universal.qbank.service.SystemConfigService;
 import com.universal.qbank.service.SystemMonitorService;
 import com.universal.qbank.service.UserService;
+import com.universal.qbank.service.OllamaAiService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -39,6 +40,8 @@ public class AdminController {
   @Autowired private StatisticsService statisticsService;
 
   @Autowired private SystemMonitorService systemMonitorService;
+
+  @Autowired private OllamaAiService ollamaAiService;
 
   private boolean isAdmin(String token) {
     String userId = getUserIdFromToken(token);
@@ -163,6 +166,31 @@ public class AdminController {
     operationLogService.log(userId, "UPDATE", "系统设置", null, "更新系统设置", request);
 
     return ResponseEntity.ok(systemConfigService.getAllSettings());
+  }
+
+  @GetMapping("/ai/models")
+  public ResponseEntity<?> getAiModels(@RequestHeader("Authorization") String token) {
+    if (!isAdmin(token)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+    Map<String, Object> result = new HashMap<>();
+    result.put("models", ollamaAiService.listAvailableModels());
+    result.put("currentModel", systemConfigService.getConfig(SystemConfigService.AI_MODEL));
+    return ResponseEntity.ok(result);
+  }
+
+  @PutMapping("/ai/model")
+  public ResponseEntity<?> setAiModel(
+      @RequestHeader("Authorization") String token, @RequestBody Map<String, String> payload) {
+    if (!isAdmin(token)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
+    }
+    String model = payload.get("model");
+    if (model == null || model.isBlank()) {
+      return ResponseEntity.badRequest().body(Map.of("error", "model 不能为空"));
+    }
+    systemConfigService.setConfig(SystemConfigService.AI_MODEL, model.trim());
+    return ResponseEntity.ok(Map.of("model", model.trim()));
   }
 
   // ==================== 操作日志 API ====================

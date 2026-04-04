@@ -11,6 +11,7 @@ interface ExamPlan {
   id: string
   name: string
   paperId: number | null
+  aiAutoGradingEnabled?: boolean
   examType: 'FORMAL' | 'MAKEUP' | 'RETAKE'
   status: 'DRAFT' | 'PUBLISHED' | 'ONGOING' | 'FINISHED' | 'CANCELLED'
   startTime: string
@@ -62,6 +63,7 @@ const enrollLoading = ref(false)
 const form = ref({
   name: '',
   paperId: null as number | null,
+  aiAutoGradingEnabled: false,
   examType: 'FORMAL' as 'FORMAL' | 'MAKEUP' | 'RETAKE',
   startTime: '',
   endTime: '',
@@ -98,6 +100,38 @@ const examTypeSelectValue = computed({
     form.value.examType = String(value) as 'FORMAL' | 'MAKEUP' | 'RETAKE'
   }
 })
+
+const classOptions = computed(() => {
+  return [
+    ...organizations.value.map(org => ({ label: org.name, value: org.id }))
+  ]
+})
+
+const selectedClassToAdd = ref('')
+
+const addSelectedClass = () => {
+  const classId = selectedClassToAdd.value
+  if (!classId) {
+    showToast({ message: '请先选择班级', type: 'warning' })
+    return
+  }
+  if (form.value.classIds.includes(classId)) {
+    showToast({ message: '该班级已添加', type: 'warning' })
+    selectedClassToAdd.value = ''
+    return
+  }
+  form.value.classIds.push(classId)
+  selectedClassToAdd.value = ''
+}
+
+const removeClass = (classId: string) => {
+  form.value.classIds = form.value.classIds.filter(id => id !== classId)
+}
+
+const getClassName = (classId: string) => {
+  const org = organizations.value.find(o => o.id === classId)
+  return org?.name || classId
+}
 
 const getAuthHeaders = () => ({
   'Content-Type': 'application/json',
@@ -156,6 +190,7 @@ function openAddForm() {
   form.value = {
     name: '',
     paperId: null,
+    aiAutoGradingEnabled: false,
     examType: 'FORMAL',
     startTime: '',
     endTime: '',
@@ -172,6 +207,7 @@ function openEditForm(plan: ExamPlan) {
   form.value = {
     name: plan.name,
     paperId: plan.paperId,
+    aiAutoGradingEnabled: Boolean(plan.aiAutoGradingEnabled),
     examType: plan.examType,
     startTime: plan.startTime ? formatDateTimeLocal(plan.startTime) : '',
     endTime: plan.endTime ? formatDateTimeLocal(plan.endTime) : '',
@@ -415,6 +451,7 @@ const statusLabels: Record<string, string> = {
             <th>持续时长</th>
             <th>可进入次数</th>
             <th>及格分数</th>
+            <th>AI自动阅卷</th>
             <th>状态</th>
             <th>操作</th>
           </tr>
@@ -428,6 +465,7 @@ const statusLabels: Record<string, string> = {
             <td>{{ plan.durationMins }} 分钟</td>
             <td>{{ plan.maxAttempts ?? 1 }} 次</td>
             <td>{{ plan.passScore }} 分</td>
+            <td>{{ plan.aiAutoGradingEnabled ? '开启' : '关闭' }}</td>
             <td>
               <span :class="['status-badge', (plan.status || 'draft').toLowerCase()]">
                 {{ statusLabels[plan.status] || plan.status }}
@@ -563,26 +601,39 @@ const statusLabels: Record<string, string> = {
               <input v-model.number="form.maxAttempts" type="number" class="google-input" required min="1" />
               <small class="hint">达到次数上限后不可再次进入考试</small>
             </div>
-            <div class="form-group"></div>
+            <div class="form-group">
+              <label>AI 自动阅卷</label>
+              <div class="switch-line">
+                <label class="switch">
+                  <input type="checkbox" v-model="form.aiAutoGradingEnabled" />
+                  <span class="slider"></span>
+                </label>
+                <span class="switch-text">
+                  {{ form.aiAutoGradingEnabled ? '已开启' : '已关闭' }}：发布后主观题自动调用 AI 预评分
+                </span>
+              </div>
+            </div>
           </div>
 
           <div class="form-group">
             <label>下发班级</label>
-            <div class="class-select-box">
-              <div v-if="organizations.length === 0" class="empty-hint-inline">
-                暂无班级，请先创建班级
-              </div>
-              <div v-else class="class-checkboxes-form">
-                <label v-for="org in organizations" :key="org.id" class="checkbox-label-form">
-                  <input 
-                    type="checkbox" 
-                    :value="org.id" 
-                    v-model="form.classIds"
-                  />
-                  {{ org.name }}
-                </label>
-              </div>
+            <div class="class-selector-row">
+              <GoogleSelect
+                v-model="selectedClassToAdd"
+                :options="classOptions"
+                placeholder="请选择下发班级"
+              />
+              <button type="button" class="google-btn secondary-btn" @click="addSelectedClass">
+                添加
+              </button>
             </div>
+            <div v-if="form.classIds.length > 0" class="selected-class-list">
+              <span v-for="classId in form.classIds" :key="classId" class="selected-class-chip">
+                {{ getClassName(classId) }}
+                <button type="button" class="remove-chip-btn" @click="removeClass(classId)">×</button>
+              </span>
+            </div>
+            <div v-else class="empty-hint-inline">未选择班级</div>
             <small class="hint">选择班级后，发布考试时自动将班级学生报名到考试</small>
           </div>
 
@@ -914,6 +965,94 @@ const statusLabels: Record<string, string> = {
   margin-left: 4px;
 }
 
+.switch-line {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.switch-text {
+  color: var(--line-text-secondary);
+  font-size: 13px;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #cbd5e1;
+  border-radius: 24px;
+  transition: 0.2s;
+}
+
+.slider:before {
+  content: '';
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  top: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.2s;
+}
+
+.switch input:checked + .slider {
+  background-color: var(--line-primary);
+}
+
+.switch input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+.class-selector-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.selected-class-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.selected-class-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line-border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: var(--line-bg-soft);
+  font-size: 13px;
+}
+
+.remove-chip-btn {
+  border: none;
+  background: transparent;
+  color: var(--line-text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -941,9 +1080,23 @@ const statusLabels: Record<string, string> = {
   box-shadow: 0 2px 4px rgba(14, 165, 233, 0.2);
 }
 
+.secondary-btn {
+  background: var(--line-bg-soft);
+  color: var(--line-text-primary);
+  border: 1px solid var(--line-border);
+  height: 48px;
+  min-width: 88px;
+  justify-content: center;
+}
+
 .primary-btn:hover {
   background: var(--line-primary-hover);
   transform: translateY(-1px);
+}
+
+.secondary-btn:hover {
+  border-color: var(--line-primary);
+  color: var(--line-primary);
 }
 
 .text-btn {
