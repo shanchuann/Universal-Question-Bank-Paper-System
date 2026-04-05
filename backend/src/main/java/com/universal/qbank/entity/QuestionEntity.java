@@ -7,17 +7,17 @@ import java.util.UUID;
 
 @Entity
 @Table(
-  name = "questions",
-  indexes = {
-    @Index(name = "idx_question_status_created", columnList = "status, createdAt"),
-    @Index(
-      name = "idx_question_creator_status_created",
-      columnList = "createdBy, status, createdAt"),
-    @Index(
-      name = "idx_question_org_status_created",
-      columnList = "organizationId, status, createdAt"),
-    @Index(name = "idx_question_subject_type_diff", columnList = "subjectId, type, difficulty")
-  })
+    name = "questions",
+    indexes = {
+      @Index(name = "idx_question_status_created", columnList = "status, createdAt"),
+      @Index(
+          name = "idx_question_creator_status_created",
+          columnList = "createdBy, status, createdAt"),
+      @Index(
+          name = "idx_question_org_status_created",
+          columnList = "organizationId, status, createdAt"),
+      @Index(name = "idx_question_subject_type_diff", columnList = "subjectId, type, difficulty")
+    })
 public class QuestionEntity {
 
   @Id private String id;

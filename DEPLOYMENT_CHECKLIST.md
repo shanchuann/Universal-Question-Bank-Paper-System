@@ -15,6 +15,7 @@
 - `DB_URL`
 - `DB_USERNAME`
 - `DB_PASSWORD`
+- `FLYWAY_ENABLED`（建议灰度/生产为 `true`）
 - `JPA_DDL_AUTO`（建议生产使用 `validate`）
 - `SQL_INIT_MODE`（建议生产使用 `never`）
 - `SMTP_HOST`
@@ -31,7 +32,11 @@
 
 - 备份生产数据库（全量 + 关键表快照）。
 - 检查迁移脚本与目标数据库方言兼容性。
-- 当前仓库 `backend/src/main/resources/db/migration` 为迁移目录，执行前先做灰度验证。
+- 当前 PostgreSQL 迁移目录为 `backend/src/main/resources/db/migration/postgresql`，执行前先做灰度验证。
+- 首次接入 Flyway 建议流程：
+	- 灰度环境设置 `FLYWAY_ENABLED=true`
+	- 启动后确认 `flyway_schema_history` 已建立且迁移成功
+	- 再逐步推广到生产环境
 - 执行后核验：
 	- 核心表存在且字段完整
 	- 管理员账号可登录

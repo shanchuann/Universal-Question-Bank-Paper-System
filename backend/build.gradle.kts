@@ -40,6 +40,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.springframework.boot:spring-boot-starter-mail")
+	implementation("org.flywaydb:flyway-core")
 	implementation("net.logstash.logback:logstash-logback-encoder:7.4")
 
 	annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
