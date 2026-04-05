@@ -6,11 +6,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * 组织架构实体 - 支持学校/学院/班级等层级结构
- */
+/** 组织架构实体 - 支持学校/学院/班级等层级结构 */
 @Entity
-@Table(name = "organizations")
+@Table(
+    name = "organizations",
+    indexes = {
+      @Index(name = "idx_org_parent_sort", columnList = "parentId, sortOrder"),
+      @Index(name = "idx_org_type_status", columnList = "type, status"),
+      @Index(name = "idx_org_created_by", columnList = "createdBy")
+    })
 public class OrganizationEntity {
 
   @Id private String id;

@@ -1,0 +1,82 @@
+# UQBank 上线检查清单
+
+> 完整自动化上线方案请参考：`DEPLOYMENT_AUTOMATION_GUIDE.md`
+
+## 1. 发布前冻结
+
+- 确认 `backend` 与 `frontend` 已停止新增功能提交，仅允许修复阻塞问题。
+- 记录当前准备发布的提交版本（Git commit hash）。
+- 确认本地与 CI 构建一致：
+	- `backend`: `gradlew.bat clean build`
+	- `frontend`: `npm run build`
+
+## 2. 环境变量与配置
+
+后端至少配置以下环境变量：
+
+- `DB_URL`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+- `FLYWAY_ENABLED`（建议灰度/生产为 `true`）
+- `JPA_DDL_AUTO`（建议生产使用 `validate`）
+- `SQL_INIT_MODE`（建议生产使用 `never`）
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+
+建议：
+
+- 生产环境禁止将任何密码写入 `application.properties`。
+- 若启用 SQL 日志，仅在排障窗口临时开启：`LOG_LEVEL_HIBERNATE_SQL=DEBUG`。
+
+## 3. 数据库发布步骤
+
+- 备份生产数据库（全量 + 关键表快照）。
+- 检查迁移脚本与目标数据库方言兼容性。
+- 当前 PostgreSQL 迁移目录为 `backend/src/main/resources/db/migration/postgresql`，执行前先做灰度验证。
+- 首次接入 Flyway 建议流程：
+	- 灰度环境设置 `FLYWAY_ENABLED=true`
+	- 启动后确认 `flyway_schema_history` 已建立且迁移成功
+	- 再逐步推广到生产环境
+- 执行后核验：
+	- 核心表存在且字段完整
+	- 管理员账号可登录
+	- 题库、试卷、考试、公告、消息关键读写正常
+
+## 4. 后端发布验证
+
+- 启动后端服务并检查健康状态：
+	- 登录
+	- 获取首页数据
+	- 管理端系统设置读取
+	- 公告发布与普通用户可见
+	- 消息中心会话拉取与已读标记
+
+## 5. 前端发布验证
+
+- 发布静态资源后清缓存策略生效（含 `index.html` 与 hash 资源）。
+- 验证关键路由：
+	- 登录/注册/找回密码
+	- 题库管理、组卷、考试
+	- 管理端（用户、日志、监控、统计、系统设置）
+	- 消息中心
+
+## 6. 回滚预案
+
+- 保留上一个稳定后端包与前端静态资源包。
+- 回滚顺序：
+	1. 切回旧后端
+	2. 切回旧前端
+	3. 按需回滚数据库（仅在确认本次结构变更不可兼容时执行）
+- 回滚后复测登录、考试提交、公告与消息功能。
+
+## 7. 发布后观察（30~60 分钟）
+
+- 重点观察：
+	- 错误日志峰值
+	- 登录成功率
+	- 考试提交成功率
+	- 公告/消息到达率
+- 如出现持续错误，立即执行回滚预案。
+

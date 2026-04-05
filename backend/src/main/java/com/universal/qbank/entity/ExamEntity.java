@@ -5,7 +5,14 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "exams")
+@Table(
+    name = "exams",
+    indexes = {
+      @Index(name = "idx_exam_user_end", columnList = "userId, endTime"),
+      @Index(name = "idx_exam_user_start", columnList = "userId, startTime"),
+      @Index(name = "idx_exam_paper_start", columnList = "paperId, startTime"),
+      @Index(name = "idx_exam_grading_start", columnList = "gradingStatus, startTime")
+    })
 public class ExamEntity {
 
   @Id
@@ -29,6 +36,15 @@ public class ExamEntity {
   private Long randomSeed;
 
   private String type; // "EXAM" or "PRACTICE"
+
+  // 阅卷状态: PENDING(待阅卷), GRADING(阅卷中), GRADED(已阅卷)
+  private String gradingStatus = "PENDING";
+
+  // 是否已发送成绩通知邮件
+  private Boolean scoreNotified = false;
+
+  // 是否启用 AI 自动阅卷（从考试计划复制）
+  private Boolean aiAutoGradingEnabled = false;
 
   @PrePersist
   public void prePersist() {
@@ -107,5 +123,29 @@ public class ExamEntity {
 
   public void setType(String type) {
     this.type = type;
+  }
+
+  public String getGradingStatus() {
+    return gradingStatus;
+  }
+
+  public void setGradingStatus(String gradingStatus) {
+    this.gradingStatus = gradingStatus;
+  }
+
+  public Boolean getScoreNotified() {
+    return scoreNotified;
+  }
+
+  public void setScoreNotified(Boolean scoreNotified) {
+    this.scoreNotified = scoreNotified;
+  }
+
+  public Boolean getAiAutoGradingEnabled() {
+    return aiAutoGradingEnabled;
+  }
+
+  public void setAiAutoGradingEnabled(Boolean aiAutoGradingEnabled) {
+    this.aiAutoGradingEnabled = aiAutoGradingEnabled;
   }
 }

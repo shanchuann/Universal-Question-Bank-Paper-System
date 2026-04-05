@@ -4,7 +4,13 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "users")
+@Table(
+    name = "users",
+    indexes = {
+      @Index(name = "idx_user_role", columnList = "role"),
+      @Index(name = "idx_user_email", columnList = "email"),
+      @Index(name = "idx_user_created_at", columnList = "createdAt")
+    })
 public class UserEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
@@ -26,6 +32,16 @@ public class UserEntity {
   private String role; // ADMIN, USER
 
   private String status = "ACTIVE"; // ACTIVE, BANNED
+
+  // 通知偏好
+  private Boolean emailNotification = true;
+
+  private Boolean systemNotification = true;
+
+  // 隐私偏好
+  private Boolean publicProfile = false;
+
+  private Boolean showActivity = true;
 
   private OffsetDateTime createdAt;
 
@@ -105,5 +121,37 @@ public class UserEntity {
 
   public void setCreatedAt(OffsetDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public Boolean getEmailNotification() {
+    return emailNotification;
+  }
+
+  public void setEmailNotification(Boolean emailNotification) {
+    this.emailNotification = emailNotification;
+  }
+
+  public Boolean getSystemNotification() {
+    return systemNotification;
+  }
+
+  public void setSystemNotification(Boolean systemNotification) {
+    this.systemNotification = systemNotification;
+  }
+
+  public Boolean getPublicProfile() {
+    return publicProfile;
+  }
+
+  public void setPublicProfile(Boolean publicProfile) {
+    this.publicProfile = publicProfile;
+  }
+
+  public Boolean getShowActivity() {
+    return showActivity;
+  }
+
+  public void setShowActivity(Boolean showActivity) {
+    this.showActivity = showActivity;
   }
 }

@@ -15,7 +15,8 @@ public interface UserOrganizationRepository extends JpaRepository<UserOrganizati
 
   void deleteByUserIdAndOrganizationId(String userId, String organizationId);
 
-  Optional<UserOrganizationEntity> findByUserIdAndOrganizationId(String userId, String organizationId);
+  Optional<UserOrganizationEntity> findByUserIdAndOrganizationId(
+      String userId, String organizationId);
 
   boolean existsByUserIdAndOrganizationId(String userId, String organizationId);
 

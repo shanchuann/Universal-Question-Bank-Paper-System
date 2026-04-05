@@ -14,19 +14,16 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
  * 权限检查切面
- * 
- * 拦截带有 @RequiredPermission 和 @RequiredRole 注解的方法，执行权限验证
+ *
+ * <p>拦截带有 @RequiredPermission 和 @RequiredRole 注解的方法，执行权限验证
  */
 @Aspect
 @Component
 public class PermissionAspect {
 
-  @Autowired
-  private PermissionService permissionService;
+  @Autowired private PermissionService permissionService;
 
-  /**
-   * 拦截 @RequiredPermission 注解
-   */
+  /** 拦截 @RequiredPermission 注解 */
   @Before("@annotation(requiredPermission)")
   public void checkPermission(JoinPoint joinPoint, RequiredPermission requiredPermission) {
     String userId = getCurrentUserId();
@@ -36,29 +33,25 @@ public class PermissionAspect {
 
     String[] requiredPerms = requiredPermission.value();
     boolean requireAll = requiredPermission.requireAll();
-    
+
     Set<String> userPermissions = permissionService.getUserPermissions(userId);
 
     if (requireAll) {
       // 需要满足所有权限
-      boolean hasAll = Arrays.stream(requiredPerms)
-          .allMatch(userPermissions::contains);
+      boolean hasAll = Arrays.stream(requiredPerms).allMatch(userPermissions::contains);
       if (!hasAll) {
         throw new SecurityException("权限不足：需要以下所有权限 " + Arrays.toString(requiredPerms));
       }
     } else {
       // 满足任一权限即可
-      boolean hasAny = Arrays.stream(requiredPerms)
-          .anyMatch(userPermissions::contains);
+      boolean hasAny = Arrays.stream(requiredPerms).anyMatch(userPermissions::contains);
       if (!hasAny) {
         throw new SecurityException("权限不足：需要以下任一权限 " + Arrays.toString(requiredPerms));
       }
     }
   }
 
-  /**
-   * 拦截 @RequiredRole 注解
-   */
+  /** 拦截 @RequiredRole 注解 */
   @Before("@annotation(requiredRole)")
   public void checkRole(JoinPoint joinPoint, RequiredRole requiredRole) {
     String userId = getCurrentUserId();
@@ -70,14 +63,14 @@ public class PermissionAspect {
     boolean requireAll = requiredRole.requireAll();
 
     if (requireAll) {
-      boolean hasAll = Arrays.stream(requiredRoles)
-          .allMatch(role -> permissionService.hasRole(userId, role));
+      boolean hasAll =
+          Arrays.stream(requiredRoles).allMatch(role -> permissionService.hasRole(userId, role));
       if (!hasAll) {
         throw new SecurityException("权限不足：需要以下所有角色 " + Arrays.toString(requiredRoles));
       }
     } else {
-      boolean hasAny = Arrays.stream(requiredRoles)
-          .anyMatch(role -> permissionService.hasRole(userId, role));
+      boolean hasAny =
+          Arrays.stream(requiredRoles).anyMatch(role -> permissionService.hasRole(userId, role));
       if (!hasAny) {
         throw new SecurityException("权限不足：需要以下任一角色 " + Arrays.toString(requiredRoles));
       }
@@ -86,18 +79,18 @@ public class PermissionAspect {
 
   /**
    * 从请求中获取当前用户ID
-   * 
-   * 通常从JWT token或session中获取
+   *
+   * <p>通常从JWT token或session中获取
    */
   private String getCurrentUserId() {
-    ServletRequestAttributes attributes = 
+    ServletRequestAttributes attributes =
         (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
     if (attributes == null) {
       return null;
     }
 
     HttpServletRequest request = attributes.getRequest();
-    
+
     // 尝试从请求属性中获取（通常由JWT过滤器设置）
     Object userId = request.getAttribute("userId");
     if (userId != null) {

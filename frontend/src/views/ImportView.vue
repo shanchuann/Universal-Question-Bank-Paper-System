@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import axios from 'axios'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
+import GoogleSelect from '@/components/GoogleSelect.vue'
 
 interface QuestionOption {
+  key?: string
   text: string
   isCorrect: boolean
 }
@@ -19,21 +21,78 @@ interface Question {
   analysis?: string
 }
 
+type ImportMode = 'batch' | 'photo'
+type PhotoParseMode = 'PAGE' | 'SINGLE'
+
 const router = useRouter()
-const fileInput = ref<HTMLInputElement | null>(null)
+const batchFileInput = ref<HTMLInputElement | null>(null)
+const photoFileInput = ref<HTMLInputElement | null>(null)
 const parsedQuestions = ref<Question[]>([])
 const loading = ref(false)
 const importing = ref(false)
 const error = ref('')
 const successMessage = ref('')
+const dragOver = ref(false)
+const importMode = ref<ImportMode>('batch')
+const photoParseMode = ref<PhotoParseMode>('PAGE')
 
-const handleFileUpload = async () => {
-  const file = fileInput.value?.files?.[0]
-  if (!file) return
+const questionTypeOptions = [
+  { value: 'SINGLE_CHOICE', label: '单选题' },
+  { value: 'MULTI_CHOICE', label: '多选题' },
+  { value: 'MULTIPLE_CHOICE', label: '多选题(旧版)' },
+  { value: 'TRUE_FALSE', label: '判断题' },
+  { value: 'FILL_BLANK', label: '填空题' },
+  { value: 'SHORT_ANSWER', label: '简答题' }
+]
 
-  loading.value = true
+const difficultyOptions = [
+  { value: 'EASY', label: '简单' },
+  { value: 'MEDIUM', label: '中等' },
+  { value: 'HARD', label: '困难' }
+]
+
+const clearStateForNewParse = () => {
   error.value = ''
+  successMessage.value = ''
   parsedQuestions.value = []
+}
+
+const normalizeQuestions = (rows: any[]): Question[] => {
+  return (rows || [])
+    .map((item: any) => {
+      const options = Array.isArray(item?.options)
+        ? item.options.map((opt: any, idx: number) => ({
+            key: String(opt?.key || String.fromCharCode(65 + idx)),
+            text: String(opt?.text || ''),
+            isCorrect: Boolean(opt?.isCorrect)
+          }))
+        : []
+
+      return {
+        stem: String(item?.stem || '').trim(),
+        type: String(item?.type || 'SINGLE_CHOICE'),
+        difficulty: String(item?.difficulty || 'MEDIUM'),
+        subjectId: String(item?.subjectId || 'general'),
+        score: Number(item?.score ?? 5),
+        options,
+        answerSchema: item?.answerSchema,
+        analysis: String(item?.analysis || '')
+      } as Question
+    })
+    .filter((q) => q.stem)
+}
+
+const triggerBatchFileInput = () => {
+  batchFileInput.value?.click()
+}
+
+const triggerPhotoFileInput = () => {
+  photoFileInput.value?.click()
+}
+
+const parseWordFile = async (file: File) => {
+  loading.value = true
+  clearStateForNewParse()
 
   const formData = new FormData()
   formData.append('file', file)
@@ -46,18 +105,86 @@ const handleFileUpload = async () => {
         Authorization: `Bearer ${token}`
       }
     })
-    console.log('Import response:', response.data)
-    parsedQuestions.value = response.data
+    parsedQuestions.value = normalizeQuestions(response.data)
+    if (parsedQuestions.value.length === 0) {
+      error.value = '文档已上传，但未识别出有效题目。'
+    }
   } catch (err: any) {
-    console.error(err)
     if (err.response) {
-        error.value = `导入失败: ${err.response.status} ${err.response.statusText}。请确认后端服务已启动。`
+      error.value = `导入失败: ${err.response.status} ${err.response.statusText}。请确认后端服务已启动。`
     } else {
-        error.value = '解析文件失败。请确保这是一个有效的Word文档，并且后端服务已启动。'
+      error.value = '解析文件失败。请确保文档格式正确。'
     }
   } finally {
     loading.value = false
   }
+}
+
+const parsePhotoFile = async (file: File) => {
+  loading.value = true
+  clearStateForNewParse()
+
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('mode', photoParseMode.value)
+
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.post('/api/import/photo', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${token}`
+      }
+    })
+    parsedQuestions.value = normalizeQuestions(response.data)
+    if (parsedQuestions.value.length === 0) {
+      error.value = '图片已上传，但 AI 未识别出题目。建议切换识别模式或使用更清晰图片。'
+    }
+  } catch (err: any) {
+    if (err.response) {
+      error.value = `拍照导入失败: ${err.response.status} ${err.response.statusText}。请确认 AI 服务与后端已启动。`
+    } else {
+      error.value = '拍照解析失败。请稍后重试。'
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleBatchFileUpload = async () => {
+  const file = batchFileInput.value?.files?.[0]
+  if (!file) return
+  await parseWordFile(file)
+}
+
+const handlePhotoFileUpload = async () => {
+  const file = photoFileInput.value?.files?.[0]
+  if (!file) return
+  await parsePhotoFile(file)
+}
+
+const handleDrop = (e: DragEvent) => {
+  dragOver.value = false
+  const files = e.dataTransfer?.files
+  if (!files || files.length === 0) return
+
+  const firstFile = files.item(0)
+  if (!firstFile) return
+
+  if (importMode.value === 'batch') {
+    if (!batchFileInput.value) return
+    const dataTransfer = new DataTransfer()
+    dataTransfer.items.add(firstFile)
+    batchFileInput.value.files = dataTransfer.files
+    void handleBatchFileUpload()
+    return
+  }
+
+  if (!photoFileInput.value) return
+  const dataTransfer = new DataTransfer()
+  dataTransfer.items.add(firstFile)
+  photoFileInput.value.files = dataTransfer.files
+  void handlePhotoFileUpload()
 }
 
 const removeQuestion = (index: number) => {
@@ -79,7 +206,7 @@ const importAll = async () => {
   importing.value = true
   error.value = ''
   successMessage.value = ''
-  
+
   const token = localStorage.getItem('token')
 
   try {
@@ -88,15 +215,24 @@ const importAll = async () => {
         Authorization: `Bearer ${token}`
       }
     })
-    successMessage.value = `成功导入 ${response.data.length} 道题目！`
+    const count = Array.isArray(response.data) ? response.data.length : parsedQuestions.value.length
+    successMessage.value = `已确认并添加 ${count} 道题目到题目列表。`
     parsedQuestions.value = []
-    setTimeout(() => router.push('/questions'), 2000)
   } catch (err: any) {
-    console.error('Failed to import questions:', err)
     error.value = '保存题目失败。' + (err.response?.data?.message || err.message)
   } finally {
     importing.value = false
   }
+}
+
+const switchImportMode = (mode: ImportMode) => {
+  importMode.value = mode
+  dragOver.value = false
+  clearStateForNewParse()
+}
+
+const goQuestionList = () => {
+  router.push('/questions')
 }
 </script>
 
@@ -104,29 +240,140 @@ const importAll = async () => {
   <div class="container">
     <div class="google-card import-card">
       <div class="card-header">
-        <h1>批量导入题目</h1>
-        <p class="subtitle">上传Word文档(.docx)以导入题目。</p>
+        <h1 class="page-title">导入题目</h1>
+        <p class="subtitle">支持批量导入（Word）和拍照导入（AI 解析），确认后再添加到题目列表。</p>
       </div>
 
-      <div class="upload-section">
-        <input 
-          type="file" 
-          ref="fileInput" 
-          accept=".docx" 
-          @change="handleFileUpload" 
-          class="file-input"
-        />
-        <div v-if="loading" class="loading-spinner">正在解析文档...</div>
+      <div class="import-mode-switch">
+        <button
+          class="mode-btn"
+          :class="{ active: importMode === 'batch' }"
+          @click="switchImportMode('batch')"
+        >
+          批量导入
+        </button>
+        <button
+          class="mode-btn"
+          :class="{ active: importMode === 'photo' }"
+          @click="switchImportMode('photo')"
+        >
+          拍照导入
+        </button>
+      </div>
+
+      <div v-if="importMode === 'batch'" class="mode-card">
+        <p class="mode-title">上传 Word 文档（.docx）</p>
+        <div
+          class="upload-section"
+          @click="triggerBatchFileInput"
+          @dragover.prevent="dragOver = true"
+          @dragleave="dragOver = false"
+          @drop.prevent="handleDrop"
+          :class="{ 'drag-over': dragOver }"
+        >
+          <input
+            type="file"
+            ref="batchFileInput"
+            accept=".docx"
+            @change="handleBatchFileUpload"
+            class="file-input-hidden"
+          />
+          <div class="upload-content">
+            <svg
+              class="upload-icon"
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <p class="upload-text">点击或拖拽文档到此处上传</p>
+            <p class="upload-hint">支持 .docx 格式</p>
+          </div>
+          <div v-if="loading" class="loading-spinner">正在解析文档...</div>
+        </div>
+      </div>
+
+      <div v-else class="mode-card">
+        <div class="photo-mode-row">
+          <p class="mode-title">上传题目照片（AI 解析）</p>
+          <div class="photo-parse-mode">
+            <button
+              class="small-mode-btn"
+              :class="{ active: photoParseMode === 'PAGE' }"
+              @click="photoParseMode = 'PAGE'"
+            >
+              整页导入
+            </button>
+            <button
+              class="small-mode-btn"
+              :class="{ active: photoParseMode === 'SINGLE' }"
+              @click="photoParseMode = 'SINGLE'"
+            >
+              单题导入
+            </button>
+          </div>
+        </div>
+
+        <div
+          class="upload-section"
+          @click="triggerPhotoFileInput"
+          @dragover.prevent="dragOver = true"
+          @dragleave="dragOver = false"
+          @drop.prevent="handleDrop"
+          :class="{ 'drag-over': dragOver }"
+        >
+          <input
+            type="file"
+            ref="photoFileInput"
+            accept="image/*"
+            @change="handlePhotoFileUpload"
+            class="file-input-hidden"
+          />
+          <div class="upload-content">
+            <svg
+              class="upload-icon"
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M3 7a2 2 0 0 1 2-2h2l1.2-1.5A2 2 0 0 1 9.8 3h4.4a2 2 0 0 1 1.6.8L17 5h2a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"
+              />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+            <p class="upload-text">点击或拖拽题目图片到此处上传</p>
+            <p class="upload-hint">支持 jpg / jpeg / png / webp；上传后 AI 自动解析</p>
+          </div>
+          <div v-if="loading" class="loading-spinner">AI 正在解析图片题目...</div>
+        </div>
       </div>
 
       <div v-if="error" class="message error">{{ error }}</div>
-      <div v-if="successMessage" class="message success">{{ successMessage }}</div>
+      <div v-if="successMessage" class="message success">
+        <span>{{ successMessage }}</span>
+        <button class="google-btn text-btn success-action" @click="goQuestionList">
+          查看题目列表
+        </button>
+      </div>
 
       <div v-if="parsedQuestions.length > 0" class="preview-section">
         <div class="preview-header">
-          <h2>预览 ({{ parsedQuestions.length }} 道题目)</h2>
+          <h2>解析预览（{{ parsedQuestions.length }} 道题）</h2>
           <button @click="importAll" :disabled="importing" class="google-btn primary-btn">
-            {{ importing ? '导入中...' : '全部导入' }}
+            {{ importing ? '提交中...' : '确认并添加到题目列表' }}
           </button>
         </div>
 
@@ -134,9 +381,11 @@ const importAll = async () => {
           <div v-for="(q, index) in parsedQuestions" :key="index" class="question-preview-item">
             <div class="item-header">
               <span class="index">#{{ index + 1 }}</span>
-              <button @click="removeQuestion(index)" class="google-btn text-btn delete-btn">移除</button>
+              <button @click="removeQuestion(index)" class="google-btn text-btn delete-btn">
+                移除
+              </button>
             </div>
-            
+
             <div class="form-group">
               <label>题干</label>
               <textarea v-model="q.stem" class="google-input" rows="2"></textarea>
@@ -144,28 +393,30 @@ const importAll = async () => {
 
             <div class="form-group">
               <label>解析</label>
-              <textarea v-model="q.analysis" class="google-input" rows="2" placeholder="答案解析..."></textarea>
+              <textarea
+                v-model="q.analysis"
+                class="google-input"
+                rows="2"
+                placeholder="答案解析..."
+              ></textarea>
             </div>
 
             <div class="form-row">
               <div class="form-group">
                 <label>题型</label>
-                <select v-model="q.type" class="google-select">
-                  <option value="SINGLE_CHOICE">单选题</option>
-                  <option value="MULTI_CHOICE">多选题</option>
-                  <option value="MULTIPLE_CHOICE">多选题(旧版)</option>
-                  <option value="TRUE_FALSE">判断题</option>
-                  <option value="FILL_BLANK">填空题</option>
-                  <option value="SHORT_ANSWER">简答题</option>
-                </select>
+                <GoogleSelect
+                  v-model="q.type"
+                  :options="questionTypeOptions"
+                  placeholder="选择题型"
+                />
               </div>
               <div class="form-group">
                 <label>难度</label>
-                <select v-model="q.difficulty" class="google-select">
-                  <option value="EASY">简单</option>
-                  <option value="MEDIUM">中等</option>
-                  <option value="HARD">困难</option>
-                </select>
+                <GoogleSelect
+                  v-model="q.difficulty"
+                  :options="difficultyOptions"
+                  placeholder="选择难度"
+                />
               </div>
               <div class="form-group">
                 <label>分数</label>
@@ -173,40 +424,74 @@ const importAll = async () => {
               </div>
             </div>
 
-            <!-- Options for Choice Questions -->
-            <div class="options-preview" v-if="['SINGLE_CHOICE', 'MULTI_CHOICE', 'MULTIPLE_CHOICE', 'TRUE_FALSE'].includes(q.type)">
+            <div
+              class="options-preview"
+              v-if="
+                ['SINGLE_CHOICE', 'MULTI_CHOICE', 'MULTIPLE_CHOICE', 'TRUE_FALSE'].includes(q.type)
+              "
+            >
               <label>选项</label>
               <div v-for="(opt, optIndex) in q.options" :key="optIndex" class="option-row">
-                <input 
-                  :type="q.type === 'SINGLE_CHOICE' || q.type === 'TRUE_FALSE' ? 'radio' : 'checkbox'" 
+                <input
+                  :type="
+                    q.type === 'SINGLE_CHOICE' || q.type === 'TRUE_FALSE' ? 'radio' : 'checkbox'
+                  "
                   :name="'q-' + index"
                   :checked="opt.isCorrect"
-                  @change="opt.isCorrect = ($event.target as HTMLInputElement).checked; if(q.type === 'SINGLE_CHOICE' || q.type === 'TRUE_FALSE') { q.options.forEach((o, i) => o.isCorrect = i === optIndex) }"
+                  @change="
+                    opt.isCorrect = ($event.target as HTMLInputElement).checked;
+                    if (q.type === 'SINGLE_CHOICE' || q.type === 'TRUE_FALSE') {
+                      q.options.forEach((o, i) => (o.isCorrect = i === optIndex));
+                    }
+                  "
                   class="option-check"
                 />
-                <input type="text" v-model="opt.text" class="google-input option-input" placeholder="选项内容" />
-                <button @click="removeOption(q, optIndex)" class="google-btn icon-btn" title="移除选项">
-                  <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#5f6368"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                <input
+                  type="text"
+                  v-model="opt.text"
+                  class="google-input option-input"
+                  placeholder="选项内容"
+                />
+                <button
+                  @click="removeOption(q, optIndex)"
+                  class="google-btn icon-btn"
+                  title="移除选项"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
                 </button>
               </div>
               <button @click="addOption(q)" class="google-btn text-btn small-btn">添加选项</button>
             </div>
 
-            <!-- Answer for Fill Blank / Short Answer -->
             <div class="answer-preview" v-if="['FILL_BLANK', 'SHORT_ANSWER'].includes(q.type)">
               <div class="form-group">
-                <label>正确答案</label>
-                <textarea 
-                  class="google-input" 
-                  rows="2" 
+                <label>参考答案（可选）</label>
+                <textarea
+                  class="google-input"
+                  rows="2"
                   placeholder="在此输入正确答案..."
-                  :value="q.answerSchema?.correctAnswer || (q.options.find(o => o.isCorrect)?.text || '')"
-                  @input="(e) => {
-                    const val = (e.target as HTMLTextAreaElement).value;
-                    q.answerSchema = { correctAnswer: val };
-                    // Also sync to options for compatibility if needed, or just rely on answerSchema
-                    q.options = [{ text: val, isCorrect: true }];
-                  }"
+                  :value="
+                    q.answerSchema?.correctAnswer || q.options.find((o) => o.isCorrect)?.text || ''
+                  "
+                  @input="
+                    (e) => {
+                      const val = (e.target as HTMLTextAreaElement).value
+                      q.answerSchema = { correctAnswer: val }
+                      q.options = [{ text: val, isCorrect: true }]
+                    }
+                  "
                 ></textarea>
               </div>
             </div>
@@ -219,18 +504,133 @@ const importAll = async () => {
 
 <style scoped>
 .import-card {
-  max-width: 800px;
+  max-width: 860px;
   margin: 0 auto;
   padding: 40px;
-  /* border-top: 8px solid #1a73e8; */
+}
+
+.import-mode-switch {
+  display: inline-flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--line-bg-soft);
+  border: 1px solid var(--line-border);
+}
+
+.mode-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--line-text-secondary);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.mode-btn.active {
+  color: var(--line-primary);
+  background: color-mix(in srgb, var(--line-primary) 12%, white);
+}
+
+.mode-card {
+  margin-top: 20px;
+}
+
+.mode-title {
+  margin: 0 0 10px;
+  color: var(--line-text);
+  font-weight: 600;
+}
+
+.photo-mode-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.photo-parse-mode {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.small-mode-btn {
+  border: 1px solid var(--line-border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: var(--line-bg);
+  color: var(--line-text-secondary);
+  cursor: pointer;
+}
+
+.small-mode-btn.active {
+  border-color: var(--line-primary);
+  color: var(--line-primary);
+  background: color-mix(in srgb, var(--line-primary) 8%, white);
 }
 
 .upload-section {
-  margin: 32px 0;
-  padding: 32px;
-  border: 2px dashed #dadce0;
-  border-radius: 8px;
+  margin: 8px 0 24px;
+  padding: 48px 32px;
+  border: 2px dashed var(--line-border);
+  border-radius: 12px;
   text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--line-bg);
+}
+
+.upload-section:hover {
+  border-color: var(--line-primary);
+  background: color-mix(in srgb, var(--line-primary) 4%, transparent);
+}
+
+.upload-section.drag-over {
+  border-color: var(--line-primary);
+  background: color-mix(in srgb, var(--line-primary) 10%, transparent);
+  transform: scale(1.01);
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+.upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.upload-icon {
+  color: var(--line-text-secondary);
+  transition: color 0.2s ease;
+}
+
+.upload-section:hover .upload-icon {
+  color: var(--line-primary);
+}
+
+.upload-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--line-text);
+  margin: 0;
+}
+
+.upload-hint {
+  font-size: 13px;
+  color: var(--line-text-secondary);
+  margin: 0;
+}
+
+.loading-spinner {
+  margin-top: 16px;
+  color: var(--line-primary);
+  font-weight: 500;
 }
 
 .preview-header {
@@ -239,12 +639,12 @@ const importAll = async () => {
   align-items: center;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #dadce0;
+  border-bottom: 1px solid var(--line-border);
 }
 
 .question-preview-item {
-  background: #f8f9fa;
-  border: 1px solid #dadce0;
+  background: var(--line-bg-soft);
+  border: 1px solid var(--line-border);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 16px;
@@ -258,7 +658,7 @@ const importAll = async () => {
 
 .index {
   font-weight: bold;
-  color: #1a73e8;
+  color: var(--line-primary);
 }
 
 .form-row {
@@ -271,10 +671,11 @@ const importAll = async () => {
   flex: 1;
 }
 
-.google-input, .google-select {
+.google-input,
+.google-select {
   width: 100%;
   padding: 8px;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--line-border);
   border-radius: 4px;
 }
 
@@ -294,13 +695,13 @@ const importAll = async () => {
 .option-input {
   flex: 1;
   min-width: 200px;
-  background-color: #fff;
+  background-color: var(--line-bg);
 }
 
 .icon-btn {
   padding: 0 8px;
   font-size: 18px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .small-btn {
@@ -315,12 +716,37 @@ const importAll = async () => {
 }
 
 .error {
-  background-color: #fce8e6;
-  color: #c5221f;
+  background-color: color-mix(in srgb, var(--line-error) 14%, white);
+  color: color-mix(in srgb, var(--line-error) 80%, black);
 }
 
 .success {
-  background-color: #e6f4ea;
-  color: #137333;
+  background-color: color-mix(in srgb, var(--line-success) 14%, white);
+  color: color-mix(in srgb, var(--line-success) 80%, black);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.success-action {
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .import-card {
+    padding: 18px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .preview-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
 }
 </style>

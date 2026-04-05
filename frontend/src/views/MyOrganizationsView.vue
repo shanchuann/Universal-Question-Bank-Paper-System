@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { confirm } = useConfirm()
 
 interface Organization {
   id: string
@@ -33,7 +36,7 @@ async function fetchMyOrganizations() {
     const token = localStorage.getItem('token')
     const response = await fetch('/api/my-organizations', {
       headers: {
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`
       }
     })
     myOrganizations.value = await response.json()
@@ -47,7 +50,7 @@ async function fetchMyOrganizations() {
 async function joinOrganization() {
   joinError.value = ''
   joinSuccess.value = ''
-  
+
   if (!joinCode.value.trim()) {
     joinError.value = '请输入班级识别码'
     return
@@ -57,9 +60,9 @@ async function joinOrganization() {
     const token = localStorage.getItem('token')
     const response = await fetch('/api/organizations/join', {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({ inviteCode: joinCode.value.trim() })
     })
@@ -82,14 +85,21 @@ async function joinOrganization() {
 }
 
 async function leaveOrganization(orgId: string) {
-  if (!confirm('确定要退出该班级吗？')) return
+  const confirmed = await confirm({
+    title: '退出班级',
+    message: '确定要退出该班级吗？退出后您将无法查看该班级的考试和消息。',
+    type: 'warning',
+    confirmText: '退出',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
 
   try {
     const token = localStorage.getItem('token')
-    await fetch(`/api/my-organizations/${orgId}/leave`, { 
+    await fetch(`/api/my-organizations/${orgId}/leave`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`
       }
     })
     fetchMyOrganizations()
@@ -114,13 +124,20 @@ function formatDate(dateStr?: string) {
 <template>
   <div class="my-organizations-view">
     <div class="page-header">
-      <h1>我的班级</h1>
+      <h1 class="page-title">我的班级</h1>
       <p class="subtitle">管理您加入的班级组织</p>
     </div>
 
     <div class="toolbar">
       <button class="google-btn primary-btn" @click="showJoinModal = true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
           <line x1="12" y1="5" x2="12" y2="19"></line>
           <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
@@ -132,7 +149,14 @@ function formatDate(dateStr?: string) {
       <div v-if="loading" class="loading">加载中...</div>
 
       <div v-else-if="myOrganizations.length === 0" class="empty-state">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1">
+        <svg
+          width="64"
+          height="64"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#9aa0a6"
+          stroke-width="1"
+        >
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
           <circle cx="9" cy="7" r="4"></circle>
           <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -145,17 +169,41 @@ function formatDate(dateStr?: string) {
       <div v-else class="org-list">
         <div v-for="org in myOrganizations" :key="org.id" class="org-card">
           <div class="org-icon" :class="org.type?.toLowerCase()">
-            <svg v-if="org.type === 'CLASS'" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg
+              v-if="org.type === 'CLASS'"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
               <circle cx="9" cy="7" r="4"></circle>
               <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
               <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
             </svg>
-            <svg v-else-if="org.type === 'DEPARTMENT'" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg
+              v-else-if="org.type === 'DEPARTMENT'"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
               <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
-            <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg
+              v-else
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
               <line x1="12" y1="18" x2="12.01" y2="18"></line>
             </svg>
@@ -163,9 +211,18 @@ function formatDate(dateStr?: string) {
           <div class="org-info">
             <h3>{{ org.name }}</h3>
             <div class="org-meta">
-              <span class="org-type-badge" :class="org.type?.toLowerCase()">{{ orgTypeLabels[org.type] || org.type }}</span>
+              <span class="org-type-badge" :class="org.type?.toLowerCase()">{{
+                orgTypeLabels[org.type] || org.type
+              }}</span>
               <span v-if="org.schoolName" class="org-school">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                 </svg>
                 {{ org.schoolName }}
@@ -176,14 +233,28 @@ function formatDate(dateStr?: string) {
             </div>
             <div class="org-details">
               <span v-if="org.memberCount !== undefined" class="detail-item">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                   <circle cx="9" cy="7" r="4"></circle>
                 </svg>
                 {{ org.memberCount }} 名成员
               </span>
               <span v-if="org.joinedAt" class="detail-item">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                   <line x1="16" y1="2" x2="16" y2="6"></line>
                   <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -192,13 +263,26 @@ function formatDate(dateStr?: string) {
                 {{ formatDate(org.joinedAt) }} 加入
               </span>
               <span v-if="org.memberRole" class="role-badge" :class="org.memberRole?.toLowerCase()">
-                {{ org.memberRole === 'MANAGER' ? '管理员' : org.memberRole === 'OWNER' ? '创建者' : '成员' }}
+                {{
+                  org.memberRole === 'MANAGER'
+                    ? '管理员'
+                    : org.memberRole === 'OWNER'
+                      ? '创建者'
+                      : '成员'
+                }}
               </span>
             </div>
           </div>
           <div class="org-actions">
             <button class="icon-btn danger" @click="leaveOrganization(org.id)" title="退出班级">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                 <polyline points="16 17 21 12 16 7"></polyline>
                 <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -217,10 +301,10 @@ function formatDate(dateStr?: string) {
 
         <div class="form-group">
           <label>班级识别码</label>
-          <input 
-            v-model="joinCode" 
-            type="text" 
-            class="google-input" 
+          <input
+            v-model="joinCode"
+            type="text"
+            class="google-input"
             placeholder="例如：ABC123"
             @keyup.enter="joinOrganization"
           />
@@ -230,8 +314,12 @@ function formatDate(dateStr?: string) {
         <div v-if="joinSuccess" class="success-message">{{ joinSuccess }}</div>
 
         <div class="form-actions">
-          <button type="button" class="google-btn text-btn" @click="showJoinModal = false">取消</button>
-          <button type="button" class="google-btn primary-btn" @click="joinOrganization">加入</button>
+          <button type="button" class="google-btn text-btn" @click="showJoinModal = false">
+            取消
+          </button>
+          <button type="button" class="google-btn primary-btn" @click="joinOrganization">
+            加入
+          </button>
         </div>
       </div>
     </div>
@@ -240,46 +328,49 @@ function formatDate(dateStr?: string) {
 
 <style scoped>
 .my-organizations-view {
-  padding: 24px;
-  max-width: 800px;
+  padding: 32px;
+  max-width: 900px;
   margin: 0 auto;
+  animation: fadeIn 0.5s ease-out;
 }
 
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .page-header h1 {
-  font-size: 24px;
-  font-weight: 400;
-  color: #202124;
+  color: var(--line-text-primary);
   margin: 0 0 8px 0;
+  letter-spacing: -0.5px;
 }
 
 .subtitle {
-  color: #5f6368;
-  margin: 0;
+  color: var(--line-text-secondary);
+  font-size: 14px;
 }
 
 .toolbar {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .content-card {
-  background: #fff;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-  padding: 24px;
+  background: var(--line-card-bg);
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-lg);
+  padding: 32px;
+  box-shadow: var(--line-shadow-sm);
 }
 
-.loading, .empty-state {
+.loading,
+.empty-state {
   text-align: center;
-  padding: 48px;
-  color: #5f6368;
+  padding: 64px;
+  color: var(--line-text-secondary);
 }
 
 .empty-state svg {
   margin-bottom: 16px;
+  opacity: 0.5;
 }
 
 .empty-state .hint {
@@ -290,48 +381,50 @@ function formatDate(dateStr?: string) {
 .org-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .org-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-  transition: box-shadow 0.2s;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-lg);
+  background: var(--line-card-bg);
+  transition: all 0.2s;
 }
 
 .org-card:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: var(--line-shadow-md);
+  border-color: var(--line-primary-30);
+  transform: translateY(-1px);
 }
 
 .org-icon {
-  width: 48px;
-  height: 48px;
-  background: #e8f0fe;
-  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--line-radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #1a73e8;
   flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .org-icon.class {
-  background: #e8f0fe;
-  color: #1a73e8;
+  background: var(--line-primary-10);
+  color: var(--line-primary);
 }
 
 .org-icon.department {
-  background: #fef7e0;
-  color: #f9ab00;
+  background: #fffbeb;
+  color: #b45309;
 }
 
 .org-icon.school {
-  background: #e6f4ea;
-  color: #1e8e3e;
+  background: #ecfdf5;
+  color: #059669;
 }
 
 .org-info {
@@ -340,48 +433,50 @@ function formatDate(dateStr?: string) {
 }
 
 .org-info h3 {
-  margin: 0 0 6px 0;
-  font-size: 16px;
-  font-weight: 500;
-  color: #202124;
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--line-text-primary);
 }
 
 .org-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   font-size: 13px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
   margin-bottom: 8px;
 }
 
 .org-type-badge {
   padding: 2px 10px;
-  border-radius: 12px;
+  border-radius: var(--line-radius-full);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .org-type-badge.class {
-  background: #e8f0fe;
-  color: #1a73e8;
+  background: var(--line-primary-10);
+  color: var(--line-primary);
 }
 
 .org-type-badge.department {
-  background: #fef7e0;
-  color: #e37400;
+  background: #fffbeb;
+  color: #b45309;
 }
 
 .org-type-badge.school {
-  background: #e6f4ea;
-  color: #1e8e3e;
+  background: #ecfdf5;
+  color: #059669;
 }
 
-.org-school, .org-department {
+.org-school,
+.org-department {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .org-details {
@@ -390,155 +485,176 @@ function formatDate(dateStr?: string) {
   align-items: center;
   gap: 16px;
   font-size: 12px;
-  color: #80868b;
+  color: var(--line-text-secondary);
 }
 
 .detail-item {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .role-badge {
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--line-radius-md);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .role-badge.member {
-  background: #f1f3f4;
-  color: #5f6368;
+  background: var(--line-bg-soft);
+  color: var(--line-text-secondary);
 }
 
 .role-badge.manager {
-  background: #fef7e0;
-  color: #e37400;
+  background: #fffbeb;
+  color: #b45309;
 }
 
 .role-badge.owner {
-  background: #e6f4ea;
-  color: #1e8e3e;
+  background: #ecfdf5;
+  color: #059669;
 }
 
 .org-type {
-  background: #f1f3f4;
+  background: var(--line-bg-soft);
   padding: 2px 8px;
-  border-radius: 12px;
+  border-radius: var(--line-radius-md);
 }
 
 .icon-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
+  width: 40px;
+  height: 40px;
+  border: 1px solid transparent;
   background: transparent;
-  border-radius: 50%;
+  border-radius: var(--line-radius-full);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #5f6368;
-  transition: background 0.2s;
+  color: var(--line-text-secondary);
+  transition: all 0.2s;
 }
 
 .icon-btn:hover {
-  background: rgba(0,0,0,0.08);
+  background: var(--line-bg-soft);
+  color: var(--line-text-primary);
+  border-color: var(--line-border);
 }
 
 .icon-btn.danger:hover {
-  background: #fce8e6;
-  color: #d93025;
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fee2e2;
 }
 
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease-out;
 }
 
 .modal-content {
-  background: #fff;
-  border-radius: 8px;
-  padding: 24px;
+  background: var(--line-card-bg);
+  border-radius: var(--line-radius-lg);
+  padding: 32px;
   width: 100%;
-  max-width: 400px;
+  max-width: 450px;
+  border: 1px solid var(--line-border);
+  box-shadow: var(--line-shadow-xl);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .modal-content h2 {
   margin: 0 0 8px 0;
-  font-size: 20px;
-  font-weight: 500;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--line-text-primary);
+  letter-spacing: -0.5px;
 }
 
 .modal-hint {
-  color: #5f6368;
+  color: var(--line-text-secondary);
   font-size: 14px;
   margin: 0 0 24px 0;
+  line-height: 1.5;
 }
 
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 
 .form-group label {
   display: block;
   margin-bottom: 8px;
   font-size: 14px;
-  color: #5f6368;
+  color: var(--line-text-primary);
   font-weight: 500;
 }
 
 .google-input {
   width: 100%;
-  height: 48px;
+  height: 56px;
   padding: 0 16px;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  font-size: 16px;
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-md);
+  font-size: 18px;
   box-sizing: border-box;
   text-align: center;
-  letter-spacing: 2px;
+  letter-spacing: 4px;
   text-transform: uppercase;
+  background: var(--line-bg-soft);
+  color: var(--line-text-primary);
+  transition: all 0.2s;
+  font-weight: 600;
 }
 
 .google-input:focus {
   outline: none;
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
+  border-color: var(--line-primary);
+  background: var(--line-card-bg);
+  box-shadow: 0 0 0 2px var(--line-primary-10);
 }
 
 .error-message {
-  background: #fce8e6;
-  color: #d93025;
+  background: #fef2f2;
+  color: #dc2626;
   padding: 12px;
-  border-radius: 4px;
+  border-radius: var(--line-radius-md);
   font-size: 14px;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
+  border: 1px solid #fee2e2;
+  text-align: center;
 }
 
 .success-message {
-  background: #e6f4ea;
-  color: #1e8e3e;
+  background: #ecfdf5;
+  color: #059669;
   padding: 12px;
-  border-radius: 4px;
+  border-radius: var(--line-radius-md);
   font-size: 14px;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
+  border: 1px solid #d1fae5;
+  text-align: center;
 }
 
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 16px;
 }
 
 .google-btn {
-  padding: 8px 24px;
-  border-radius: 4px;
+  padding: 10px 24px;
+  border-radius: var(--line-radius-md);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -546,23 +662,48 @@ function formatDate(dateStr?: string) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  font-family: inherit;
+  transition: all 0.2s;
 }
 
 .primary-btn {
-  background: #1a73e8;
+  background: var(--line-primary);
   color: #fff;
+  box-shadow: 0 2px 4px rgba(14, 165, 233, 0.2);
 }
 
 .primary-btn:hover {
-  background: #1557b0;
+  background: var(--line-primary-hover);
+  transform: translateY(-1px);
 }
 
 .text-btn {
   background: transparent;
-  color: #1a73e8;
+  color: var(--line-text-secondary);
 }
 
 .text-btn:hover {
-  background: #e8f0fe;
+  background: var(--line-bg-soft);
+  color: var(--line-primary);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

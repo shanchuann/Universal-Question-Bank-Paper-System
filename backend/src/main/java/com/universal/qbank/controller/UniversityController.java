@@ -12,9 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * 高校数据API - 提供高校和院系数据
- */
+/** 高校数据API - 提供高校和院系数据 */
 @RestController
 @RequestMapping("/api/universities")
 @CrossOrigin(origins = "*")
@@ -66,9 +64,8 @@ public class UniversityController {
   /** 从高校模板创建完整组织架构 */
   @PostMapping("/{code}/create-organization")
   public ResponseEntity<?> createOrganizationFromUniversity(
-      @PathVariable String code,
-      @RequestBody Map<String, Object> request) {
-    
+      @PathVariable String code, @RequestBody Map<String, Object> request) {
+
     University uni = universityDataService.getUniversity(code);
     if (uni == null) {
       Map<String, String> error = new HashMap<>();
@@ -78,7 +75,7 @@ public class UniversityController {
 
     // 获取要创建的院系和班级信息
     @SuppressWarnings("unchecked")
-    List<Map<String, Object>> departmentClasses = 
+    List<Map<String, Object>> departmentClasses =
         (List<Map<String, Object>>) request.get("departments");
 
     if (departmentClasses == null || departmentClasses.isEmpty()) {
@@ -107,10 +104,11 @@ public class UniversityController {
         List<Map<String, String>> classes = (List<Map<String, String>>) deptInfo.get("classes");
 
         // 找到对应的院系
-        Department dept = uni.getDepartments().stream()
-            .filter(d -> d.getCode().equals(deptCode))
-            .findFirst()
-            .orElse(null);
+        Department dept =
+            uni.getDepartments().stream()
+                .filter(d -> d.getCode().equals(deptCode))
+                .findFirst()
+                .orElse(null);
 
         if (dept == null) continue;
 
@@ -147,8 +145,10 @@ public class UniversityController {
 
       Map<String, Object> result = new HashMap<>();
       result.put("school", school);
-      result.put("message", String.format("成功创建 %s，包含 %d 个院系，%d 个班级", 
-          uni.getName(), departmentClasses.size(), totalClasses));
+      result.put(
+          "message",
+          String.format(
+              "成功创建 %s，包含 %d 个院系，%d 个班级", uni.getName(), departmentClasses.size(), totalClasses));
 
       return ResponseEntity.ok(result);
 

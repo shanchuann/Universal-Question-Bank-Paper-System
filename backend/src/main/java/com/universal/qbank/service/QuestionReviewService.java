@@ -4,7 +4,6 @@ import com.universal.qbank.entity.*;
 import com.universal.qbank.repository.*;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,7 +23,9 @@ public class QuestionReviewService {
   @Transactional
   public void submitForReview(String questionId, String submitterId) {
     QuestionEntity question =
-        questionRepository.findById(questionId).orElseThrow(() -> new RuntimeException("Not found"));
+        questionRepository
+            .findById(questionId)
+            .orElseThrow(() -> new RuntimeException("Not found"));
 
     if (!"DRAFT".equals(question.getStatus()) && !"REJECTED".equals(question.getStatus())) {
       throw new RuntimeException("Only draft or rejected questions can be submitted for review");
@@ -51,10 +52,13 @@ public class QuestionReviewService {
   @Transactional
   public void approve(String questionId, String reviewerId, String notes) {
     QuestionEntity question =
-        questionRepository.findById(questionId).orElseThrow(() -> new RuntimeException("Not found"));
+        questionRepository
+            .findById(questionId)
+            .orElseThrow(() -> new RuntimeException("Not found"));
 
     // 支持从 PENDING_REVIEW 或 REJECTED 状态通过
-    if (!"PENDING_REVIEW".equals(question.getStatus()) && !"REJECTED".equals(question.getStatus())) {
+    if (!"PENDING_REVIEW".equals(question.getStatus())
+        && !"REJECTED".equals(question.getStatus())) {
       throw new RuntimeException("Only pending or rejected questions can be approved");
     }
 
@@ -78,10 +82,13 @@ public class QuestionReviewService {
   @Transactional
   public void reject(String questionId, String reviewerId, String notes) {
     QuestionEntity question =
-        questionRepository.findById(questionId).orElseThrow(() -> new RuntimeException("Not found"));
+        questionRepository
+            .findById(questionId)
+            .orElseThrow(() -> new RuntimeException("Not found"));
 
     // 支持从 PENDING_REVIEW 或 APPROVED 状态撤回
-    if (!"PENDING_REVIEW".equals(question.getStatus()) && !"APPROVED".equals(question.getStatus())) {
+    if (!"PENDING_REVIEW".equals(question.getStatus())
+        && !"APPROVED".equals(question.getStatus())) {
       throw new RuntimeException("Only pending or approved questions can be rejected/revoked");
     }
 

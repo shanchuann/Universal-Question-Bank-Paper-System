@@ -1,0 +1,38 @@
+services:
+  uqbank-backend:
+    image: ghcr.io/${GHCR_OWNER}/uqbank-backend:${BACKEND_TAG:-prod}
+    container_name: uqbank-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      FLYWAY_ENABLED: ${FLYWAY_ENABLED:-true}
+      JPA_DDL_AUTO: ${JPA_DDL_AUTO:-validate}
+      SQL_INIT_MODE: ${SQL_INIT_MODE:-never}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  uqbank-frontend:
+    image: ghcr.io/${GHCR_OWNER}/uqbank-frontend:${FRONTEND_TAG:-prod}
+    container_name: uqbank-frontend
+    restart: always
+    ports:
+      - "80:80"
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: uqbank-watchtower
+    restart: always
+    command: --interval 60 --cleanup --rolling-restart --label-enable
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /root/.docker/config.json:/config.json:ro

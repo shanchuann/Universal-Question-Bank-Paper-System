@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useToast } from '@/composables/useToast'
+
+const { showToast } = useToast()
 
 interface ExamPlan {
   id: string
@@ -14,13 +17,19 @@ interface ExamPlan {
   passScore: number
 }
 
+interface MyExam {
+  enrollmentId: string
+  enrollmentStatus: string
+  examPlan: ExamPlan
+}
+
 const router = useRouter()
 const examPlans = ref<ExamPlan[]>([])
 const loading = ref(false)
 
 const getAuthHeaders = () => ({
   'Content-Type': 'application/json',
-  'Authorization': `Bearer ${localStorage.getItem('token')}`
+  Authorization: `Bearer ${localStorage.getItem('token')}`
 })
 
 onMounted(() => {
@@ -30,15 +39,16 @@ onMounted(() => {
 async function fetchAvailableExams() {
   loading.value = true
   try {
-    // 获取已发布和进行中的考试
-    const response = await fetch('/api/exam-plans?page=0&size=100', {
+    // 获取学生已报名的考试
+    const response = await fetch('/api/exam-plans/my-exams', {
       headers: getAuthHeaders()
     })
-    const data = await response.json()
+    const data: MyExam[] = await response.json()
+
     // 只显示已发布和进行中的考试
-    examPlans.value = (data.content || []).filter((p: ExamPlan) => 
-      p.status === 'PUBLISHED' || p.status === 'ONGOING'
-    )
+    examPlans.value = data
+      .filter((item) => item.examPlan.status === 'PUBLISHED' || item.examPlan.status === 'ONGOING')
+      .map((item) => item.examPlan)
   } catch (error) {
     console.error('Failed to fetch exams:', error)
   } finally {
@@ -51,7 +61,7 @@ function getExamStatus(plan: ExamPlan) {
   const now = new Date()
   const start = new Date(plan.startTime)
   const end = new Date(plan.endTime)
-  
+
   if (now < start) {
     return { status: 'upcoming', label: '未开始', canEnter: false }
   } else if (now > end) {
@@ -78,7 +88,7 @@ function getTimeRemaining(plan: ExamPlan) {
   const now = new Date()
   const start = new Date(plan.startTime)
   const end = new Date(plan.endTime)
-  
+
   if (now < start) {
     const diff = start.getTime() - now.getTime()
     const hours = Math.floor(diff / (1000 * 60 * 60))
@@ -102,16 +112,19 @@ function getTimeRemaining(plan: ExamPlan) {
 function enterExam(plan: ExamPlan) {
   const status = getExamStatus(plan)
   if (!status.canEnter) {
-    alert(status.status === 'upcoming' ? '考试尚未开始' : '考试已结束')
+    showToast({
+      message: status.status === 'upcoming' ? '考试尚未开始' : '考试已结束',
+      type: 'warning'
+    })
     return
   }
   // 跳转到考试页面，传递考试计划ID和试卷ID
-  router.push({ 
-    path: '/exam', 
-    query: { 
+  router.push({
+    path: '/exam',
+    query: {
       planId: plan.id,
       paperId: plan.paperId.toString()
-    } 
+    }
   })
 }
 
@@ -125,7 +138,7 @@ const examTypeLabels: Record<string, string> = {
 <template>
   <div class="student-exam-view">
     <div class="page-header">
-      <h1>我的考试</h1>
+      <h1 class="page-title">我的考试</h1>
       <p class="subtitle">查看可参加的考试，在规定时间内完成答题</p>
     </div>
 
@@ -136,7 +149,14 @@ const examTypeLabels: Record<string, string> = {
       </div>
 
       <div v-else-if="examPlans.length === 0" class="empty-state">
-        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1">
+        <svg
+          width="80"
+          height="80"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#9aa0a6"
+          stroke-width="1"
+        >
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
           <line x1="16" y1="2" x2="16" y2="6"></line>
           <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -147,9 +167,9 @@ const examTypeLabels: Record<string, string> = {
       </div>
 
       <div v-else class="exam-list">
-        <div 
-          v-for="plan in examPlans" 
-          :key="plan.id" 
+        <div
+          v-for="plan in examPlans"
+          :key="plan.id"
           class="exam-card"
           :class="getExamStatus(plan).status"
         >
@@ -159,7 +179,7 @@ const examTypeLabels: Record<string, string> = {
               {{ getExamStatus(plan).label }}
             </span>
           </div>
-          
+
           <div class="exam-info">
             <div class="info-row">
               <span class="label">考试类型</span>
@@ -185,13 +205,19 @@ const examTypeLabels: Record<string, string> = {
 
           <div class="exam-footer">
             <span class="time-remaining">{{ getTimeRemaining(plan) }}</span>
-            <button 
+            <button
               class="enter-btn"
               :class="{ disabled: !getExamStatus(plan).canEnter }"
               :disabled="!getExamStatus(plan).canEnter"
               @click="enterExam(plan)"
             >
-              {{ getExamStatus(plan).canEnter ? '进入考试' : (getExamStatus(plan).status === 'upcoming' ? '等待开始' : '已结束') }}
+              {{
+                getExamStatus(plan).canEnter
+                  ? '进入考试'
+                  : getExamStatus(plan).status === 'upcoming'
+                    ? '等待开始'
+                    : '已结束'
+              }}
             </button>
           </div>
         </div>
@@ -212,22 +238,20 @@ const examTypeLabels: Record<string, string> = {
 }
 
 .page-header h1 {
-  font-size: 28px;
-  font-weight: 400;
-  color: #202124;
+  color: var(--line-text);
   margin: 0 0 8px 0;
 }
 
 .subtitle {
-  color: #5f6368;
+  color: var(--line-text-secondary);
   margin: 0;
   font-size: 14px;
 }
 
 .content-card {
-  background: #fff;
+  background: var(--line-bg);
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 24px;
   min-height: 400px;
 }
@@ -238,21 +262,23 @@ const examTypeLabels: Record<string, string> = {
   align-items: center;
   justify-content: center;
   padding: 60px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid #e8eaed;
-  border-top-color: #1a73e8;
+  border: 3px solid var(--line-bg-soft);
+  border-top-color: var(--line-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-state {
@@ -271,12 +297,12 @@ const examTypeLabels: Record<string, string> = {
 .empty-state h3 {
   font-size: 18px;
   font-weight: 500;
-  color: #202124;
+  color: var(--line-text);
   margin: 0 0 8px 0;
 }
 
 .empty-state p {
-  color: #5f6368;
+  color: var(--line-text-secondary);
   margin: 0;
 }
 
@@ -287,30 +313,30 @@ const examTypeLabels: Record<string, string> = {
 }
 
 .exam-card {
-  background: #fff;
-  border: 1px solid #e8eaed;
+  background: var(--line-bg);
+  border: 1px solid var(--line-bg-soft);
   border-radius: 12px;
   padding: 20px;
   transition: all 0.2s;
 }
 
 .exam-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .exam-card.ongoing {
   border-color: #34a853;
-  background: linear-gradient(to bottom, #f0fdf4, #fff);
+  background: linear-gradient(to bottom, #f0fdf4, var(--line-bg));
 }
 
 .exam-card.upcoming {
   border-color: #fbbc04;
-  background: linear-gradient(to bottom, #fffbeb, #fff);
+  background: linear-gradient(to bottom, #fffbeb, var(--line-bg));
 }
 
 .exam-card.ended {
-  border-color: #dadce0;
-  background: #f8f9fa;
+  border-color: var(--line-border);
+  background: var(--line-bg-soft);
   opacity: 0.8;
 }
 
@@ -324,7 +350,7 @@ const examTypeLabels: Record<string, string> = {
 .exam-name {
   font-size: 18px;
   font-weight: 500;
-  color: #202124;
+  color: var(--line-text);
   margin: 0;
   flex: 1;
 }
@@ -347,8 +373,8 @@ const examTypeLabels: Record<string, string> = {
 }
 
 .status-tag.ended {
-  background: #f1f3f4;
-  color: #5f6368;
+  background: var(--line-bg-soft);
+  color: var(--line-text-secondary);
 }
 
 .exam-info {
@@ -359,7 +385,7 @@ const examTypeLabels: Record<string, string> = {
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px solid #f1f3f4;
+  border-bottom: 1px solid var(--line-bg-soft);
 }
 
 .info-row:last-child {
@@ -367,12 +393,12 @@ const examTypeLabels: Record<string, string> = {
 }
 
 .info-row .label {
-  color: #5f6368;
+  color: var(--line-text-secondary);
   font-size: 14px;
 }
 
 .info-row .value {
-  color: #202124;
+  color: var(--line-text);
   font-size: 14px;
   font-weight: 500;
 }
@@ -382,18 +408,18 @@ const examTypeLabels: Record<string, string> = {
   justify-content: space-between;
   align-items: center;
   padding-top: 16px;
-  border-top: 1px solid #e8eaed;
+  border-top: 1px solid var(--line-bg-soft);
 }
 
 .time-remaining {
   font-size: 13px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .enter-btn {
   padding: 10px 24px;
-  background: #1a73e8;
-  color: #fff;
+  background: var(--line-primary);
+  color: var(--line-bg);
   border: none;
   border-radius: 6px;
   font-size: 14px;
@@ -407,7 +433,7 @@ const examTypeLabels: Record<string, string> = {
 }
 
 .enter-btn.disabled {
-  background: #dadce0;
+  background: var(--line-border);
   color: #80868b;
   cursor: not-allowed;
 }

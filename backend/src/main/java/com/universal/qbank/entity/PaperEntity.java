@@ -21,7 +21,11 @@ public class PaperEntity {
   @Column(name = "question_id")
   private List<String> questionIds;
 
-  @OneToMany(mappedBy = "paper", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+  @OneToMany(
+      mappedBy = "paper",
+      cascade = CascadeType.ALL,
+      orphanRemoval = true,
+      fetch = FetchType.EAGER)
   @OrderBy("sortOrder ASC")
   private List<PaperItemEntity> items;
 

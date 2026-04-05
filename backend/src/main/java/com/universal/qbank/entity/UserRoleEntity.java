@@ -4,9 +4,7 @@ import jakarta.persistence.*;
 import java.io.Serializable;
 import java.util.Objects;
 
-/**
- * 用户-角色关联实体（支持按组织分配角色）
- */
+/** 用户-角色关联实体（支持按组织分配角色） */
 @Entity
 @Table(name = "user_roles")
 @IdClass(UserRoleEntity.UserRoleId.class)

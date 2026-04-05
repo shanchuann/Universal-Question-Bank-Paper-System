@@ -60,7 +60,7 @@ describe('ExamView', () => {
         plugins: [router]
       }
     })
-    
+
     // Enter Paper ID
     await wrapper.find('input[placeholder="Enter Paper ID"]').setValue('101')
     await wrapper.find('form').trigger('submit')
@@ -92,9 +92,7 @@ describe('ExamView', () => {
         },
         userId: 'user-1',
         score: 100,
-        records: [
-          { questionId: 'q1', userAnswer: '2', isCorrect: true }
-        ]
+        records: [{ questionId: 'q1', userAnswer: '2', isCorrect: true }]
       }
     })
 
@@ -116,9 +114,7 @@ describe('ExamView', () => {
         },
         userId: 'user-1',
         score: 100,
-        records: [
-          { questionId: 'q1', userAnswer: '2', isCorrect: true }
-        ]
+        records: [{ questionId: 'q1', userAnswer: '2', isCorrect: true }]
       }
     })
 
@@ -138,10 +134,10 @@ describe('ExamView', () => {
     if (radio.exists()) {
       await radio.setValue('2')
     }
-    
+
     // Submit exam
     const buttons = wrapper.findAll('button')
-    const submitBtn = buttons.find(b => b.text().includes('Submit Exam'))
+    const submitBtn = buttons.find((b) => b.text().includes('Submit Exam'))
     expect(submitBtn?.exists()).toBe(true)
     await submitBtn?.trigger('click')
     await flushPromises()
@@ -149,8 +145,8 @@ describe('ExamView', () => {
     // Check score display
     expect(wrapper.find('.score-value').text()).toBe('100')
     expect(wrapper.find('.status-badge.correct').exists()).toBe(true)
-    
-    const exitBtn = wrapper.findAll('button').find(b => b.text().includes('Exit Exam'))
+
+    const exitBtn = wrapper.findAll('button').find((b) => b.text().includes('Exit Exam'))
     expect(exitBtn?.exists()).toBe(true)
   })
 })

@@ -3,9 +3,7 @@ package com.universal.qbank.entity;
 import jakarta.persistence.*;
 import java.util.UUID;
 
-/**
- * 教师-班级-课程关联实体
- */
+/** 教师-班级-课程关联实体 */
 @Entity
 @Table(name = "teacher_classes")
 public class TeacherClassEntity {

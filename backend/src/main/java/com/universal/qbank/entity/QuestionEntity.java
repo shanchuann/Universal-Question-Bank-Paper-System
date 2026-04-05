@@ -6,7 +6,18 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "questions")
+@Table(
+    name = "questions",
+    indexes = {
+      @Index(name = "idx_question_status_created", columnList = "status, createdAt"),
+      @Index(
+          name = "idx_question_creator_status_created",
+          columnList = "createdBy, status, createdAt"),
+      @Index(
+          name = "idx_question_org_status_created",
+          columnList = "organizationId, status, createdAt"),
+      @Index(name = "idx_question_subject_type_diff", columnList = "subjectId, type, difficulty")
+    })
 public class QuestionEntity {
 
   @Id private String id;
@@ -46,6 +57,10 @@ public class QuestionEntity {
   @ElementCollection(fetch = FetchType.EAGER)
   @CollectionTable(
       name = "question_knowledge_points",
+      indexes = {
+        @Index(name = "idx_qkp_question", columnList = "question_id"),
+        @Index(name = "idx_qkp_knowledge_point", columnList = "knowledge_point_id")
+      },
       joinColumns = @JoinColumn(name = "question_id"))
   @Column(name = "knowledge_point_id")
   private List<String> knowledgePointIds;

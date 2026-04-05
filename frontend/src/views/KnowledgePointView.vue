@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
+import { useConfirm } from '@/composables/useConfirm'
+import { useToast } from '@/composables/useToast'
+import GoogleSelect from '@/components/GoogleSelect.vue'
+
+const { confirm } = useConfirm()
+const { showToast } = useToast()
 
 interface KnowledgePoint {
   id: string
@@ -27,6 +33,12 @@ const form = ref({
   sortOrder: 0
 })
 
+const levelOptions = [
+  { value: 'CHAPTER', label: '章' },
+  { value: 'SECTION', label: '节' },
+  { value: 'POINT', label: '知识点' }
+]
+
 const fetchPoints = async () => {
   loading.value = true
   try {
@@ -47,30 +59,30 @@ const fetchPoints = async () => {
 const treeData = computed(() => {
   const map = new Map<string, KnowledgePoint>()
   const roots: KnowledgePoint[] = []
-  
+
   // Clone and map
-  points.value.forEach(p => {
+  points.value.forEach((p) => {
     map.set(p.id, { ...p, children: [] })
   })
-  
+
   // Build tree
-  map.forEach(p => {
+  map.forEach((p) => {
     if (p.parentId && map.has(p.parentId)) {
       map.get(p.parentId)!.children!.push(p)
     } else {
       roots.push(p)
     }
   })
-  
+
   // Sort
   const sortFn = (a: KnowledgePoint, b: KnowledgePoint) => (a.sortOrder || 0) - (b.sortOrder || 0)
   const sortRecursive = (list: KnowledgePoint[]) => {
     list.sort(sortFn)
-    list.forEach(item => {
+    list.forEach((item) => {
       if (item.children) sortRecursive(item.children)
     })
   }
-  
+
   sortRecursive(roots)
   return roots
 })
@@ -104,7 +116,7 @@ const savePoint = async () => {
       ...form.value,
       subjectId: subjectId.value
     }
-    
+
     if (editingPoint.value) {
       await axios.put(`/api/knowledge-points/${editingPoint.value.id}`, payload, {
         headers: { Authorization: `Bearer ${token}` }
@@ -118,13 +130,20 @@ const savePoint = async () => {
     fetchPoints()
   } catch (err) {
     console.error(err)
-    alert('保存失败')
+    showToast({ message: '保存失败', type: 'error' })
   }
 }
 
 const deletePoint = async (id: string) => {
-  if (!confirm('确定要删除吗？这将删除该知识点及其子节点。')) return
-  
+  const confirmed = await confirm({
+    title: '删除知识点',
+    message: '确定要删除该知识点吗？这将删除该知识点及其子节点。',
+    type: 'danger',
+    confirmText: '删除',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
+
   const token = localStorage.getItem('token')
   try {
     await axios.delete(`/api/knowledge-points/${id}`, {
@@ -133,7 +152,7 @@ const deletePoint = async (id: string) => {
     fetchPoints()
   } catch (err) {
     console.error(err)
-    alert('删除失败')
+    showToast({ message: '删除失败', type: 'error' })
   }
 }
 
@@ -144,59 +163,161 @@ onMounted(fetchPoints)
   <div class="container">
     <div class="google-card">
       <div class="header">
-        <h1>知识图谱</h1>
+        <h1 class="page-title">知识图谱</h1>
         <button @click="openAddDialog()" class="google-btn primary-btn">添加章节</button>
       </div>
-      
+
       <div class="tree-view">
         <div v-if="loading">加载中...</div>
         <div v-else-if="treeData.length === 0">未找到知识点。</div>
-        
+
         <ul class="tree-root">
           <li v-for="chapter in treeData" :key="chapter.id" class="tree-node chapter">
             <div class="node-content">
               <span class="node-title">{{ chapter.name }}</span>
               <div class="actions">
                 <button @click="openEditDialog(chapter)" class="icon-btn" title="编辑">
-                  <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#5f6368"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/></svg>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                    <path d="m15 5 4 4" />
+                  </svg>
                 </button>
                 <button @click="openAddDialog(chapter)" class="icon-btn" title="添加节">
-                  <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#5f6368"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
                 </button>
                 <button @click="deletePoint(chapter.id)" class="icon-btn delete" title="删除">
-                  <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#5f6368"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <polyline points="3 6 5 6 21 6" />
+                    <path
+                      d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                    />
+                  </svg>
                 </button>
               </div>
             </div>
-            
+
             <ul v-if="chapter.children && chapter.children.length > 0" class="tree-children">
               <li v-for="section in chapter.children" :key="section.id" class="tree-node section">
                 <div class="node-content">
                   <span class="node-title">{{ section.name }}</span>
                   <div class="actions">
                     <button @click="openEditDialog(section)" class="icon-btn" title="编辑">
-                      <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="#5f6368"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/></svg>
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                        <path d="m15 5 4 4" />
+                      </svg>
                     </button>
                     <button @click="openAddDialog(section)" class="icon-btn" title="添加知识点">
-                      <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="#5f6368"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
                     </button>
                     <button @click="deletePoint(section.id)" class="icon-btn delete" title="删除">
-                      <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 0 24 24" width="20px" fill="#5f6368"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <polyline points="3 6 5 6 21 6" />
+                        <path
+                          d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                        />
+                      </svg>
                     </button>
                   </div>
                 </div>
-                      <button @click="openEditDialog(point)" class="icon-btn" title="编辑">
-                        <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#5f6368"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29zm-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75z"/></svg>
-                      </button>
-                      <button @click="deletePoint(point.id)" class="icon-btn delete" title="删除">
-                        <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#5f6368"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
-                      </button>
+
+                <ul v-if="section.children && section.children.length > 0" class="tree-children">
                   <li v-for="point in section.children" :key="point.id" class="tree-node point">
                     <div class="node-content">
                       <span class="node-title">{{ point.name }}</span>
                       <div class="actions">
-                        <button @click="openEditDialog(point)" class="icon-btn">✎</button>
-                        <button @click="deletePoint(point.id)" class="icon-btn delete">×</button>
+                        <button @click="openEditDialog(point)" class="icon-btn" title="编辑">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                            <path d="m15 5 4 4" />
+                          </svg>
+                        </button>
+                        <button @click="deletePoint(point.id)" class="icon-btn delete" title="删除">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <polyline points="3 6 5 6 21 6" />
+                            <path
+                              d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                            />
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   </li>
@@ -218,11 +339,12 @@ onMounted(fetchPoints)
         </div>
         <div class="form-group">
           <label>级别</label>
-          <select v-model="form.level" class="google-select" disabled>
-            <option value="CHAPTER">章</option>
-            <option value="SECTION">节</option>
-            <option value="POINT">知识点</option>
-          </select>
+          <GoogleSelect
+            v-model="form.level"
+            :options="levelOptions"
+            placeholder="级别"
+            :disabled="true"
+          />
         </div>
         <div class="form-group">
           <label>排序</label>
@@ -253,7 +375,7 @@ onMounted(fetchPoints)
 .tree-children {
   list-style: none;
   padding-left: 24px;
-  border-left: 1px solid #dadce0;
+  border-left: 1px solid var(--line-border);
   margin-left: 12px;
 }
 
@@ -266,13 +388,13 @@ onMounted(fetchPoints)
   align-items: center;
   padding: 8px;
   border-radius: 4px;
-  background: #f8f9fa;
+  background: var(--line-bg-soft);
   border: 1px solid transparent;
 }
 
 .node-content:hover {
-  background: #e8f0fe;
-  border-color: #d2e3fc;
+  background: var(--line-bg-hover);
+  border-color: var(--line-border);
 }
 
 .node-title {
@@ -280,9 +402,18 @@ onMounted(fetchPoints)
   font-weight: 500;
 }
 
-.chapter .node-title { font-size: 16px; color: #1a73e8; }
-.section .node-title { font-size: 14px; color: #202124; }
-.point .node-title { font-size: 13px; color: #5f6368; }
+.chapter .node-title {
+  font-size: 16px;
+  color: var(--line-primary);
+}
+.section .node-title {
+  font-size: 14px;
+  color: var(--line-text);
+}
+.point .node-title {
+  font-size: 13px;
+  color: var(--line-text-secondary);
+}
 
 .actions {
   display: flex;
@@ -301,26 +432,31 @@ onMounted(fetchPoints)
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .icon-btn:hover {
-  background: rgba(0,0,0,0.05);
-  color: #1a73e8;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--line-primary);
 }
 
 .icon-btn.delete:hover {
-  color: #d93025;
+  color: var(--line-error);
 }
 
 .modal-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.5);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease-out;
 }
 
 .modal {
@@ -339,11 +475,21 @@ onMounted(fetchPoints)
   margin-bottom: 16px;
 }
 
-.google-input, .google-select {
+.google-input,
+.google-select {
   width: 100%;
   padding: 8px;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--line-border);
   border-radius: 4px;
   margin-top: 4px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>

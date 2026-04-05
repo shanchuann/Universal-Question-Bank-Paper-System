@@ -38,7 +38,13 @@ describe('PaperGenerationView', () => {
         title: 'My Generated Paper',
         createdAt: '2023-01-01',
         questions: [
-          { id: 'q1', subjectId: 'math', type: 'SINGLE_CHOICE', difficulty: 'EASY', status: 'ACTIVE' }
+          {
+            id: 'q1',
+            subjectId: 'math',
+            type: 'SINGLE_CHOICE',
+            difficulty: 'EASY',
+            status: 'ACTIVE'
+          }
         ]
       }
     })
@@ -48,11 +54,11 @@ describe('PaperGenerationView', () => {
         plugins: [router]
       }
     })
-    
+
     // Fill form (simplified)
     // The view has v-model on inputs, let's set them if needed, or rely on defaults
     // Defaults are: title: 'My Generated Paper', total: 5
-    
+
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 

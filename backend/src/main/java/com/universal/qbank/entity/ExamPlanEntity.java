@@ -5,11 +5,16 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * 考试计划实体
- */
+/** 考试计划实体 */
 @Entity
-@Table(name = "exam_plans")
+@Table(
+    name = "exam_plans",
+    indexes = {
+      @Index(name = "idx_exam_plan_status_start", columnList = "status, startTime"),
+      @Index(name = "idx_exam_plan_status_end", columnList = "status, endTime"),
+      @Index(name = "idx_exam_plan_creator_created", columnList = "createdBy, createdAt"),
+      @Index(name = "idx_exam_plan_course_status", columnList = "courseId, status")
+    })
 public class ExamPlanEntity {
 
   @Id private String id;
@@ -54,6 +59,9 @@ public class ExamPlanEntity {
 
   /** 选项乱序 */
   private Boolean shuffleOptions = false;
+
+  /** 发布后是否启用 AI 自动阅卷（主观题） */
+  private Boolean aiAutoGradingEnabled = false;
 
   /** 创建人 */
   private String createdBy;
@@ -185,6 +193,14 @@ public class ExamPlanEntity {
 
   public void setShuffleOptions(Boolean shuffleOptions) {
     this.shuffleOptions = shuffleOptions;
+  }
+
+  public Boolean getAiAutoGradingEnabled() {
+    return aiAutoGradingEnabled;
+  }
+
+  public void setAiAutoGradingEnabled(Boolean aiAutoGradingEnabled) {
+    this.aiAutoGradingEnabled = aiAutoGradingEnabled;
   }
 
   public String getCreatedBy() {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ChevronDown, Check } from 'lucide-vue-next'
 
 interface Option {
   label: string
@@ -11,20 +12,50 @@ const props = defineProps<{
   options: Option[]
   label?: string
   placeholder?: string
+  disabled?: boolean
 }>()
 
 const emit = defineEmits(['update:modelValue'])
 
 const isOpen = ref(false)
 const containerRef = ref<HTMLElement | null>(null)
+const alignRight = ref(false)
+const openUpward = ref(false)
+const dropdownMaxHeight = ref(240)
 
 const selectedLabel = computed(() => {
-  const option = props.options.find(o => o.value === props.modelValue)
-  return option ? option.label : (props.placeholder || 'Select')
+  const option = props.options.find((o) => o.value === props.modelValue)
+  return option ? option.label : props.placeholder || 'Select'
 })
 
 const toggleDropdown = () => {
+  if (props.disabled) return
+  if (!isOpen.value) {
+    updateDropdownAlignment()
+  }
   isOpen.value = !isOpen.value
+}
+
+const updateDropdownAlignment = () => {
+  if (!containerRef.value) return
+  const rect = containerRef.value.getBoundingClientRect()
+  const dropdownWidth = Math.max(rect.width, 180)
+  alignRight.value = rect.left + dropdownWidth > window.innerWidth - 8
+
+  // Keep dropdown inside viewport: use shorter list and open upward when needed.
+  const viewportPadding = 8
+  const minHeight = 140
+  const preferredHeight = 240
+  const spaceBelow = window.innerHeight - rect.bottom - viewportPadding
+  const spaceAbove = rect.top - viewportPadding
+
+  if (spaceBelow < minHeight && spaceAbove > spaceBelow) {
+    openUpward.value = true
+    dropdownMaxHeight.value = Math.max(minHeight, Math.min(preferredHeight, spaceAbove))
+  } else {
+    openUpward.value = false
+    dropdownMaxHeight.value = Math.max(minHeight, Math.min(preferredHeight, spaceBelow))
+  }
 }
 
 const selectOption = (value: string | number) => {
@@ -50,24 +81,26 @@ onUnmounted(() => {
 <template>
   <div class="google-select-container" ref="containerRef">
     <label v-if="label" class="select-label">{{ label }}</label>
-    <div 
-      class="select-trigger" 
-      :class="{ 'is-open': isOpen, 'has-value': !!modelValue }"
+    <div
+      class="select-trigger"
+      :class="{ 'is-open': isOpen, 'has-value': !!modelValue, 'is-disabled': disabled }"
       @click="toggleDropdown"
     >
       <span class="selected-text">{{ selectedLabel }}</span>
       <span class="arrow-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <chevron-down v-if="!isOpen"></chevron-down>
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
+        <ChevronDown :size="20" />
       </span>
     </div>
-    
+
     <transition name="fade">
-      <div v-if="isOpen" class="options-list">
-        <div 
-          v-for="option in options" 
+      <div
+        v-if="isOpen"
+        class="options-list"
+        :class="{ 'align-right': alignRight, 'open-upward': openUpward }"
+        :style="{ maxHeight: `${dropdownMaxHeight}px` }"
+      >
+        <div
+          v-for="option in options"
           :key="option.value"
           class="option-item"
           :class="{ 'is-selected': option.value === modelValue }"
@@ -75,9 +108,7 @@ onUnmounted(() => {
         >
           {{ option.label }}
           <span v-if="option.value === modelValue" class="check-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
+            <Check :size="18" />
           </span>
         </div>
       </div>
@@ -89,14 +120,14 @@ onUnmounted(() => {
 .google-select-container {
   position: relative;
   width: 100%;
-  font-family: 'Roboto', 'Google Sans', sans-serif;
+  font-family: inherit;
 }
 
 .select-label {
   display: block;
-  font-size: 12px;
-  color: #5f6368;
-  margin-bottom: 4px;
+  font-size: 14px;
+  color: var(--line-text-primary);
+  margin-bottom: 6px;
   font-weight: 500;
 }
 
@@ -104,103 +135,136 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  background-color: #fff;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
+  padding: 12px 16px;
+  background-color: var(--line-bg);
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-md);
   cursor: pointer;
-  transition: all 0.2s;
-  min-height: 40px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 48px;
   box-sizing: border-box;
+  color: var(--line-text-primary);
 }
 
 .select-trigger:hover {
-  border-color: #202124;
+  border-color: var(--line-primary-hover);
+  background-color: var(--line-bg-hover);
+}
+
+.select-trigger.is-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+  background-color: var(--line-bg-soft);
 }
 
 .select-trigger.is-open {
-  border-color: #1a73e8;
-  border-width: 2px;
-  padding: 9px 11px; /* Adjust for border width */
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+  border-color: var(--line-primary);
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.12);
+  background-color: var(--line-bg);
 }
 
 .selected-text {
-  font-size: 14px;
-  color: #202124;
+  font-size: 15px;
+  color: var(--line-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .arrow-icon {
-  font-size: 10px;
-  color: #5f6368;
+  display: flex;
+  align-items: center;
+  color: var(--line-text-secondary);
   transition: transform 0.2s;
 }
 
 .select-trigger.is-open .arrow-icon {
   transform: rotate(180deg);
-  color: #1a73e8;
+  color: var(--line-primary);
 }
 
 .options-list {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   left: 0;
-  right: 0;
-  background-color: #fff;
-  border: 1px solid #dadce0;
-  border-top: none;
-  border-bottom-left-radius: 4px;
-  border-bottom-right-radius: 4px;
-  box-shadow: 0 4px 6px rgba(32, 33, 36, 0.28);
-  z-index: 1000;
-  max-height: 300px;
+  right: auto;
+  background-color: var(--line-bg-elevated);
+  border: 1px solid var(--line-border);
+  border-radius: var(--line-radius-md);
+  box-shadow: var(--line-shadow-lg);
+  z-index: var(--line-layer-dropdown);
+  max-height: 240px;
   overflow-y: auto;
-  padding: 4px 0;
+  padding: 6px;
+  animation: slideDown 0.2s ease-out;
+  min-width: max(100%, 180px);
+}
+
+.options-list.open-upward {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.options-list.align-right {
+  left: auto;
+  right: 0;
 }
 
 .option-item {
-  padding: 10px 16px;
+  padding: 10px 12px;
   font-size: 14px;
-  color: #202124;
+  color: var(--line-text-primary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-radius: var(--line-radius-sm);
   transition: background-color 0.1s;
+  gap: 10px;
+  white-space: nowrap;
 }
 
 .option-item:hover {
-  background-color: #f1f3f4;
+  background-color: var(--line-bg-hover);
 }
 
 .option-item.is-selected {
-  background-color: #e8f0fe;
-  color: #1a73e8;
-  font-weight: 500;
+  background-color: rgba(15, 23, 42, 0.08);
+  color: var(--line-primary);
+  font-weight: 600;
 }
 
 .check-icon {
-  font-size: 14px;
-  color: #1a73e8;
+  color: var(--line-primary);
+  display: flex;
+  align-items: center;
 }
 
 /* Scrollbar styling */
 .options-list::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 .options-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: transparent;
 }
 .options-list::-webkit-scrollbar-thumb {
-  background: #dadce0;
+  background: var(--line-border);
   border-radius: 4px;
 }
 .options-list::-webkit-scrollbar-thumb:hover {
-  background: #bdc1c6;
+  background: var(--line-text-secondary);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .fade-enter-active,

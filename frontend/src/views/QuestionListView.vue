@@ -6,6 +6,11 @@ import { useBasket } from '@/stores/basket'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import GoogleSelect from '@/components/GoogleSelect.vue'
+import { useConfirm } from '@/composables/useConfirm'
+import { useToast } from '@/composables/useToast'
+
+const { confirm } = useConfirm()
+const { showToast } = useToast()
 
 const questions = ref<QuestionSummary[]>([])
 const loading = ref(false)
@@ -32,7 +37,8 @@ const filterKnowledgePoint = ref<string>('')
 const filterType = ref<string>('')
 const filterDifficulty = ref<string>('')
 const knowledgePoints = ref<KnowledgePoint[]>([])
-const flattenedKnowledgePoints = ref<{ id: string, label: string }[]>([])
+const kpKeyword = ref('')
+const expandedNodes = ref<Set<string>>(new Set())
 
 const difficultyOptions = [
   { label: '全部难度', value: '' },
@@ -41,87 +47,194 @@ const difficultyOptions = [
   { label: '困难', value: 'HARD' }
 ]
 
-const kpOptions = computed(() => {
-  return [
-    { label: '全部知识点', value: '' },
-    ...flattenedKnowledgePoints.value.map(kp => ({ label: kp.label, value: kp.id }))
-  ]
+type KpTreeNode = {
+  id: string
+  name: string
+  level: string
+  parentId: string | null
+  children: KpTreeNode[]
+}
+
+const levelLabels: Record<string, string> = {
+  CHAPTER: '章',
+  SECTION: '节',
+  POINT: '知识点'
+}
+
+const knowledgeTree = computed<KpTreeNode[]>(() => {
+  const map = new Map<string, KpTreeNode>()
+  const roots: KpTreeNode[] = []
+
+  for (const kp of knowledgePoints.value) {
+    if (!kp.id) continue
+    map.set(kp.id, {
+      id: kp.id,
+      name: kp.name || '未命名',
+      level: (kp as any).level || 'POINT',
+      parentId: kp.parentId || null,
+      children: []
+    })
+  }
+
+  for (const node of map.values()) {
+    if (node.parentId && map.has(node.parentId)) {
+      map.get(node.parentId)!.children.push(node)
+    } else {
+      roots.push(node)
+    }
+  }
+
+  const sortNode = (nodes: KpTreeNode[]) => {
+    nodes.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+    nodes.forEach((n) => sortNode(n.children))
+  }
+  sortNode(roots)
+  return roots
 })
+
+const findNodePath = (nodes: KpTreeNode[], id: string, path: KpTreeNode[] = []): KpTreeNode[] => {
+  for (const node of nodes) {
+    const nextPath = [...path, node]
+    if (node.id === id) return nextPath
+    const found = findNodePath(node.children, id, nextPath)
+    if (found.length > 0) return found
+  }
+  return []
+}
+
+const selectedNodePathText = computed(() => {
+  if (!filterKnowledgePoint.value) return '全部知识点'
+  const path = findNodePath(knowledgeTree.value, filterKnowledgePoint.value)
+  return path.map((p) => p.name).join(' / ') || '全部知识点'
+})
+
+const expandPathToNode = (id: string) => {
+  const path = findNodePath(knowledgeTree.value, id)
+  path.forEach((p) => expandedNodes.value.add(p.id))
+}
+
+const isExpanded = (id: string) => expandedNodes.value.has(id)
+
+const toggleNodeExpand = (id: string) => {
+  if (expandedNodes.value.has(id)) {
+    expandedNodes.value.delete(id)
+  } else {
+    expandedNodes.value.add(id)
+  }
+}
+
+const selectKnowledgeNode = (id: string) => {
+  filterKnowledgePoint.value = id
+  expandPathToNode(id)
+}
+
+const shouldShowChildren = (id: string) => {
+  return kpKeyword.value.trim().length > 0 || isExpanded(id)
+}
+
+const filterTreeByKeyword = (nodes: KpTreeNode[], keyword: string): KpTreeNode[] => {
+  if (!keyword.trim()) return nodes
+  const lower = keyword.trim().toLowerCase()
+  const dfs = (list: KpTreeNode[]): KpTreeNode[] => {
+    const result: KpTreeNode[] = []
+    for (const node of list) {
+      const children = dfs(node.children)
+      const hit = node.name.toLowerCase().includes(lower)
+      if (hit || children.length > 0) {
+        result.push({ ...node, children })
+      }
+    }
+    return result
+  }
+  return dfs(nodes)
+}
+
+const filteredKnowledgeTree = computed(() =>
+  filterTreeByKeyword(knowledgeTree.value, kpKeyword.value)
+)
 
 const fetchKnowledgePoints = async () => {
   try {
     const response = await knowledgePointApi.apiKnowledgePointsGet()
     knowledgePoints.value = response.data
-    flattenedKnowledgePoints.value = flattenPoints(knowledgePoints.value)
+    if (filterKnowledgePoint.value) {
+      expandPathToNode(filterKnowledgePoint.value)
+    } else {
+      knowledgeTree.value.forEach((root) => expandedNodes.value.add(root.id))
+    }
   } catch (err) {
     console.error('Failed to load knowledge points', err)
   }
 }
 
-const flattenPoints = (points: KnowledgePoint[], level = 0): { id: string, label: string }[] => {
-  let result: { id: string, label: string }[] = []
-  for (const point of points) {
-    const prefix = '\u00A0'.repeat(level * 4)
-    result.push({ id: point.id!, label: `${prefix}${point.name}` })
-    if (point.children && point.children.length > 0) {
-      result = result.concat(flattenPoints(point.children, level + 1))
+const getDescendantIdsFromTree = (nodes: KpTreeNode[], targetId: string): string[] => {
+  const walk = (node: KpTreeNode): string[] => {
+    let ids = [node.id]
+    for (const child of node.children) {
+      ids = ids.concat(walk(child))
     }
+    return ids
   }
-  return result
-}
 
-const getDescendantIds = (points: KnowledgePoint[], targetId: string): string[] => {
-  let ids: string[] = []
-  for (const point of points) {
-    if (point.id === targetId) {
-      ids.push(point.id)
-      if (point.children) {
-        ids = ids.concat(getAllIds(point.children))
-      }
-      return ids
+  const find = (list: KpTreeNode[]): string[] => {
+    for (const node of list) {
+      if (node.id === targetId) return walk(node)
+      const found = find(node.children)
+      if (found.length > 0) return found
     }
-    if (point.children) {
-      const found = getDescendantIds(point.children, targetId)
-      if (found.length > 0) {
-        return found
-      }
-    }
+    return []
   }
-  return []
-}
 
-const getAllIds = (points: KnowledgePoint[]): string[] => {
-  let ids: string[] = []
-  for (const point of points) {
-    if (point.id) ids.push(point.id)
-    if (point.children) {
-      ids = ids.concat(getAllIds(point.children))
-    }
-  }
-  return ids
+  return find(nodes)
 }
 
 // 获取分类统计数据
 const fetchCategoryStats = async () => {
   try {
     // 获取各类型的数量 (只统计 APPROVED 状态)
-    const types = ['SINGLE_CHOICE', 'MULTI_CHOICE', 'TRUE_FALSE', 'FILL_BLANK', 'SHORT_ANSWER', 'MULTIPLE_CHOICE']
+    const types = [
+      'SINGLE_CHOICE',
+      'MULTI_CHOICE',
+      'TRUE_FALSE',
+      'FILL_BLANK',
+      'SHORT_ANSWER',
+      'MULTIPLE_CHOICE'
+    ]
     const responses = await Promise.all([
       // 总数
-      questionApi.apiQuestionsGet(0, 1, undefined, undefined, undefined, undefined, undefined, undefined),
+      questionApi.apiQuestionsGet(
+        0,
+        1,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined
+      ),
       // 各类型数量
-      ...types.map(type => 
-        questionApi.apiQuestionsGet(0, 1, undefined, undefined, type as any, undefined, undefined, undefined)
+      ...types.map((type) =>
+        questionApi.apiQuestionsGet(
+          0,
+          1,
+          undefined,
+          undefined,
+          type as any,
+          undefined,
+          undefined,
+          undefined
+        )
       )
     ])
-    
+
     categoryStats.value = {
-      total: responses[0].data.totalElements || 0,
-      singleChoice: responses[1].data.totalElements || 0,
-      multiChoice: (responses[2].data.totalElements || 0) + (responses[6].data.totalElements || 0),
-      trueFalse: responses[3].data.totalElements || 0,
-      fillBlank: responses[4].data.totalElements || 0,
-      shortAnswer: responses[5].data.totalElements || 0
+      total: responses[0]?.data?.totalElements || 0,
+      singleChoice: responses[1]?.data?.totalElements || 0,
+      multiChoice:
+        (responses[2]?.data?.totalElements || 0) + (responses[6]?.data?.totalElements || 0),
+      trueFalse: responses[3]?.data?.totalElements || 0,
+      fillBlank: responses[4]?.data?.totalElements || 0,
+      shortAnswer: responses[5]?.data?.totalElements || 0
     }
   } catch (err) {
     console.error('Failed to fetch category stats', err)
@@ -134,12 +247,12 @@ const fetchQuestions = async () => {
   try {
     let kpIds: string[] | undefined = undefined
     if (filterKnowledgePoint.value) {
-      kpIds = getDescendantIds(knowledgePoints.value, filterKnowledgePoint.value)
+      kpIds = getDescendantIdsFromTree(knowledgeTree.value, filterKnowledgePoint.value)
     }
 
     const response = await questionApi.apiQuestionsGet(
-      page.value, 
-      size.value, 
+      page.value,
+      size.value,
       undefined, // subjectId
       kpIds,
       filterType.value as any,
@@ -167,16 +280,16 @@ const toggleBasket = (id: string) => {
 
 const isAllSelected = computed(() => {
   if (questions.value.length === 0) return false
-  return questions.value.every(q => q.id && isInBasket(q.id))
+  return questions.value.every((q) => q.id && isInBasket(q.id))
 })
 
 const toggleSelectAll = () => {
   if (isAllSelected.value) {
-    questions.value.forEach(q => {
+    questions.value.forEach((q) => {
       if (q.id) removeFromBasket(q.id)
     })
   } else {
-    questions.value.forEach(q => {
+    questions.value.forEach((q) => {
       if (q.id) addToBasket(q.id)
     })
   }
@@ -198,18 +311,25 @@ const editQuestion = (id: string) => {
 }
 
 const deleteQuestion = async (id: string) => {
-  if (!confirm('确定要删除这道题目吗？')) return
+  const confirmed = await confirm({
+    title: '删除确认',
+    message: '确定要删除这道题目吗？删除后无法恢复。',
+    type: 'danger',
+    confirmText: '删除',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
   try {
     const token = localStorage.getItem('token')
     await axios.delete(`/api/questions/${id}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     // Remove from local list or refresh
-    questions.value = questions.value.filter(q => q.id !== id)
+    questions.value = questions.value.filter((q) => q.id !== id)
     totalElements.value--
   } catch (err) {
     console.error('Failed to delete question', err)
-    alert('删除失败')
+    showToast({ message: '删除失败', type: 'error' })
   }
 }
 
@@ -241,8 +361,8 @@ const statusLabels: Record<string, string> = {
   PENDING_REVIEW: '待审核',
   APPROVED: '已通过',
   REJECTED: '未通过',
-  PUBLISHED: '已发布',
-  ACTIVE: '已激活'
+  PUBLISHED: '已通过',
+  ACTIVE: '已通过'
 }
 
 onMounted(() => {
@@ -264,62 +384,54 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
   <div class="question-list-container container">
     <div class="header-row">
       <div class="header-title-section">
-        <h1>题库管理</h1>
+        <h1 class="page-title">题库管理</h1>
         <span class="total-count">共 {{ categoryStats.total }} 道题目</span>
       </div>
       <div class="header-actions">
         <router-link to="/import" class="add-btn-link">
-          <button class="google-btn text-btn">
-            文件导入
-          </button>
+          <button class="google-btn text-btn">导入题目</button>
         </router-link>
         <router-link to="/questions/add" class="add-btn-link">
-          <button class="google-btn primary-btn">
-            添加题目
-          </button>
+          <button class="google-btn primary-btn">添加题目</button>
         </router-link>
       </div>
     </div>
 
     <!-- 分类统计标签 -->
     <div class="category-tabs">
-      <div 
-        class="category-tab" 
-        :class="{ active: filterType === '' }"
-        @click="filterType = ''"
-      >
+      <div class="category-tab" :class="{ active: filterType === '' }" @click="filterType = ''">
         全部 <span class="count">{{ categoryStats.total }}</span>
       </div>
-      <div 
-        class="category-tab" 
+      <div
+        class="category-tab"
         :class="{ active: filterType === 'SINGLE_CHOICE' }"
         @click="filterType = 'SINGLE_CHOICE'"
       >
         单选题 <span class="count">{{ categoryStats.singleChoice }}</span>
       </div>
-      <div 
-        class="category-tab" 
+      <div
+        class="category-tab"
         :class="{ active: filterType === 'MULTIPLE_CHOICE' }"
         @click="filterType = 'MULTIPLE_CHOICE'"
       >
         多选题 <span class="count">{{ categoryStats.multiChoice }}</span>
       </div>
-      <div 
-        class="category-tab" 
+      <div
+        class="category-tab"
         :class="{ active: filterType === 'TRUE_FALSE' }"
         @click="filterType = 'TRUE_FALSE'"
       >
         判断题 <span class="count">{{ categoryStats.trueFalse }}</span>
       </div>
-      <div 
-        class="category-tab" 
+      <div
+        class="category-tab"
         :class="{ active: filterType === 'FILL_BLANK' }"
         @click="filterType = 'FILL_BLANK'"
       >
         填空题 <span class="count">{{ categoryStats.fillBlank }}</span>
       </div>
-      <div 
-        class="category-tab" 
+      <div
+        class="category-tab"
         :class="{ active: filterType === 'SHORT_ANSWER' }"
         @click="filterType = 'SHORT_ANSWER'"
       >
@@ -328,19 +440,149 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
     </div>
 
     <div class="filter-bar google-card">
-      <div class="filter-group">
-        <GoogleSelect
-          v-model="filterKnowledgePoint"
-          :options="kpOptions"
-          label="知识点"
-        />
+      <div class="filter-group tree-group">
+        <label>知识结构树筛选</label>
+        <div class="tree-filter-panel">
+          <div class="tree-filter-top">
+            <input v-model="kpKeyword" class="google-input" placeholder="搜索章 / 节 / 知识点" />
+            <button class="google-btn text-btn" @click="filterKnowledgePoint = ''">清空</button>
+          </div>
+          <div class="selected-path">当前：{{ selectedNodePathText }}</div>
+          <div class="tree-list">
+            <ul class="tree-root">
+              <li v-for="chapter in filteredKnowledgeTree" :key="chapter.id" class="tree-node-item">
+                <div
+                  class="node-row chapter-row"
+                  :class="{ active: filterKnowledgePoint === chapter.id }"
+                >
+                  <div class="node-info">
+                    <button
+                      v-if="chapter.children.length > 0"
+                      class="node-toggle"
+                      @click="toggleNodeExpand(chapter.id)"
+                    >
+                      {{ shouldShowChildren(chapter.id) ? '▾' : '▸' }}
+                    </button>
+                    <span v-else class="node-toggle-placeholder"></span>
+                    <span class="node-icon">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                      </svg>
+                    </span>
+                    <button class="node-name-btn" @click="selectKnowledgeNode(chapter.id)">
+                      {{ chapter.name }}
+                    </button>
+                    <span class="node-level">{{ levelLabels[chapter.level] || '章' }}</span>
+                  </div>
+                </div>
+
+                <ul
+                  v-if="chapter.children?.length && shouldShowChildren(chapter.id)"
+                  class="tree-children"
+                >
+                  <li v-for="section in chapter.children" :key="section.id" class="tree-node-item">
+                    <div
+                      class="node-row section-row"
+                      :class="{ active: filterKnowledgePoint === section.id }"
+                    >
+                      <div class="node-info">
+                        <button
+                          v-if="section.children.length > 0"
+                          class="node-toggle"
+                          @click="toggleNodeExpand(section.id)"
+                        >
+                          {{ shouldShowChildren(section.id) ? '▾' : '▸' }}
+                        </button>
+                        <span v-else class="node-toggle-placeholder"></span>
+                        <span class="node-icon">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <path
+                              d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+                            ></path>
+                          </svg>
+                        </span>
+                        <button class="node-name-btn" @click="selectKnowledgeNode(section.id)">
+                          {{ section.name }}
+                        </button>
+                        <span class="node-level">{{ levelLabels[section.level] || '节' }}</span>
+                      </div>
+                    </div>
+
+                    <ul
+                      v-if="section.children?.length && shouldShowChildren(section.id)"
+                      class="tree-children"
+                    >
+                      <li v-for="point in section.children" :key="point.id" class="tree-node-item">
+                        <div
+                          class="node-row point-row"
+                          :class="{ active: filterKnowledgePoint === point.id }"
+                        >
+                          <div class="node-info">
+                            <span class="node-toggle-placeholder"></span>
+                            <span class="node-icon">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              >
+                                <path
+                                  d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                                ></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                              </svg>
+                            </span>
+                            <button class="node-name-btn" @click="selectKnowledgeNode(point.id)">
+                              {{ point.name }}
+                            </button>
+                            <span class="node-level">{{
+                              levelLabels[point.level] || '知识点'
+                            }}</span>
+                          </div>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
-      <div class="filter-group">
-        <GoogleSelect
-          v-model="filterDifficulty"
-          :options="difficultyOptions"
-          label="难度"
-        />
+      <div class="filter-group compact-group">
+        <label>难度筛选</label>
+        <div class="single-filter-card">
+          <GoogleSelect v-model="filterDifficulty" :options="difficultyOptions" label="难度" />
+        </div>
       </div>
     </div>
 
@@ -354,25 +596,25 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
         </div>
       </div>
     </div>
-    
+
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
       <p>加载中...</p>
     </div>
-    
+
     <div v-else-if="error" class="error-state google-card">
       <p>{{ error }}</p>
       <button @click="fetchQuestions" class="google-btn">重试</button>
     </div>
-    
+
     <div v-else class="google-card table-card">
       <table class="question-table">
         <thead>
           <tr>
             <th class="checkbox-col">
-              <input 
-                type="checkbox" 
-                :checked="isAllSelected" 
+              <input
+                type="checkbox"
+                :checked="isAllSelected"
                 @change="toggleSelectAll"
                 class="google-checkbox"
               />
@@ -388,30 +630,48 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
         <tbody>
           <tr v-for="question in questions" :key="question.id">
             <td class="checkbox-col">
-              <input 
-                type="checkbox" 
-                :checked="isInBasket(question.id!)" 
+              <input
+                type="checkbox"
+                :checked="isInBasket(question.id!)"
                 @change="toggleBasket(question.id!)"
                 class="google-checkbox"
               />
             </td>
             <td>{{ question.subjectId }}</td>
-            <td class="stem-col clickable" :title="stripHtml(question.stem)" @click="editQuestion(question.id!)">
-              {{ stripHtml(question.stem).substring(0, 50) }}{{ stripHtml(question.stem).length > 50 ? '...' : '' }}
+            <td
+              class="stem-col clickable"
+              :title="stripHtml(question.stem)"
+              @click="editQuestion(question.id!)"
+            >
+              {{ stripHtml(question.stem).substring(0, 50)
+              }}{{ stripHtml(question.stem).length > 50 ? '...' : '' }}
             </td>
-            <td><span class="chip type-chip">{{ typeLabels[question.type || ''] || question.type }}</span></td>
+            <td>
+              <span class="chip type-chip">{{
+                typeLabels[question.type || ''] || question.type
+              }}</span>
+            </td>
             <td>
               <span class="chip" :class="question.difficulty?.toLowerCase()">
                 {{ difficultyLabels[question.difficulty || ''] || question.difficulty }}
               </span>
             </td>
             <td>
-              <span class="status-dot" :class="['active', 'published'].includes(question.status?.toLowerCase() || '') ? 'active' : ''"></span>
+              <span
+                class="status-dot"
+                :class="
+                  ['active', 'published'].includes(question.status?.toLowerCase() || '')
+                    ? 'active'
+                    : ''
+                "
+              ></span>
               {{ statusLabels[question.status || ''] || question.status }}
             </td>
             <td class="action-col">
               <button @click="editQuestion(question.id!)" class="google-btn text-btn">编辑</button>
-              <button @click="deleteQuestion(question.id!)" class="google-btn text-btn danger-btn">删除</button>
+              <button @click="deleteQuestion(question.id!)" class="google-btn text-btn danger-btn">
+                删除
+              </button>
             </td>
           </tr>
           <tr v-if="questions.length === 0">
@@ -424,17 +684,32 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
           </tr>
         </tbody>
       </table>
-      
+
       <div class="pagination">
-        <button :disabled="page === 0" @click="page--; fetchQuestions()" class="google-btn text-btn">上一页</button>
-        <span class="page-info">第 {{ page + 1 }} 页</span>
-        <button :disabled="(page + 1) * size >= totalElements" @click="page++; fetchQuestions()" class="google-btn text-btn">下一页</button>
+        <button
+          :disabled="page === 0"
+          @click="page--; fetchQuestions()"
+          class="google-btn text-btn"
+        >
+          上一页
+        </button>
+        <span class="page-info"
+          >第 {{ page + 1 }} 页 / 共 {{ Math.ceil(totalElements / size) || 1 }} 页</span
+        >
+        <button
+          :disabled="(page + 1) * size >= totalElements"
+          @click="page++; fetchQuestions()"
+          class="google-btn text-btn"
+        >
+          下一页
+        </button>
       </div>
     </div>
 
     <div v-if="basket.length > 0" class="basket-float">
       <div class="basket-content">
         <span>已选 {{ basket.length }} 道题目</span>
+        <button @click="clearBasket" class="google-btn text-btn small-btn">全部取消</button>
         <button @click="goToBasket" class="google-btn primary-btn small-btn">创建试卷</button>
       </div>
     </div>
@@ -444,36 +719,50 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
 <style scoped>
 .basket-float {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background: white;
-  padding: 12px 24px;
-  border-radius: 28px; /* Material 3 FAB style */
-  box-shadow: 0 3px 5px -1px rgba(0,0,0,0.2), 0 6px 10px 0 rgba(0,0,0,0.14), 0 1px 18px 0 rgba(0,0,0,0.12);
+  bottom: 32px;
+  right: 32px;
+  background: var(--line-bg);
+  padding: 16px 24px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hover);
   z-index: 100;
   animation: slideUp 0.3s ease;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--line-border);
 }
 
 .basket-content {
   display: flex;
   align-items: center;
   gap: 16px;
-  font-family: 'Google Sans', sans-serif;
   font-weight: 500;
-  color: #3c4043;
+  color: var(--line-text);
 }
 
 @keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .header-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 
 .header-title-section {
@@ -482,55 +771,52 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
   gap: 12px;
 }
 
-.header-title-section h1 {
-  margin: 0;
-}
-
 .total-count {
   font-size: 14px;
-  color: #5f6368;
-  font-family: 'Google Sans', sans-serif;
+  color: var(--line-text-secondary);
 }
 
 .category-tabs {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
 }
 
 .category-tab {
   padding: 8px 16px;
-  border-radius: 18px;
-  background: #f1f3f4;
-  color: #5f6368;
-  font-size: 14px;
-  font-family: 'Google Sans', sans-serif;
+  border-radius: 999px;
+  border: 1px solid var(--line-border);
+  background: var(--line-bg);
+  color: var(--line-text-secondary);
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .category-tab:hover {
-  background: #e8eaed;
+  border-color: var(--line-text);
+  color: var(--line-text);
 }
 
 .category-tab.active {
-  background: #e8f0fe;
-  color: #1a73e8;
+  background: var(--line-primary);
+  color: white;
+  border-color: var(--line-primary);
 }
 
 .category-tab .count {
-  background: rgba(0, 0, 0, 0.08);
-  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 1px 6px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: 11px;
 }
 
-.category-tab.active .count {
-  background: rgba(26, 115, 232, 0.15);
+.category-tab:not(.active) .count {
+  background: var(--line-bg-soft);
 }
 
 .header-actions {
@@ -538,153 +824,42 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
   gap: 12px;
 }
 
-.add-btn-link {
+.stem-col.clickable {
+  cursor: pointer;
+  color: var(--line-primary);
   text-decoration: none;
-}
-
-h1 {
-  font-family: 'Google Sans', sans-serif;
-  font-size: 22px;
-  color: #202124;
-  font-weight: 400;
-}
-
-.table-card {
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-  background: white;
-}
-
-.question-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: center;
-}
-
-.question-table th {
-  background-color: #fff;
-  padding: 12px 16px;
   font-weight: 500;
-  color: #5f6368;
-  font-size: 14px;
-  border-bottom: 1px solid #dadce0;
-  text-align: center;
 }
 
-.question-table td {
-  padding: 12px 16px;
-  border-bottom: 1px solid #f1f3f4;
-  color: #3c4043;
-  font-size: 14px;
-  text-align: center;
+.stem-col.clickable:hover {
+  text-decoration: underline;
 }
-
-.question-table tr:last-child td {
-  border-bottom: none;
-}
-
-.question-table tr:hover {
-  background-color: #f8f9fa;
-}
-
-.id-col {
-  font-family: monospace;
-  color: #5f6368;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 8px;
-  height: 24px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-  background-color: #f1f3f4;
-  color: #3c4043;
-  border: 1px solid transparent;
-}
-
-.chip.easy { background-color: #e6f4ea; color: #137333; }
-.chip.medium { background-color: #fef7e0; color: #b06000; }
-.chip.hard { background-color: #fce8e6; color: #c5221f; }
 
 .status-dot {
   display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #dadce0;
+  background-color: var(--line-text-secondary);
   margin-right: 8px;
 }
 
 .status-dot.active {
-  background-color: #1e8e3e;
+  background-color: var(--line-success);
 }
 
 .pagination {
-  padding: 12px 16px;
+  padding: 16px;
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 16px;
-  border-top: 1px solid #dadce0;
-  background-color: #fff;
+  border-top: none;
+  background-color: var(--line-bg);
 }
 
-.google-btn {
-  border: none;
-  border-radius: 4px;
-  padding: 8px 24px;
-  font-family: 'Google Sans', sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s, box-shadow 0.2s;
-}
-
-.primary-btn {
-  background-color: #1a73e8;
-  color: white;
-}
-
-.primary-btn:hover {
-  background-color: #1557b0;
-  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
-}
-
-.text-btn {
-  background-color: transparent;
-  color: #1a73e8;
-}
-
-.text-btn:hover:not(:disabled) {
-  background-color: #f6fafe;
-}
-
-.text-btn:disabled {
-  color: #dadce0;
-  cursor: default;
-}
-
-.loading-state, .error-state {
-  text-align: center;
-  padding: 40px;
-  color: #5f6368;
-}
-
-.empty-state {
-  text-align: center;
-  color: #5f6368;
-  padding: 40px;
-}
-
-.google-checkbox {
-  width: 18px;
-  height: 18px;
-  accent-color: #1a73e8;
+.danger-btn {
+  color: var(--line-error) !important;
 }
 
 .restore-overlay {
@@ -694,24 +869,21 @@ h1 {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease-out;
 }
 
 .restore-dialog {
-  background: white;
-  padding: 24px;
-  border-radius: 8px;
+  background: var(--line-bg);
+  padding: 32px;
+  border-radius: var(--radius);
   width: 400px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-
-.restore-dialog h3 {
-  margin-top: 0;
-  margin-bottom: 16px;
-  font-family: 'Google Sans', sans-serif;
+  box-shadow: var(--shadow-hover);
+  border: 1px solid var(--line-border);
 }
 
 .dialog-actions {
@@ -721,63 +893,214 @@ h1 {
   margin-top: 24px;
 }
 
+.action-col {
+  white-space: nowrap;
+}
+.action-col button {
+  margin-right: 8px;
+}
+
+.checkbox-col {
+  width: 48px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.checkbox-col input[type='checkbox'] {
+  margin: 0 auto;
+  display: block;
+}
+
 .filter-bar {
-  display: flex;
-  gap: 24px;
-  padding: 16px 24px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 24px;
   margin-bottom: 24px;
-  align-items: flex-end;
+  align-items: start;
+  background: var(--line-bg);
+  border: 1px solid var(--line-border);
+  border-radius: var(--radius);
 }
 
 .filter-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex: 1;
+  min-width: 0;
+}
+
+.tree-group {
+  min-height: 0;
+}
+
+.compact-group {
+  max-width: 100%;
+}
+
+.single-filter-card {
+  border: 1px solid var(--line-border);
+  border-radius: 10px;
+  background: var(--line-bg-soft);
+  padding: 10px;
 }
 
 .filter-group label {
-  font-size: 12px;
-  color: #5f6368;
+  font-size: 13px;
   font-weight: 500;
+  color: var(--line-text-secondary);
 }
 
-.select-wrapper {
+.tree-filter-panel {
+  border: 1px solid var(--line-border);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--line-bg-soft);
+}
+
+.tree-filter-top {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tree-filter-top .google-input {
+  flex: 1;
+}
+
+.selected-path {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--line-text-secondary);
+  text-align: left;
+}
+
+.tree-list {
+  margin-top: 10px;
+  max-height: 240px;
+  overflow: auto;
+  border-top: 1px dashed var(--line-border);
+  padding-top: 8px;
+}
+
+.tree-root,
+.tree-children {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.tree-children {
+  padding-left: 24px;
+  border-left: 1px solid var(--line-bg-soft);
+  margin-left: 12px;
+}
+
+.tree-children .tree-node-item {
   position: relative;
 }
-.select-wrapper::after {
-  /* Optional: Custom arrow if not using background-image on select */
-  pointer-events: none;
+
+.tree-children .tree-node-item::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: -24px;
+  width: 20px;
+  height: 1px;
+  background: var(--line-bg-soft);
 }
 
-.danger-btn {
-  color: #d93025 !important;
+.tree-node-item {
+  margin-bottom: 4px;
 }
 
-.danger-btn:hover {
-  background-color: #fce8e6 !important;
+.node-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 6px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 }
 
-.stem-col.clickable {
+.node-row:hover {
+  background-color: var(--line-bg-soft);
+  border-color: var(--line-bg-soft);
+}
+
+.node-row.active {
+  background: color-mix(in srgb, var(--line-primary) 12%, white);
+  border-color: color-mix(in srgb, var(--line-primary) 20%, transparent);
+}
+
+.node-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+
+.node-toggle,
+.node-toggle-placeholder {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.node-toggle {
+  border: none;
+  background: transparent;
+  color: var(--line-text-secondary);
   cursor: pointer;
-  color: #1a73e8;
-  transition: color 0.2s;
+  padding: 0;
 }
 
-.stem-col.clickable:hover {
-  color: #1557b0;
-  text-decoration: underline;
+.node-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--line-text-secondary);
+  flex-shrink: 0;
 }
 
-.action-col {
+.node-name-btn {
+  border: none;
+  background: transparent;
+  color: var(--line-text);
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.action-col .google-btn {
-  margin-right: 8px;
+.node-level {
+  font-size: 12px;
+  color: var(--line-text-secondary);
+  background: var(--line-bg-soft);
+  border: 1px solid var(--line-border);
+  border-radius: 999px;
+  padding: 1px 8px;
+  flex-shrink: 0;
 }
 
-.action-col .google-btn:last-child {
-  margin-right: 0;
+@media (max-width: 1100px) {
+  .compact-group {
+    max-width: none;
+  }
 }
 </style>

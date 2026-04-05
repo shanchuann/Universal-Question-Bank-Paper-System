@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { examApi, paperApi } from '@/api/client'
+import { examApi } from '@/api/client'
 import type { ExamSessionResponse, ManualGradeRequest } from '@/api/generated'
+import { useToast } from '@/composables/useToast'
+import axios from 'axios'
 
+const { showToast } = useToast()
 const route = useRoute()
 const router = useRouter()
 const examId = route.params.id as string
@@ -13,9 +16,11 @@ const paperTitle = ref('')
 const loading = ref(false)
 const error = ref('')
 const saving = ref(false)
+const aiSuggesting = ref<Record<string, boolean>>({})
+const aiBatchSuggesting = ref(false)
 
 // Local state for grades to allow editing
-const grades = ref<Record<string, { score: number | null, notes: string, maxScore: number }>>({})
+const grades = ref<Record<string, { score: number | null; notes: string; maxScore: number }>>({})
 
 // 计算总得分
 const totalScore = computed(() => {
@@ -38,11 +43,11 @@ const needsManualGrading = (type: string | undefined) => {
 // 获取题型中文名
 const getTypeName = (type: string | undefined) => {
   const typeMap: Record<string, string> = {
-    'SINGLE_CHOICE': '单选题',
-    'MULTI_CHOICE': '多选题',
-    'TRUE_FALSE': '判断题',
-    'FILL_BLANK': '填空题',
-    'SHORT_ANSWER': '简答题',
+    SINGLE_CHOICE: '单选题',
+    MULTI_CHOICE: '多选题',
+    TRUE_FALSE: '判断题',
+    FILL_BLANK: '填空题',
+    SHORT_ANSWER: '简答题'
   }
   return typeMap[type || ''] || type || '未知类型'
 }
@@ -50,9 +55,41 @@ const getTypeName = (type: string | undefined) => {
 // 获取正确答案文本
 const getCorrectAnswer = (options: any[] | undefined) => {
   if (!options || options.length === 0) return null
-  const correct = options.filter(o => o.isCorrect)
+  const correct = options.filter((o) => o.isCorrect)
   if (correct.length === 0) return null
-  return correct.map(o => o.key || o.text).join(', ')
+  return correct.map((o) => sanitizePlainText(String(o.key || o.text || ''))).join(', ')
+}
+
+const sanitizePlainText = (value: string) => {
+  if (!value) return ''
+  return value
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/锟斤拷/g, '?')
+    .trim()
+}
+
+const sanitizeRichText = (value: string) => {
+  if (!value) return ''
+  return value
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/锟斤拷/g, '?')
+}
+
+const handleQuestionDragStart = (q: any, event: DragEvent) => {
+  if (!event.dataTransfer) return
+  const payload = {
+    questionId: q?.questionId,
+    type: q?.type,
+    stem: sanitizePlainText(String(q?.stem || '')),
+    userAnswer: sanitizePlainText(String(q?.userAnswer || '')),
+    reference: sanitizePlainText(String(getCorrectAnswer(q?.options) || ''))
+  }
+  const plain = `题目ID: ${payload.questionId || '-'}\n题型: ${getTypeName(payload.type)}\n题干: ${payload.stem}\n学生答案: ${payload.userAnswer || '(未作答)'}\n参考答案: ${payload.reference || '(无)'}\n`
+  event.dataTransfer.effectAllowed = 'copy'
+  event.dataTransfer.setData('application/x-uqbank-question', JSON.stringify(payload))
+  event.dataTransfer.setData('text/plain', plain)
 }
 
 const fetchExam = async () => {
@@ -61,24 +98,23 @@ const fetchExam = async () => {
   try {
     const response = await examApi.apiExamsIdGet(examId)
     exam.value = response.data
-    
-    // Fetch paper title
+
     if (exam.value?.paperVersionId) {
-      try {
-        const paperResp = await paperApi.apiPapersPaperIdGet(exam.value.paperVersionId)
-        paperTitle.value = (paperResp.data as any)?.title || `试卷 ${exam.value.paperVersionId}`
-      } catch {
-        paperTitle.value = `试卷 ${exam.value.paperVersionId}`
-      }
+      paperTitle.value = `试卷 ${exam.value.paperVersionId}`
     }
-    
+
     // Initialize grades from existing data
     if (exam.value?.questions) {
-      exam.value.questions.forEach(q => {
+      exam.value.questions.forEach((q) => {
         if (q.questionId) {
           const maxScore = Number(q.score) || 1
           grades.value[q.questionId] = {
-            score: q.awardedScore !== undefined && q.awardedScore !== null ? Number(q.awardedScore) : (q.isCorrect ? maxScore : 0),
+            score:
+              q.awardedScore !== undefined && q.awardedScore !== null
+                ? Number(q.awardedScore)
+                : q.isCorrect
+                  ? maxScore
+                  : 0,
             notes: q.graderNotes ?? '',
             maxScore: maxScore
           }
@@ -107,6 +143,132 @@ const giveZeroScore = (questionId: string) => {
   }
 }
 
+const askAiSuggestion = async (q: any) => {
+  const questionId = q?.questionId
+  if (!questionId || !grades.value[questionId]) {
+    return
+  }
+
+  aiSuggesting.value[questionId] = true
+  try {
+    const token = localStorage.getItem('token')
+    const response = await axios.post(
+      '/api/ai/teacher/subjective-grade',
+      {
+        questionId,
+        studentAnswer: q?.userAnswer || '',
+        maxScore: grades.value[questionId].maxScore,
+        rubric: grades.value[questionId].notes || ''
+      },
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      }
+    )
+
+    const aiScoreRaw = Number(response.data?.score)
+    const aiScore = Number.isFinite(aiScoreRaw)
+      ? Math.max(0, Math.min(grades.value[questionId].maxScore, aiScoreRaw))
+      : 0
+    grades.value[questionId].score = Number(aiScore.toFixed(1))
+
+    const reason = response.data?.reason || ''
+    const feedback = response.data?.feedback || ''
+    const mergedNotes = [
+      reason ? `AI评分依据：${reason}` : '',
+      feedback ? `AI建议评语：${feedback}` : ''
+    ]
+      .filter(Boolean)
+      .join('\n')
+      .trim()
+
+    if (mergedNotes) {
+      grades.value[questionId].notes = mergedNotes
+    }
+
+    const auditId = response.data?.auditId
+    if (auditId) {
+      await axios.post(
+        '/api/ai/audit/accept',
+        { auditIds: [auditId] },
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        }
+      )
+    }
+
+    showToast({ message: 'AI 已生成评分建议，可继续人工微调', type: 'success' })
+  } catch (error: any) {
+    const msg = error?.response?.data?.error || 'AI 评分建议失败'
+    showToast({ message: msg, type: 'error' })
+  } finally {
+    aiSuggesting.value[questionId] = false
+  }
+}
+
+const batchAiSuggest = async () => {
+  const token = localStorage.getItem('token')
+  aiBatchSuggesting.value = true
+  try {
+    const response = await axios.post(
+      '/api/ai/teacher/batch-subjective-grade',
+      {
+        examId: Number(examId),
+        includeAlreadyGraded: false,
+        maxQuestions: 120
+      },
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      }
+    )
+
+    const suggestions: any[] = response.data?.suggestions || []
+    const acceptedAuditIds: string[] = []
+    suggestions.forEach((item) => {
+      const questionId = item?.questionId
+      if (!questionId || !grades.value[questionId]) return
+
+      const scoreRaw = Number(item?.score)
+      const boundedScore = Number.isFinite(scoreRaw)
+        ? Math.max(0, Math.min(grades.value[questionId].maxScore, scoreRaw))
+        : 0
+      grades.value[questionId].score = Number(boundedScore.toFixed(1))
+
+      const notes = [
+        item?.reason ? `AI评分依据：${item.reason}` : '',
+        item?.feedback ? `AI建议评语：${item.feedback}` : ''
+      ]
+        .filter(Boolean)
+        .join('\n')
+        .trim()
+
+      if (notes) {
+        grades.value[questionId].notes = notes
+      }
+
+      if (item?.auditId) {
+        acceptedAuditIds.push(String(item.auditId))
+      }
+    })
+
+    if (acceptedAuditIds.length > 0) {
+      await axios.post(
+        '/api/ai/audit/accept',
+        { auditIds: acceptedAuditIds },
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        }
+      )
+    }
+
+    showToast({ message: `批量 AI 预评分完成：${suggestions.length} 题`, type: 'success' })
+  } catch (error: any) {
+    const msg = error?.response?.data?.error || '批量 AI 预评分失败'
+    showToast({ message: msg, type: 'error' })
+  } finally {
+    aiBatchSuggesting.value = false
+  }
+}
+
 const submitGrades = async () => {
   saving.value = true
   try {
@@ -117,12 +279,12 @@ const submitGrades = async () => {
         notes: data.notes
       }))
     }
-    
+
     await examApi.apiExamsSessionIdGradePost(examId, request)
-    alert('评分提交成功！')
+    showToast({ message: '评分提交成功！', type: 'success' })
     router.push('/grading')
   } catch (err) {
-    alert('提交评分失败')
+    showToast({ message: '提交评分失败', type: 'error' })
     console.error(err)
   } finally {
     saving.value = false
@@ -135,32 +297,47 @@ onMounted(fetchExam)
 <template>
   <div class="grading-container">
     <div class="header-row">
-      <button @click="router.back()" class="google-btn secondary">
+      <button @click="router.back()" class="google-btn secondary-btn">
         <span class="icon">←</span> 返回
       </button>
-      <h1>阅卷: 考试 #{{ examId }}</h1>
-      <button @click="submitGrades" class="google-btn primary" :disabled="saving || !exam?.questions?.length">
-        {{ saving ? '保存中...' : '提交评分' }}
-      </button>
+      <h1 class="page-title">阅卷: 考试 #{{ examId }}</h1>
+      <div class="top-actions">
+        <button
+          @click="batchAiSuggest"
+          class="google-btn secondary-btn"
+          :disabled="aiBatchSuggesting || !exam?.questions?.length"
+        >
+          {{ aiBatchSuggesting ? 'AI批量建议中...' : 'AI批量预评分' }}
+        </button>
+        <button
+          @click="submitGrades"
+          class="google-btn primary-btn"
+          :disabled="saving || !exam?.questions?.length"
+        >
+          {{ saving ? '保存中...' : '提交评分' }}
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
       <p>加载中...</p>
     </div>
-    
+
     <div v-else-if="error" class="error-state">
       <p>{{ error }}</p>
-      <button @click="fetchExam" class="google-btn secondary">重试</button>
+      <button @click="fetchExam" class="google-btn secondary-btn">重试</button>
     </div>
-    
+
     <div v-else-if="exam" class="exam-content">
       <!-- 基本信息卡片 -->
       <div class="info-card google-card">
         <div class="info-grid">
           <div class="info-item">
             <span class="label">考生</span>
-            <span class="value">{{ (exam as any).nickname || (exam as any).username || (exam as any).userId }}</span>
+            <span class="value">{{
+              (exam as any).nickname || (exam as any).username || (exam as any).userId
+            }}</span>
           </div>
           <div class="info-item">
             <span class="label">试卷</span>
@@ -168,27 +345,58 @@ onMounted(fetchExam)
           </div>
           <div class="info-item">
             <span class="label">开始时间</span>
-            <span class="value">{{ exam.startAt ? new Date(exam.startAt).toLocaleString() : '-' }}</span>
+            <span class="value">{{
+              exam.startAt ? new Date(exam.startAt).toLocaleString() : '-'
+            }}</span>
           </div>
           <div class="info-item">
             <span class="label">提交时间</span>
-            <span class="value">{{ exam.endAt ? new Date(exam.endAt).toLocaleString() : '-' }}</span>
+            <span class="value">{{
+              exam.endAt ? new Date(exam.endAt).toLocaleString() : '-'
+            }}</span>
           </div>
         </div>
         <div class="score-summary">
-          <span class="current-score">当前得分: <strong>{{ totalScore.toFixed(1) }}</strong></span>
+          <span class="current-score"
+            >当前得分: <strong>{{ totalScore.toFixed(1) }}</strong></span
+          >
           <span class="max-score">/ {{ maxTotalScore }} 分</span>
         </div>
       </div>
 
       <!-- 无题目提示 -->
       <div v-if="!exam.questions || exam.questions.length === 0" class="empty-state google-card">
-        <p>📋 该考试暂无题目数据</p>
+        <p class="empty-title">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M9 2h6"></path>
+            <path d="M12 17v-6"></path>
+            <path d="M9 22h6"></path>
+            <path d="M17 2l-5 5-5-5"></path>
+            <path d="M17 22l-5-5-5 5"></path>
+          </svg>
+          该考试暂无题目数据
+        </p>
         <p class="hint">可能的原因：试卷数据已被删除或考试未完成</p>
       </div>
 
       <!-- 题目列表 -->
-      <div v-for="(q, index) in exam.questions" :key="q.questionId" class="question-card google-card">
+      <div
+        v-for="(q, index) in exam.questions"
+        :key="q.questionId"
+        class="question-card google-card"
+        draggable="true"
+        @dragstart="handleQuestionDragStart(q, $event)"
+      >
         <div class="q-header">
           <span class="q-num">第{{ index + 1 }}题</span>
           <span class="q-type" :class="q.type?.toLowerCase()">{{ getTypeName(q.type) }}</span>
@@ -197,42 +405,56 @@ onMounted(fetchExam)
           <span v-else-if="q.isCorrect === false" class="q-result wrong">✗ 错误</span>
           <span v-else class="q-result pending">待评分</span>
         </div>
-        
+
         <div class="q-stem" v-html="q.stem"></div>
-        
+
         <!-- 选择题选项 -->
         <div class="q-options" v-if="q.options && q.options.length > 0">
-          <div v-for="opt in q.options" :key="opt.text || opt.key" 
-               class="option-item"
-               :class="{ 
-                 'correct': opt.isCorrect,
-                 'selected': q.userAnswer === opt.text || q.userAnswer === opt.key,
-                 'wrong-selected': (q.userAnswer === opt.text || q.userAnswer === opt.key) && !opt.isCorrect
-               }">
+          <div
+            v-for="opt in q.options"
+            :key="opt.text || opt.key"
+            class="option-item"
+            :class="{
+              correct: opt.isCorrect,
+              selected: q.userAnswer === opt.text || q.userAnswer === opt.key,
+              'wrong-selected':
+                (q.userAnswer === opt.text || q.userAnswer === opt.key) && !opt.isCorrect
+            }"
+          >
             <span class="option-key" v-if="opt.key">{{ opt.key }}.</span>
-            <span class="option-text">{{ opt.text }}</span>
+            <span class="option-text" v-html="sanitizeRichText(String(opt.text || ''))"></span>
             <span v-if="opt.isCorrect" class="badge-correct">✓ 正确答案</span>
-            <span v-if="q.userAnswer === opt.text || q.userAnswer === opt.key" class="badge-user">用户选择</span>
+            <span v-if="q.userAnswer === opt.text || q.userAnswer === opt.key" class="badge-user"
+              >用户选择</span
+            >
           </div>
         </div>
-        
+
         <!-- 非选择题答案 -->
         <div class="answer-section" v-if="!q.options || q.options.length === 0">
-          <div class="correct-answer" v-if="getCorrectAnswer(q.options)">
+          <div class="correct-answer">
             <strong>参考答案:</strong>
-            <span>{{ getCorrectAnswer(q.options) }}</span>
+            <span v-if="getCorrectAnswer(q.options)">{{ getCorrectAnswer(q.options) }}</span>
+            <span v-else class="text-gray-500 italic">（无参考答案，请根据实际情况评分）</span>
           </div>
           <div class="user-answer-box">
             <strong>学生答案:</strong>
             <pre class="user-answer-content">{{ q.userAnswer || '(未作答)' }}</pre>
           </div>
         </div>
-        
+
         <!-- 评分区域 -->
         <div class="grading-section" v-if="q.questionId && grades[q.questionId]">
           <div class="grading-header">
             <span>评分</span>
             <div class="quick-actions" v-if="needsManualGrading(q.type)">
+              <button
+                @click="askAiSuggestion(q)"
+                class="quick-btn ai"
+                :disabled="!!aiSuggesting[q.questionId!]"
+              >
+                {{ aiSuggesting[q.questionId!] ? 'AI建议中...' : 'AI建议' }}
+              </button>
               <button @click="giveFullScore(q.questionId!)" class="quick-btn full">满分</button>
               <button @click="giveZeroScore(q.questionId!)" class="quick-btn zero">零分</button>
             </div>
@@ -241,11 +463,11 @@ onMounted(fetchExam)
             <div class="control-group score-input">
               <label>得分</label>
               <div class="score-wrapper">
-                <input 
-                  type="number" 
-                  v-model.number="grades[q.questionId!]!.score" 
-                  class="google-input" 
-                  step="0.5" 
+                <input
+                  type="number"
+                  v-model.number="grades[q.questionId!]!.score"
+                  class="google-input"
+                  step="0.5"
                   :min="0"
                   :max="grades[q.questionId!]?.maxScore"
                 />
@@ -254,9 +476,9 @@ onMounted(fetchExam)
             </div>
             <div class="control-group notes-input">
               <label>评语 (可选)</label>
-              <textarea 
-                v-model="grades[q.questionId!]!.notes" 
-                class="google-input" 
+              <textarea
+                v-model="grades[q.questionId!]!.notes"
+                class="google-input"
                 rows="2"
                 placeholder="输入评语或批注..."
               ></textarea>
@@ -264,13 +486,13 @@ onMounted(fetchExam)
           </div>
         </div>
       </div>
-      
+
       <!-- 底部提交按钮 -->
       <div class="bottom-actions" v-if="exam.questions && exam.questions.length > 0">
         <div class="final-score">
           总得分: <strong>{{ totalScore.toFixed(1) }}</strong> / {{ maxTotalScore }} 分
         </div>
-        <button @click="submitGrades" class="google-btn primary large" :disabled="saving">
+        <button @click="submitGrades" class="google-btn primary-btn" :disabled="saving">
           {{ saving ? '保存中...' : '提交评分' }}
         </button>
       </div>
@@ -279,33 +501,46 @@ onMounted(fetchExam)
 </template>
 
 <style scoped>
-.grading-container { 
-  max-width: 900px; 
-  margin: 0 auto; 
-  padding: 20px; 
+.grading-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
-.header-row { 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center; 
-  margin-bottom: 20px; 
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
   flex-wrap: wrap;
   gap: 10px;
 }
 
 .header-row h1 {
   margin: 0;
-  font-size: 1.5em;
-  color: #202124;
+  color: var(--line-text);
 }
 
-.google-card { 
-  background: white; 
-  border-radius: 8px; 
-  padding: 20px; 
-  margin-bottom: 20px; 
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.google-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.question-card[draggable='true'] {
+  cursor: grab;
+}
+
+.question-card[draggable='true']:active {
+  cursor: grabbing;
 }
 
 .info-card .info-grid {
@@ -322,13 +557,13 @@ onMounted(fetchExam)
 
 .info-item .label {
   font-size: 0.85em;
-  color: #5f6368;
+  color: var(--line-text-secondary);
   margin-bottom: 4px;
 }
 
 .info-item .value {
   font-weight: 500;
-  color: #202124;
+  color: var(--line-text);
 }
 
 .score-summary {
@@ -338,25 +573,25 @@ onMounted(fetchExam)
 }
 
 .current-score strong {
-  color: #1a73e8;
+  color: var(--line-primary);
   font-size: 1.3em;
 }
 
 .max-score {
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
-.q-header { 
-  display: flex; 
-  gap: 10px; 
+.q-header {
+  display: flex;
+  gap: 10px;
   align-items: center;
-  margin-bottom: 15px; 
+  margin-bottom: 15px;
   flex-wrap: wrap;
 }
 
 .q-num {
   font-weight: bold;
-  color: #202124;
+  color: var(--line-text);
   font-size: 1.1em;
 }
 
@@ -364,22 +599,37 @@ onMounted(fetchExam)
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 0.85em;
-  background: #e8f0fe;
-  color: #1a73e8;
+  background: rgba(26, 115, 232, 0.1);
+  color: var(--line-primary);
 }
 
-.q-type.single_choice { background: #e8f0fe; color: #1a73e8; }
-.q-type.multi_choice { background: #fce8e6; color: #d93025; }
-.q-type.true_false { background: #e6f4ea; color: #34a853; }
-.q-type.fill_blank { background: #fef7e0; color: #f9ab00; }
-.q-type.short_answer { background: #f3e8fd; color: #9334e6; }
+.q-type.single_choice {
+  background: rgba(26, 115, 232, 0.1);
+  color: var(--line-primary);
+}
+.q-type.multi_choice {
+  background: #fce8e6;
+  color: #d93025;
+}
+.q-type.true_false {
+  background: #e6f4ea;
+  color: #34a853;
+}
+.q-type.fill_blank {
+  background: #fef7e0;
+  color: #f9ab00;
+}
+.q-type.short_answer {
+  background: #f3e8fd;
+  color: #9334e6;
+}
 
 .q-score-badge {
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 0.85em;
-  background: #f1f3f4;
-  color: #5f6368;
+  background: var(--line-bg-soft);
+  color: var(--line-text-secondary);
 }
 
 .q-result {
@@ -389,27 +639,36 @@ onMounted(fetchExam)
   font-weight: 500;
 }
 
-.q-result.correct { background: #e6f4ea; color: #34a853; }
-.q-result.wrong { background: #fce8e6; color: #d93025; }
-.q-result.pending { background: #fef7e0; color: #f9ab00; }
+.q-result.correct {
+  background: #e6f4ea;
+  color: #34a853;
+}
+.q-result.wrong {
+  background: #fce8e6;
+  color: #d93025;
+}
+.q-result.pending {
+  background: #fef7e0;
+  color: #f9ab00;
+}
 
-.q-stem { 
-  font-size: 1.05em; 
+.q-stem {
+  font-size: 1.05em;
   margin-bottom: 15px;
   line-height: 1.6;
-  color: #202124;
+  color: var(--line-text);
 }
 
 .q-options {
   margin-bottom: 15px;
 }
 
-.option-item { 
-  padding: 12px 15px; 
-  border: 1px solid #dadce0; 
-  border-radius: 8px; 
-  margin-bottom: 8px; 
-  display: flex; 
+.option-item {
+  padding: 12px 15px;
+  border: 1px solid var(--line-border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  display: flex;
   align-items: center;
   gap: 10px;
   transition: all 0.2s;
@@ -417,7 +676,7 @@ onMounted(fetchExam)
 
 .option-key {
   font-weight: bold;
-  color: #5f6368;
+  color: var(--line-text-secondary);
   min-width: 24px;
 }
 
@@ -425,14 +684,14 @@ onMounted(fetchExam)
   flex: 1;
 }
 
-.option-item.correct { 
-  background-color: #e6f4ea; 
-  border-color: #34a853; 
+.option-item.correct {
+  background-color: #e6f4ea;
+  border-color: #34a853;
 }
 
-.option-item.selected { 
-  border-color: #1a73e8; 
-  background-color: #e8f0fe; 
+.option-item.selected {
+  border-color: var(--line-primary);
+  background-color: rgba(26, 115, 232, 0.1);
 }
 
 .option-item.wrong-selected {
@@ -440,17 +699,17 @@ onMounted(fetchExam)
   border-color: #d93025;
 }
 
-.badge-correct { 
-  color: #34a853; 
-  font-size: 0.8em; 
+.badge-correct {
+  color: #34a853;
+  font-size: 0.8em;
   font-weight: bold;
   margin-left: auto;
 }
 
-.badge-user { 
-  color: #1a73e8; 
-  font-size: 0.8em; 
-  font-weight: bold; 
+.badge-user {
+  color: var(--line-primary);
+  font-size: 0.8em;
+  font-weight: bold;
 }
 
 .answer-section {
@@ -466,9 +725,9 @@ onMounted(fetchExam)
 
 .user-answer-box {
   padding: 10px 15px;
-  background: #f8f9fa;
+  background: var(--line-bg-soft);
   border-radius: 6px;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--line-border);
 }
 
 .user-answer-content {
@@ -482,10 +741,10 @@ onMounted(fetchExam)
   border: 1px solid #e0e0e0;
 }
 
-.grading-section { 
-  margin-top: 15px; 
-  padding: 15px; 
-  background: #f8f9fa; 
+.grading-section {
+  margin-top: 15px;
+  padding: 15px;
+  background: var(--line-bg-soft);
   border-radius: 8px;
   border: 1px solid #e0e0e0;
 }
@@ -496,7 +755,7 @@ onMounted(fetchExam)
   align-items: center;
   margin-bottom: 12px;
   font-weight: 500;
-  color: #202124;
+  color: var(--line-text);
 }
 
 .quick-actions {
@@ -524,6 +783,22 @@ onMounted(fetchExam)
   color: white;
 }
 
+.quick-btn.ai {
+  background: color-mix(in srgb, var(--line-primary) 10%, white);
+  border-color: var(--line-primary);
+  color: var(--line-primary);
+}
+
+.quick-btn.ai:hover {
+  background: var(--line-primary);
+  color: white;
+}
+
+.quick-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .quick-btn.zero {
   background: #fce8e6;
   border-color: #d93025;
@@ -535,13 +810,13 @@ onMounted(fetchExam)
   color: white;
 }
 
-.grading-controls { 
-  display: flex; 
+.grading-controls {
+  display: flex;
   gap: 20px;
   flex-wrap: wrap;
 }
 
-.control-group { 
+.control-group {
   flex: 1;
   min-width: 150px;
 }
@@ -555,12 +830,12 @@ onMounted(fetchExam)
   min-width: 250px;
 }
 
-.control-group label { 
-  display: block; 
-  margin-bottom: 6px; 
+.control-group label {
+  display: block;
+  margin-bottom: 6px;
   font-weight: 500;
   font-size: 0.9em;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .score-wrapper {
@@ -574,14 +849,14 @@ onMounted(fetchExam)
 }
 
 .score-max {
-  color: #5f6368;
+  color: var(--line-text-secondary);
   font-size: 0.9em;
 }
 
-.google-input { 
-  width: 100%; 
-  padding: 10px 12px; 
-  border: 1px solid #dadce0; 
+.google-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line-border);
   border-radius: 4px;
   font-size: 1em;
   transition: border-color 0.2s;
@@ -589,14 +864,14 @@ onMounted(fetchExam)
 
 .google-input:focus {
   outline: none;
-  border-color: #1a73e8;
+  border-color: var(--line-primary);
 }
 
-.google-btn { 
-  padding: 10px 20px; 
-  border-radius: 4px; 
-  border: none; 
-  cursor: pointer; 
+.google-btn {
+  padding: 10px 20px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
   font-weight: 500;
   font-size: 0.95em;
   display: inline-flex;
@@ -605,9 +880,9 @@ onMounted(fetchExam)
   transition: all 0.2s;
 }
 
-.google-btn.primary { 
-  background: #1a73e8; 
-  color: white; 
+.google-btn.primary {
+  background: var(--line-primary);
+  color: white;
 }
 
 .google-btn.primary:hover {
@@ -619,13 +894,13 @@ onMounted(fetchExam)
   cursor: not-allowed;
 }
 
-.google-btn.secondary { 
-  background: #f1f3f4; 
-  color: #3c4043; 
+.google-btn.secondary {
+  background: var(--line-bg-soft);
+  color: var(--line-text);
 }
 
 .google-btn.secondary:hover {
-  background: #e8eaed;
+  background: var(--line-bg-soft);
 }
 
 .google-btn.large {
@@ -633,30 +908,34 @@ onMounted(fetchExam)
   font-size: 1.05em;
 }
 
-.loading-state { 
-  text-align: center; 
-  padding: 60px 20px; 
-  color: #5f6368; 
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--line-text-secondary);
 }
 
 .spinner {
   width: 40px;
   height: 40px;
   border: 3px solid #f3f3f3;
-  border-top: 3px solid #1a73e8;
+  border-top: 3px solid var(--line-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto 15px;
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
-.error-state { 
-  text-align: center; 
-  padding: 40px; 
+.error-state {
+  text-align: center;
+  padding: 40px;
   color: #d93025;
   background: #fce8e6;
   border-radius: 8px;
@@ -669,11 +948,19 @@ onMounted(fetchExam)
 .empty-state {
   text-align: center;
   padding: 40px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .empty-state p {
   margin: 10px 0;
+}
+
+.empty-state .empty-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--line-text);
 }
 
 .empty-state .hint {
@@ -688,7 +975,7 @@ onMounted(fetchExam)
   padding: 20px;
   background: white;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   position: sticky;
   bottom: 20px;
 }
@@ -698,7 +985,7 @@ onMounted(fetchExam)
 }
 
 .final-score strong {
-  color: #1a73e8;
+  color: var(--line-primary);
   font-size: 1.3em;
 }
 
@@ -706,11 +993,11 @@ onMounted(fetchExam)
   .grading-controls {
     flex-direction: column;
   }
-  
+
   .control-group.score-input {
     flex: 1;
   }
-  
+
   .bottom-actions {
     flex-direction: column;
     gap: 15px;

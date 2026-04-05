@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { authApi } from '@/api/client'
 import { authState } from '@/states/authState'
+import axios from 'axios'
 
 const username = ref('')
 const password = ref('')
@@ -10,10 +11,11 @@ const error = ref('')
 const router = useRouter()
 
 const handleLogin = async () => {
+  error.value = ''
   try {
     const response = await authApi.apiAuthLoginPost({
       username: username.value,
-      password: password.value,
+      password: password.value
     })
     const token = response.data.accessToken
     if (token) {
@@ -21,7 +23,19 @@ const handleLogin = async () => {
       router.push('/')
     }
   } catch (err) {
-    error.value = '登录失败，请检查您的用户名和密码'
+    if (axios.isAxiosError(err)) {
+      if (err.response?.status === 429) {
+        error.value = '登录失败次数过多，账号已被临时锁定15分钟'
+      } else if (err.response?.status === 503) {
+        error.value = '系统维护中，请稍后再试'
+      } else if (err.response?.status === 401) {
+        error.value = '用户名或密码错误'
+      } else {
+        error.value = '登录失败，请稍后再试'
+      }
+    } else {
+      error.value = '网络连接失败，请检查网络'
+    }
     console.error(err)
   }
 }
@@ -29,26 +43,44 @@ const handleLogin = async () => {
 
 <template>
   <div class="login-wrapper">
-    <div class="login-container google-card">
+    <div class="login-container line-card">
       <div class="logo-area">
-        <span class="google-logo">G</span>
+        <span class="app-logo">UQ</span>
       </div>
-      <h1>登录</h1>
-      <p class="subtitle">继续使用题库系统</p>
-      
+      <h1 class="page-title">欢迎回来</h1>
+      <p class="subtitle">登录以继续</p>
+
       <form @submit.prevent="handleLogin">
         <div class="form-group">
-          <input id="username" v-model="username" type="text" required placeholder="用户名" class="google-input" />
+          <input
+            id="username"
+            v-model="username"
+            type="text"
+            required
+            placeholder="用户名"
+            class="google-input"
+          />
         </div>
         <div class="form-group">
-          <input id="password" v-model="password" type="password" required placeholder="密码" class="google-input" />
+          <input
+            id="password"
+            v-model="password"
+            type="password"
+            required
+            placeholder="密码"
+            class="google-input"
+          />
         </div>
-        
+
+        <div class="forgot-password">
+          <router-link to="/forgot-password">忘记密码？</router-link>
+        </div>
+
         <div class="actions">
           <router-link to="/register" class="create-account">创建账号</router-link>
           <button type="submit" class="primary-btn">登录</button>
         </div>
-        
+
         <p v-if="error" class="error">{{ error }}</p>
       </form>
     </div>
@@ -61,100 +93,100 @@ const handleLogin = async () => {
   justify-content: center;
   align-items: center;
   min-height: 80vh;
-  background-color: #fff; /* Google login page is usually white or very light grey */
+  background: transparent;
 }
 
 .login-container {
   width: 100%;
-  max-width: 450px;
-  padding: 48px 40px 36px;
+  max-width: 400px;
+  padding: 48px 40px;
   text-align: center;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.56);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.login-container:hover {
+  transform: none;
 }
 
 .logo-area {
-  margin-bottom: 10px;
+  margin-bottom: 24px;
 }
 
-.google-logo {
-  font-family: 'Product Sans', 'Google Sans', sans-serif;
-  font-size: 24px;
-  font-weight: bold;
-  color: #4285f4; /* Or multi-color if we want to get fancy */
+.app-logo {
+  font-family: inherit;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--line-primary);
+  letter-spacing: -0.05em;
+  border: 2px solid var(--line-primary);
+  padding: 8px 12px;
+  border-radius: 8px;
 }
 
 h1 {
-  font-family: 'Google Sans', sans-serif;
-  font-size: 24px;
-  font-weight: 400;
-  color: #202124;
+  color: var(--line-text);
   margin-bottom: 8px;
 }
 
 .subtitle {
-  font-size: 16px;
-  color: #202124;
+  font-size: 15px;
+  color: var(--line-text-secondary);
   margin-bottom: 40px;
 }
 
 .form-group {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   text-align: left;
 }
 
+/* google-input is handled globally, but ensuring specific overrides if needed */
 .google-input {
-  width: 100%;
-  padding: 13px 15px;
-  font-size: 16px;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  color: #202124;
-  transition: border-color 0.2s;
-}
-
-.google-input:focus {
-  border-color: #1a73e8;
-  outline: none;
-  border-width: 2px;
-  padding: 12px 14px; /* Adjust for border width */
+  /* Inherits from global styles */
 }
 
 .actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 40px;
+  margin-top: 32px;
+}
+
+.forgot-password {
+  text-align: right;
+  margin-top: 8px;
+}
+
+.forgot-password a {
+  color: var(--line-text-secondary);
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.forgot-password a:hover {
+  color: var(--line-primary);
 }
 
 .create-account {
-  color: #1a73e8;
+  color: var(--line-primary);
   font-weight: 500;
   text-decoration: none;
   font-size: 14px;
-  border-radius: 4px;
-  padding: 6px 8px;
+  transition: opacity 0.2s;
 }
 
 .create-account:hover {
-  background-color: #f6fafe;
+  opacity: 0.8;
+  text-decoration: underline;
+  background: none;
 }
 
 .primary-btn {
-  background-color: #1a73e8;
-  color: white;
-  border: none;
-  padding: 10px 24px;
-  border-radius: 4px;
-  font-weight: 500;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.primary-btn:hover {
-  background-color: #1557b0;
-  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+  /* Inherits from global styles */
 }
 
 .error {

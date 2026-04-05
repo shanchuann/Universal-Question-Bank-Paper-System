@@ -4,11 +4,14 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * 题目审核记录实体
- */
+/** 题目审核记录实体 */
 @Entity
-@Table(name = "question_reviews")
+@Table(
+    name = "question_reviews",
+    indexes = {
+      @Index(name = "idx_question_review_question_created", columnList = "questionId, createdAt"),
+      @Index(name = "idx_question_review_reviewer_created", columnList = "reviewerId, createdAt")
+    })
 public class QuestionReviewEntity {
 
   @Id private String id;

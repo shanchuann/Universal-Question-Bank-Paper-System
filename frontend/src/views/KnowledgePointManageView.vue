@@ -1,7 +1,7 @@
 <template>
   <div class="container kp-container">
     <div class="header-row">
-      <h1>知识点管理</h1>
+      <h1 class="page-title">知识点管理</h1>
     </div>
 
     <div class="content-grid">
@@ -10,64 +10,88 @@
         <div class="card-header-simple">
           <h2>{{ newPoint.id ? '编辑知识点' : '添加新知识点' }}</h2>
         </div>
-        
+
         <form @submit.prevent="handleAdd">
           <div class="form-group">
             <label>名称</label>
-            <input v-model="newPoint.name" type="text" required placeholder="例如：代数" class="google-input" />
+            <input
+              v-model="newPoint.name"
+              type="text"
+              required
+              placeholder="例如：代数"
+              class="google-input"
+            />
           </div>
 
           <div class="form-group">
             <label>层级</label>
             <div class="level-selector">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 class="level-btn"
                 :class="{ active: newPoint.level === 'CHAPTER' }"
                 @click="newPoint.level = 'CHAPTER'"
-              >章</button>
-              <button 
-                type="button" 
+              >
+                章
+              </button>
+              <button
+                type="button"
                 class="level-btn"
                 :class="{ active: newPoint.level === 'SECTION' }"
                 @click="newPoint.level = 'SECTION'"
-              >节</button>
-              <button 
-                type="button" 
+              >
+                节
+              </button>
+              <button
+                type="button"
                 class="level-btn"
                 :class="{ active: newPoint.level === 'POINT' }"
                 @click="newPoint.level = 'POINT'"
-              >知识点</button>
+              >
+                知识点
+              </button>
             </div>
           </div>
 
           <div class="form-group">
             <label>科目</label>
-            <input v-model="newPoint.subjectId" type="text" placeholder="general" class="google-input" />
+            <input
+              v-model="newPoint.subjectId"
+              type="text"
+              placeholder="general"
+              class="google-input"
+            />
           </div>
 
           <div class="form-group">
             <label>父级节点</label>
-            <select v-model="newPoint.parentId" class="google-select">
-              <option value="">无 (顶级)</option>
-              <option v-for="kp in parentOptions" :key="kp.id" :value="kp.id">{{ kp.label }}</option>
-            </select>
+            <GoogleSelect
+              v-model="newPoint.parentId"
+              :options="parentSelectOptions"
+              placeholder="无 (顶级)"
+            />
           </div>
 
           <div class="form-group">
             <label>排序</label>
-            <input v-model.number="newPoint.sortOrder" type="number" min="0" placeholder="0" class="google-input" />
+            <input
+              v-model.number="newPoint.sortOrder"
+              type="number"
+              min="0"
+              placeholder="0"
+              class="google-input"
+            />
           </div>
 
           <div class="form-actions">
             <button type="submit" class="google-btn primary-btn" :disabled="loading">
-              {{ loading ? '保存中...' : (newPoint.id ? '保存修改' : '添加') }}
+              {{ loading ? '保存中...' : newPoint.id ? '保存修改' : '添加' }}
             </button>
             <button type="button" v-if="newPoint.id" @click="resetForm" class="google-btn text-btn">
               取消
             </button>
           </div>
-          
+
           <p v-if="error" class="error-text">{{ error }}</p>
           <p v-if="message" class="success-text">{{ message }}</p>
         </form>
@@ -84,7 +108,7 @@
           <div class="spinner"></div>
           <p>加载结构中...</p>
         </div>
-        
+
         <div v-else-if="treeData.length === 0" class="empty-state">
           <p>暂无知识点数据。</p>
         </div>
@@ -95,37 +119,124 @@
               <div class="node-row chapter-row">
                 <div class="node-info">
                   <span class="node-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                    </svg>
                   </span>
                   <span class="node-name">{{ chapter.name }}</span>
                   <span class="node-meta" v-if="chapter.sortOrder">#{{ chapter.sortOrder }}</span>
                 </div>
                 <div class="node-actions">
                   <button @click="handleEdit(chapter)" class="icon-action" title="编辑">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                    </svg>
                   </button>
                   <button @click="handleDelete(chapter.id)" class="icon-action" title="删除">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path
+                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                      ></path>
+                      <line x1="10" y1="11" x2="10" y2="17"></line>
+                      <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
                   </button>
                 </div>
               </div>
-              
+
               <ul v-if="chapter.children?.length" class="tree-children">
                 <li v-for="section in chapter.children" :key="section.id" class="tree-node-item">
                   <div class="node-row section-row">
                     <div class="node-info">
                       <span class="node-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path
+                            d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+                          ></path>
+                        </svg>
                       </span>
                       <span class="node-name">{{ section.name }}</span>
-                      <span class="node-meta" v-if="section.sortOrder">#{{ section.sortOrder }}</span>
+                      <span class="node-meta" v-if="section.sortOrder"
+                        >#{{ section.sortOrder }}</span
+                      >
                     </div>
                     <div class="node-actions">
                       <button @click="handleEdit(section)" class="icon-action" title="编辑">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                        </svg>
                       </button>
                       <button @click="handleDelete(section.id)" class="icon-action" title="删除">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path
+                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                          ></path>
+                          <line x1="10" y1="11" x2="10" y2="17"></line>
+                          <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
                       </button>
                     </div>
                   </div>
@@ -135,17 +246,68 @@
                       <div class="node-row point-row">
                         <div class="node-info">
                           <span class="node-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <path
+                                d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                              ></path>
+                              <polyline points="14 2 14 8 20 8"></polyline>
+                              <line x1="16" y1="13" x2="8" y2="13"></line>
+                              <line x1="16" y1="17" x2="8" y2="17"></line>
+                              <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
                           </span>
                           <span class="node-name">{{ point.name }}</span>
-                          <span class="node-meta" v-if="point.sortOrder">#{{ point.sortOrder }}</span>
+                          <span class="node-meta" v-if="point.sortOrder"
+                            >#{{ point.sortOrder }}</span
+                          >
                         </div>
                         <div class="node-actions">
                           <button @click="handleEdit(point)" class="icon-action" title="编辑">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <path
+                                d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                              ></path>
+                            </svg>
                           </button>
                           <button @click="handleDelete(point.id)" class="icon-action" title="删除">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path
+                                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                              ></path>
+                              <line x1="10" y1="11" x2="10" y2="17"></line>
+                              <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
                           </button>
                         </div>
                       </div>
@@ -163,6 +325,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import GoogleSelect from '@/components/GoogleSelect.vue'
+import { useConfirm } from '@/composables/useConfirm'
+
+const { confirm } = useConfirm()
 
 interface KnowledgePoint {
   id: string
@@ -199,7 +365,9 @@ const fetchPoints = async () => {
   error.value = ''
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('/api/knowledge-points', { headers: { Authorization: `Bearer ${token}` } })
+    const res = await axios.get('/api/knowledge-points', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
     points.value = res.data
   } catch (e: any) {
     error.value = e?.response?.data || 'Failed to load knowledge points'
@@ -212,8 +380,20 @@ onMounted(fetchPoints)
 const parentOptions = computed(() => {
   const lvl = newPoint.value.level
   if (lvl === 'CHAPTER') return []
-  if (lvl === 'SECTION') return points.value.filter(p => p.level === 'CHAPTER').map(p => ({ id: p.id, label: p.name }))
-  return points.value.filter(p => p.level === 'SECTION').map(p => ({ id: p.id, label: p.name }))
+  if (lvl === 'SECTION')
+    return points.value
+      .filter((p) => p.level === 'CHAPTER')
+      .map((p) => ({ id: p.id, label: p.name }))
+  return points.value.filter((p) => p.level === 'SECTION').map((p) => ({ id: p.id, label: p.name }))
+})
+
+// GoogleSelect 组件所需的选项格式
+const parentSelectOptions = computed(() => {
+  const options = [{ label: '无 (顶级)', value: '' }]
+  parentOptions.value.forEach((p) => {
+    options.push({ label: p.label, value: p.id })
+  })
+  return options
 })
 
 const treeData = computed(() => {
@@ -221,21 +401,21 @@ const treeData = computed(() => {
   const roots: KnowledgePoint[] = []
   // Deep copy to avoid mutating original list during tree construction if re-computed
   const pointsCopy = JSON.parse(JSON.stringify(points.value))
-  
+
   pointsCopy.forEach((p: KnowledgePoint) => map.set(p.id, { ...p, children: [] }))
-  
-  map.forEach(p => {
+
+  map.forEach((p) => {
     if (p.parentId && map.has(p.parentId)) {
       map.get(p.parentId)!.children!.push(p)
     } else {
       roots.push(p)
     }
   })
-  
+
   const sortFn = (a: KnowledgePoint, b: KnowledgePoint) => (a.sortOrder || 0) - (b.sortOrder || 0)
   const sortRecursive = (arr: KnowledgePoint[]) => {
     arr.sort(sortFn)
-    arr.forEach(child => child.children && sortRecursive(child.children))
+    arr.forEach((child) => child.children && sortRecursive(child.children))
   }
   sortRecursive(roots)
   return roots
@@ -266,13 +446,17 @@ const handleAdd = async () => {
     }
 
     if (newPoint.value.id) {
-      await axios.put(`/api/knowledge-points/${newPoint.value.id}`, payload, { headers: { Authorization: `Bearer ${token}` } })
+      await axios.put(`/api/knowledge-points/${newPoint.value.id}`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       message.value = '更新成功'
     } else {
-      await axios.post('/api/knowledge-points', payload, { headers: { Authorization: `Bearer ${token}` } })
+      await axios.post('/api/knowledge-points', payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       message.value = '创建成功'
     }
-    
+
     resetForm()
     await fetchPoints()
   } catch (e: any) {
@@ -296,12 +480,21 @@ const handleEdit = (point: KnowledgePoint) => {
 }
 
 const handleDelete = async (id: string) => {
-  if (!confirm('确定要删除此知识点（及其子节点）吗？')) return
+  const confirmed = await confirm({
+    title: '删除知识点',
+    message: '确定要删除此知识点（及其子节点）吗？',
+    type: 'danger',
+    confirmText: '删除',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
   loading.value = true
   error.value = ''
   try {
     const token = localStorage.getItem('token')
-    await axios.delete(`/api/knowledge-points/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+    await axios.delete(`/api/knowledge-points/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
     await fetchPoints()
   } catch (e: any) {
     error.value = e?.response?.data || '删除失败'
@@ -320,10 +513,7 @@ const handleDelete = async (id: string) => {
   margin-bottom: 24px;
 }
 .header-row h1 {
-  font-family: 'Google Sans', sans-serif;
-  font-size: 24px;
-  color: #202124;
-  font-weight: 400;
+  color: var(--line-text);
 }
 
 .content-grid {
@@ -345,13 +535,13 @@ const handleDelete = async (id: string) => {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f1f3f4;
+  border-bottom: 1px solid var(--line-bg-soft);
 }
 
 .card-header-simple h2 {
   font-size: 18px;
   font-weight: 500;
-  color: #202124;
+  color: var(--line-text);
   margin: 0;
 }
 
@@ -363,7 +553,7 @@ const handleDelete = async (id: string) => {
   display: block;
   margin-bottom: 8px;
   font-weight: 500;
-  color: #3c4043;
+  color: var(--line-text);
   font-size: 14px;
 }
 
@@ -376,8 +566,8 @@ const handleDelete = async (id: string) => {
 .level-btn {
   flex: 1;
   padding: 8px;
-  background: #fff;
-  border: 1px solid #dadce0;
+  background: var(--line-bg);
+  border: 1px solid var(--line-border);
   border-radius: 4px;
   color: #666;
   font-size: 14px;
@@ -386,13 +576,13 @@ const handleDelete = async (id: string) => {
 }
 
 .level-btn:hover {
-  background: #f8f9fa;
+  background: var(--line-bg-soft);
 }
 
 .level-btn.active {
-  background: #e8f0fe;
-  color: #1a73e8;
-  border-color: #1a73e8;
+  background: rgba(26, 115, 232, 0.1);
+  color: var(--line-primary);
+  border-color: var(--line-primary);
   font-weight: 500;
 }
 
@@ -400,46 +590,58 @@ const handleDelete = async (id: string) => {
   margin-top: 24px;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 12px;
 }
 
 .form-actions button {
   width: 100%;
+  height: 44px;
+  padding: 0 20px;
   justify-content: center;
 }
 
-.error-text { color: #d93025; margin-top: 12px; font-size: 14px; }
-.success-text { color: #188038; margin-top: 12px; font-size: 14px; }
+.error-text {
+  color: #d93025;
+  margin-top: 12px;
+  font-size: 14px;
+}
+.success-text {
+  color: #188038;
+  margin-top: 12px;
+  font-size: 14px;
+}
 
 /* Tree Styles */
 .tree-container {
   margin-top: 12px;
 }
 
-.tree-root, .tree-children {
+.tree-root,
+.tree-children {
   list-style: none;
   padding-left: 0;
 }
 
 .tree-children {
   padding-left: 24px;
-  border-left: 1px solid #e8eaed;
+  border-left: 1px solid var(--line-bg-soft);
   margin-left: 12px;
 }
 
 /* Connectors for tree */
 .tree-children li {
-    position: relative;
+  position: relative;
 }
 
 .tree-children li::before {
-    content: "";
-    position: absolute;
-    top: 14px;
-    left: -24px;
-    width: 20px;
-    height: 1px;
-    background: #e8eaed;
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: -24px;
+  width: 20px;
+  height: 1px;
+  background: var(--line-bg-soft);
 }
 
 .tree-node-item {
@@ -457,20 +659,24 @@ const handleDelete = async (id: string) => {
 }
 
 .node-row:hover {
-  background-color: #f8f9fa;
-  border-color: #f1f3f4;
+  background-color: var(--line-bg-soft);
+  border-color: var(--line-bg-soft);
 }
 
-.chapter-row { background-color: #fff; }
-.section-row { }
-.point-row { }
+.chapter-row {
+  background-color: var(--line-bg);
+}
+.section-row {
+}
+.point-row {
+}
 
 .node-info {
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  color: #3c4043;
+  color: var(--line-text);
   height: 28px;
 }
 
@@ -480,7 +686,7 @@ const handleDelete = async (id: string) => {
   justify-content: center;
   width: 20px;
   height: 20px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .node-name {
@@ -492,7 +698,7 @@ const handleDelete = async (id: string) => {
 .node-meta {
   font-size: 12px;
   color: #9aa0a6;
-  background: #f1f3f4;
+  background: var(--line-bg-soft);
   padding: 2px 6px;
   border-radius: 4px;
 }
@@ -513,34 +719,36 @@ const handleDelete = async (id: string) => {
   font-size: 16px;
   padding: 4px;
   border-radius: 4px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
   opacity: 0.6;
   transition: all 0.2s;
 }
 
 .icon-action:hover {
-  background-color: #e8f0fe;
-  color: #1a73e8;
+  background-color: rgba(26, 115, 232, 0.1);
+  color: var(--line-primary);
   opacity: 1;
 }
 
 .loading-state {
   padding: 40px;
   text-align: center;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
 .spinner {
   width: 30px;
   height: 30px;
-  border: 3px solid #f1f3f4;
-  border-top-color: #1a73e8;
+  border: 3px solid var(--line-bg-soft);
+  border-top-color: var(--line-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto 16px;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

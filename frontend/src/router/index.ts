@@ -1,13 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import LoginView from '../views/LoginView.vue'
-import RegisterView from '../views/RegisterView.vue'
-import QuestionListView from '../views/QuestionListView.vue'
-import QuestionAddView from '../views/QuestionAddView.vue'
-import PaperGenerationView from '../views/PaperGenerationView.vue'
-import PaperPreviewView from '../views/PaperPreviewView.vue'
-import PaperEditView from '../views/PaperEditView.vue'
-import ExamView from '../views/ExamView.vue'
-import HelloWorld from '../components/HelloWorld.vue'
 import { authState } from '../states/authState'
 
 const router = createRouter({
@@ -16,33 +7,38 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HelloWorld,
+      component: () => import('../components/HelloWorld.vue'),
       props: { msg: 'Welcome to Universal Question Bank' }
     },
     {
       path: '/login',
       name: 'login',
-      component: LoginView
+      component: () => import('../views/LoginView.vue')
     },
     {
       path: '/register',
       name: 'register',
-      component: RegisterView
+      component: () => import('../views/RegisterView.vue')
+    },
+    {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('../views/ForgotPasswordView.vue')
     },
     {
       path: '/questions',
       name: 'questions',
-      component: QuestionListView
+      component: () => import('../views/QuestionListView.vue')
     },
     {
       path: '/questions/add',
       name: 'add-question',
-      component: QuestionAddView
+      component: () => import('../views/QuestionAddView.vue')
     },
     {
       path: '/questions/:id/edit',
       name: 'edit-question',
-      component: QuestionAddView,
+      component: () => import('../views/QuestionAddView.vue'),
       props: true
     },
     {
@@ -53,7 +49,7 @@ const router = createRouter({
     {
       path: '/paper-generation',
       name: 'paper-generation',
-      component: PaperGenerationView
+      component: () => import('../views/PaperGenerationView.vue')
     },
     {
       path: '/papers/manual',
@@ -73,17 +69,17 @@ const router = createRouter({
     {
       path: '/papers/:id/preview',
       name: 'paper-preview',
-      component: PaperPreviewView
+      component: () => import('../views/PaperPreviewView.vue')
     },
     {
       path: '/papers/:id/edit',
       name: 'paper-edit',
-      component: PaperEditView
+      component: () => import('../views/PaperEditView.vue')
     },
     {
       path: '/exam',
       name: 'exam',
-      component: ExamView
+      component: () => import('../views/ExamView.vue')
     },
     {
       path: '/knowledge-points',
@@ -122,6 +118,12 @@ const router = createRouter({
       component: () => import('../views/LeaderboardView.vue')
     },
     {
+      path: '/messages',
+      name: 'messages',
+      component: () => import('../views/NotificationCenterView.vue'),
+      meta: { requiresAuth: true, roles: ['USER', 'TEACHER'] }
+    },
+    {
       path: '/admin/users',
       name: 'admin-users',
       component: () => import('../views/AdminUserView.vue')
@@ -144,12 +146,6 @@ const router = createRouter({
       meta: { roles: ['TEACHER', 'ADMIN'] }
     },
     {
-      path: '/admin/roles',
-      name: 'role-permission',
-      component: () => import('../views/RolePermissionView.vue'),
-      meta: { roles: ['ADMIN'] }
-    },
-    {
       path: '/questions/review',
       name: 'question-review',
       component: () => import('../views/QuestionReviewView.vue'),
@@ -168,10 +164,46 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/my-scores',
+      name: 'my-scores',
+      component: () => import('../views/MyScoresView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/my-scores/:id',
+      name: 'my-score-detail',
+      component: () => import('../views/MyScoreDetailView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/my-organizations',
       name: 'my-organizations',
       component: () => import('../views/MyOrganizationsView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/admin/logs',
+      name: 'admin-logs',
+      component: () => import('../views/AdminLogsView.vue'),
+      meta: { roles: ['ADMIN'] }
+    },
+    {
+      path: '/admin/statistics',
+      name: 'admin-statistics',
+      component: () => import('../views/AdminStatisticsView.vue'),
+      meta: { roles: ['ADMIN'] }
+    },
+    {
+      path: '/admin/monitor',
+      name: 'admin-monitor',
+      component: () => import('../views/AdminMonitorView.vue'),
+      meta: { roles: ['ADMIN'] }
+    },
+    {
+      path: '/admin/announcements',
+      name: 'admin-announcements',
+      component: () => import('../views/AdminAnnouncementsView.vue'),
+      meta: { roles: ['ADMIN'] }
     }
   ]
 })

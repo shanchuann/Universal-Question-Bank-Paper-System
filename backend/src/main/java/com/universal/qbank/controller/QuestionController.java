@@ -10,9 +10,9 @@ import com.universal.qbank.api.generated.model.QuestionResponse;
 import com.universal.qbank.api.generated.model.QuestionSummary;
 import com.universal.qbank.api.generated.model.QuestionUpdateRequest;
 import com.universal.qbank.entity.QuestionEntity;
-import com.universal.qbank.entity.UserEntity;
 import com.universal.qbank.repository.QuestionRepository;
 import com.universal.qbank.repository.UserRepository;
+import com.universal.qbank.service.OrganizationService;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
@@ -31,24 +31,35 @@ public class QuestionController implements QuestionBankApi {
 
   @Autowired private QuestionRepository questionRepository;
   @Autowired private UserRepository userRepository;
+  @Autowired private OrganizationService organizationService;
   @Autowired private HttpServletRequest httpRequest;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   @Override
   public ResponseEntity<QuestionResponse> apiQuestionsPost(QuestionCreateRequest req) {
+    // 从请求头获取用户ID
+    String authHeader = httpRequest.getHeader("Authorization");
+    String userId = null;
+    if (authHeader != null && authHeader.startsWith("Bearer dummy-jwt-token-")) {
+      userId = authHeader.replace("Bearer dummy-jwt-token-", "");
+    }
+
+    // 检查用户是否加入了任何组织（班级）
+    if (userId != null) {
+      var userOrgs = organizationService.getUserOrganizations(userId);
+      if (userOrgs == null || userOrgs.isEmpty()) {
+        return ResponseEntity.status(403).build();
+      }
+    } else {
+      return ResponseEntity.status(401).build();
+    }
+
     QuestionEntity q = new QuestionEntity();
     q.setSubjectId(req.getSubjectId());
     q.setType(req.getType().getValue());
     q.setDifficulty(req.getDifficulty().getValue());
     q.setStem(req.getStem());
-    
-    // 从请求头获取用户ID并设置为创建者
-    String authHeader = httpRequest.getHeader("Authorization");
-    String userId = null;
-    if (authHeader != null && authHeader.startsWith("Bearer dummy-jwt-token-")) {
-      userId = authHeader.replace("Bearer dummy-jwt-token-", "");
-      q.setCreatedBy(userId);
-    }
+    q.setCreatedBy(userId);
 
     try {
       if (req.getOptions() != null) {
@@ -76,7 +87,7 @@ public class QuestionController implements QuestionBankApi {
       q.setTags(req.getTags());
     }
     q.setKnowledgePointIds(req.getKnowledgePointIds());
-    
+
     // 根据用户角色设置初始状态：学生创建的为待审核，教师/管理员创建的直接激活
     String initialStatus = "APPROVED";
     if (userId != null) {
@@ -105,7 +116,7 @@ public class QuestionController implements QuestionBankApi {
     resp.setKnowledgePointIds(entity.getKnowledgePointIds());
     resp.setStem(entity.getStem());
     resp.setAnalysis(entity.getAnalysis());
-    
+
     // 设置 answerSchema
     if (entity.getAnswerSchema() != null) {
       resp.setAnswerSchema(entity.getAnswerSchema());

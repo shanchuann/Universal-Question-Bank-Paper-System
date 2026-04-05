@@ -9,6 +9,7 @@ interface ExamListItem {
   userId: string
   nickname?: string
   username?: string
+  avatarUrl?: string
   score?: number
   status?: string
   startAt?: string
@@ -40,7 +41,7 @@ const fetchExams = async () => {
     if (filterUserId.value) params.append('userId', filterUserId.value)
     params.append('page', String(page.value))
     params.append('size', String(size.value))
-    
+
     const response = await axios.get(`/api/exams?${params.toString()}`, {
       headers: getAuthHeaders()
     })
@@ -63,23 +64,33 @@ watch([filterPaperId, filterUserId], () => {
   fetchExams()
 })
 
+const getStatusClass = (status?: string) => {
+  if (!status || status === '待阅卷') return 'pending'
+  if (status === '已阅卷') return 'completed'
+  if (status === '进行中') return 'grading'
+  return 'pending'
+}
+
 onMounted(fetchExams)
 </script>
 
 <template>
-  <div class="container">
-    <div class="header-row">
-      <h1>阅卷管理</h1>
+  <div class="grading-list-view">
+    <div class="page-header">
+      <h1 class="page-title">阅卷管理</h1>
+      <p class="page-subtitle">管理所有学生提交的试卷并进行评分</p>
     </div>
 
-    <div class="filter-bar google-card">
-      <div class="filter-group">
-        <label>试卷ID</label>
-        <input v-model="filterPaperId" class="google-input" placeholder="输入试卷ID筛选" />
-      </div>
-      <div class="filter-group">
-        <label>用户ID</label>
-        <input v-model="filterUserId" class="google-input" placeholder="输入用户ID筛选" />
+    <div class="line-card filter-card">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label class="filter-label">试卷ID</label>
+          <input v-model="filterPaperId" class="line-input" placeholder="输入试卷ID筛选" />
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">用户ID</label>
+          <input v-model="filterUserId" class="line-input" placeholder="输入用户ID筛选" />
+        </div>
       </div>
     </div>
 
@@ -88,201 +99,345 @@ onMounted(fetchExams)
       <p>加载中...</p>
     </div>
 
-    <div v-else-if="error" class="error-state google-card">
-      <p>{{ error }}</p>
-      <button @click="fetchExams" class="google-btn">重试</button>
+    <div v-else-if="error" class="line-card error-state">
+      <div class="error-content">
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        >
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <p>{{ error }}</p>
+        <button @click="fetchExams" class="line-btn primary-btn">重试</button>
+      </div>
     </div>
 
-    <div v-else class="google-card table-card">
-      <table class="question-table">
+    <div v-else class="line-card table-card">
+      <table class="line-table">
         <thead>
           <tr>
-            <th>考试ID</th>
-            <th>试卷ID</th>
-            <th>学生</th>
-            <th>得分</th>
-            <th>状态</th>
-            <th>操作</th>
+            <th class="col-id">考试ID</th>
+            <th class="col-id">试卷ID</th>
+            <th class="col-user">学生</th>
+            <th class="col-score">得分</th>
+            <th class="col-status">状态</th>
+            <th class="col-action">操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="exam in exams" :key="exam.sessionId">
-            <td class="id-col">{{ exam.sessionId }}</td>
-            <td>{{ exam.paperVersionId }}</td>
-            <td>{{ exam.nickname || exam.username || exam.userId }}</td>
-            <td>{{ exam.score ?? '-' }}</td>
-            <td>
-                <span class="chip" :class="exam.status === '已阅卷' ? 'easy' : 'hard'">
-                    {{ exam.status || '待阅卷' }}
-                </span>
+            <td class="col-id font-mono">{{ exam.sessionId }}</td>
+            <td class="col-id font-mono">{{ exam.paperVersionId }}</td>
+            <td class="col-user">
+              <div class="user-info">
+                <div class="avatar-sm" :class="{ 'has-img': exam.avatarUrl }">
+                  <img
+                    v-if="exam.avatarUrl"
+                    :src="exam.avatarUrl"
+                    :alt="exam.nickname || exam.username || ''"
+                    @error="($event.target as HTMLImageElement).style.display = 'none'"
+                  />
+                  <span v-else>{{
+                    (exam.nickname || exam.username || exam.userId || 'U').charAt(0).toUpperCase()
+                  }}</span>
+                </div>
+                <span>{{ exam.nickname || exam.username || exam.userId }}</span>
+              </div>
             </td>
-            <td>
-              <button @click="goToGrade(exam.sessionId)" class="google-btn text-btn">阅卷</button>
+            <td class="col-score font-mono">{{ exam.score ?? '-' }}</td>
+            <td class="col-status">
+              <span class="status-badge" :class="getStatusClass(exam.status)">
+                {{ exam.status || '待阅卷' }}
+              </span>
+            </td>
+            <td class="col-action">
+              <button @click="goToGrade(exam.sessionId)" class="line-btn text-btn sm">阅卷</button>
             </td>
           </tr>
           <tr v-if="exams.length === 0">
-            <td colspan="6" class="empty-state">暂无学生考试记录</td>
+            <td colspan="6" class="empty-state-cell">
+              <div class="empty-state-content">
+                <svg
+                  width="48"
+                  height="48"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                <p>暂无相关考试记录</p>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
 
-      <div class="pagination">
-        <button :disabled="page === 0" @click="page--; fetchExams()" class="google-btn text-btn">上一页</button>
-        <span class="page-info">第 {{ page + 1 }} 页</span>
-        <button :disabled="(page + 1) * size >= totalElements" @click="page++; fetchExams()" class="google-btn text-btn">下一页</button>
+      <div class="pagination-bar">
+        <button
+          :disabled="page === 0"
+          @click="page--; fetchExams()"
+          class="line-btn outline-btn sm"
+        >
+          上一页
+        </button>
+        <span class="page-info"
+          >第 {{ page + 1 }} 页 / 共 {{ Math.ceil(totalElements / size) || 1 }} 页</span
+        >
+        <button
+          :disabled="(page + 1) * size >= totalElements"
+          @click="page++; fetchExams()"
+          class="line-btn outline-btn sm"
+        >
+          下一页
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.header-row {
-  margin-bottom: 24px;
+.grading-list-view {
+  padding: 32px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.filter-bar {
+.page-header {
+  margin-bottom: 32px;
+}
+
+.page-title {
+  color: var(--line-text);
+  margin: 0 0 8px 0;
+}
+
+.page-subtitle {
+  color: var(--line-text-secondary);
+  font-size: 14px;
+  margin: 0;
+}
+
+.filter-card {
+  margin-bottom: 24px;
+  padding: 24px;
+}
+
+.filter-row {
   display: flex;
   gap: 24px;
-  padding: 16px 24px;
-  margin-bottom: 24px;
   align-items: flex-end;
 }
 
 .filter-group {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex: 1;
 }
 
-.filter-group label {
-  font-size: 12px;
-  font-weight: 500;
-  color: #5f6368;
-}
-
-.google-input {
-  padding: 8px 12px;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
-  font-family: 'Google Sans', sans-serif;
+.filter-label {
   font-size: 14px;
-  color: #3c4043;
-  outline: none;
-}
-
-.google-input:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 1px #1a73e8;
+  font-weight: 500;
+  color: var(--line-text-secondary);
 }
 
 .table-card {
   padding: 0;
   overflow: hidden;
-  border: 1px solid #dadce0;
-  border-radius: 8px;
-  background: white;
+  background: var(--line-bg);
 }
 
-.question-table {
+.line-table {
   width: 100%;
   border-collapse: collapse;
-  text-align: left;
 }
 
-.question-table th {
-  background-color: #fff;
-  padding: 12px 16px;
-  font-weight: 500;
-  color: #5f6368;
+.line-table th {
+  padding: 16px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--line-text-secondary);
+  background: var(--line-bg-soft);
+  border-bottom: 1px solid var(--line-border);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.line-table td {
+  padding: 16px;
   font-size: 14px;
-  border-bottom: 1px solid #dadce0;
-}
-
-.question-table th:last-child,
-.question-table td:last-child {
+  color: var(--line-text);
+  border-bottom: 1px solid var(--line-border);
+  vertical-align: middle;
   text-align: center;
 }
 
-.question-table td {
-  padding: 12px 16px;
-  border-bottom: 1px solid #f1f3f4;
-  color: #3c4043;
-  font-size: 14px;
+.line-table tr:hover td {
+  background: var(--line-bg-hover);
 }
 
-.question-table tr:last-child td {
+.line-table tr:last-child td {
   border-bottom: none;
 }
 
-.question-table tr:hover {
-  background-color: #f8f9fa;
+.col-id {
+  width: 100px;
+  color: var(--line-text-secondary);
+}
+.col-score {
+  width: 100px;
+  font-weight: 600;
+}
+.col-status {
+  width: 120px;
+}
+.col-action {
+  width: 100px;
 }
 
-.id-col {
-  font-family: monospace;
-  color: #5f6368;
+.font-mono {
+  font-family: 'SF Mono', 'Roboto Mono', Menlo, monospace;
+  font-size: 13px;
 }
 
-.chip {
+.user-info {
   display: inline-flex;
   align-items: center;
-  padding: 0 8px;
-  height: 24px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-  background-color: #f1f3f4;
-  color: #3c4043;
+  gap: 12px;
+  justify-content: center;
 }
 
-.chip.easy { background-color: #e6f4ea; color: #137333; }
-.chip.hard { background-color: #fce8e6; color: #c5221f; }
+.avatar-sm {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--line-primary);
+  border: 1px solid var(--line-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  overflow: hidden;
+  flex-shrink: 0;
+}
 
-.pagination {
-  padding: 12px 16px;
+.avatar-sm.has-img {
+  background: transparent;
+}
+
+.avatar-sm img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.status-badge.completed {
+  background: #dcfce7; /* Green 100 */
+  color: #166534; /* Green 800 */
+}
+
+.status-badge.pending {
+  background: #fef9c3; /* Yellow 100 */
+  color: #854d0e; /* Yellow 800 */
+}
+
+.status-badge.grading {
+  background: #dbeafe; /* Blue 100 */
+  color: #1e40af; /* Blue 800 */
+}
+
+.pagination-bar {
+  padding: 16px 24px;
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 16px;
-  border-top: 1px solid #dadce0;
-  background-color: #fff;
+  border-top: none;
+  background: var(--line-bg);
 }
 
-.google-btn {
-  border: none;
-  border-radius: 4px;
-  padding: 8px 24px;
-  font-family: 'Google Sans', sans-serif;
+.page-info {
   font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  color: var(--line-text-secondary);
 }
 
-.text-btn {
-  background-color: transparent;
-  color: #1a73e8;
-}
-
-.text-btn:hover:not(:disabled) {
-  background-color: #f6fafe;
-}
-
-.text-btn:disabled {
-  color: #dadce0;
-  cursor: default;
-}
-
-.loading-state, .error-state {
+/* Loading & Empty States */
+.loading-state {
+  padding: 64px;
   text-align: center;
-  padding: 40px;
-  color: #5f6368;
+  color: var(--line-text-secondary);
 }
 
-.empty-state {
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--line-border);
+  border-top-color: var(--line-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty-state-cell {
+  padding: 64px 0 !important;
   text-align: center;
-  color: #5f6368;
-  padding: 40px;
+}
+
+.empty-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: var(--line-text-secondary);
+}
+
+.empty-state-content svg {
+  opacity: 0.5;
+}
+
+.error-state {
+  padding: 48px;
+  display: flex;
+  justify-content: center;
+}
+
+.error-content {
+  text-align: center;
+  color: var(--line-error);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
 }
 </style>

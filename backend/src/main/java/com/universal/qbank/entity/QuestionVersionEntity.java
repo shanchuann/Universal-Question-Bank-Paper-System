@@ -4,9 +4,7 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * 题目版本历史实体
- */
+/** 题目版本历史实体 */
 @Entity
 @Table(name = "question_versions")
 public class QuestionVersionEntity {
