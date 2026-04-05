@@ -1,5 +1,7 @@
 # UQBank 上线检查清单
 
+> 完整自动化上线方案请参考：`DEPLOYMENT_AUTOMATION_GUIDE.md`
+
 ## 1. 发布前冻结
 
 - 确认 `backend` 与 `frontend` 已停止新增功能提交，仅允许修复阻塞问题。
