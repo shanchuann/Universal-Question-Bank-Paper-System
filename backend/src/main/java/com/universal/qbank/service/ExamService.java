@@ -224,7 +224,11 @@ public class ExamService {
       if (shouldUseAiAutoGrading(exam)) {
         autoGradeSubjectiveRecords(exam, records, questionMap, maxScoreMap);
         double totalUserScore =
-            records.stream().map(ExamRecordEntity::getScore).filter(s -> s != null).mapToDouble(Double::doubleValue).sum();
+            records.stream()
+                .map(ExamRecordEntity::getScore)
+                .filter(s -> s != null)
+                .mapToDouble(Double::doubleValue)
+                .sum();
         int percentage = totalMaxScore == 0 ? 0 : (int) ((totalUserScore / totalMaxScore) * 100);
         exam.setScore(percentage);
         exam.setGradingStatus("GRADED");
@@ -255,13 +259,10 @@ public class ExamService {
                 stats.setNickname(u.getNickname() != null ? u.getNickname() : u.getUsername());
               });
 
-        int objectiveCorrectCount =
-          (int)
-            records.stream()
-              .filter(r -> r.getIsCorrect() != null && r.getIsCorrect())
-              .count();
-        stats.setTotalQuestionsAnswered(stats.getTotalQuestionsAnswered() + objectiveAnsweredCount);
-        stats.setCorrectAnswers(stats.getCorrectAnswers() + objectiveCorrectCount);
+      int objectiveCorrectCount =
+          (int) records.stream().filter(r -> r.getIsCorrect() != null && r.getIsCorrect()).count();
+      stats.setTotalQuestionsAnswered(stats.getTotalQuestionsAnswered() + objectiveAnsweredCount);
+      stats.setCorrectAnswers(stats.getCorrectAnswers() + objectiveCorrectCount);
 
       java.time.LocalDate today = java.time.LocalDate.now();
       java.time.LocalDate lastDate = stats.getLastPracticeDate();
@@ -371,13 +372,6 @@ public class ExamService {
         org.springframework.data.domain.PageRequest.of(
             page, size, org.springframework.data.domain.Sort.by("startTime").descending());
 
-    // 获取所有学生用户ID（只显示学生的答卷）
-    List<String> studentUserIds =
-        userRepository.findAll().stream()
-            .filter(u -> "USER".equals(u.getRole()) || "STUDENT".equals(u.getRole()))
-            .map(u -> u.getId())
-            .collect(Collectors.toList());
-
     Specification<ExamEntity> spec =
         (root, query, cb) -> {
           List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
@@ -387,10 +381,17 @@ public class ExamService {
           if (userId != null && !userId.isEmpty()) {
             predicates.add(cb.equal(root.get("userId"), userId));
           }
-          // 只获取学生的答卷
-          if (!studentUserIds.isEmpty()) {
-            predicates.add(root.get("userId").in(studentUserIds));
-          }
+
+          // 通过子查询在数据库侧筛选学生角色，避免全量拉取 users 表到内存
+          jakarta.persistence.criteria.Subquery<String> studentUserSubquery =
+              query.subquery(String.class);
+          jakarta.persistence.criteria.Root<UserEntity> userRoot =
+              studentUserSubquery.from(UserEntity.class);
+          studentUserSubquery
+              .select(userRoot.get("id"))
+              .where(userRoot.get("role").in("USER", "STUDENT"));
+          predicates.add(root.get("userId").in(studentUserSubquery));
+
           return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
         };
 

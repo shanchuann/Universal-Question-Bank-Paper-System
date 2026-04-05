@@ -20,10 +20,12 @@ const emit = defineEmits(['update:modelValue'])
 const isOpen = ref(false)
 const containerRef = ref<HTMLElement | null>(null)
 const alignRight = ref(false)
+const openUpward = ref(false)
+const dropdownMaxHeight = ref(240)
 
 const selectedLabel = computed(() => {
-  const option = props.options.find(o => o.value === props.modelValue)
-  return option ? option.label : (props.placeholder || 'Select')
+  const option = props.options.find((o) => o.value === props.modelValue)
+  return option ? option.label : props.placeholder || 'Select'
 })
 
 const toggleDropdown = () => {
@@ -39,6 +41,21 @@ const updateDropdownAlignment = () => {
   const rect = containerRef.value.getBoundingClientRect()
   const dropdownWidth = Math.max(rect.width, 180)
   alignRight.value = rect.left + dropdownWidth > window.innerWidth - 8
+
+  // Keep dropdown inside viewport: use shorter list and open upward when needed.
+  const viewportPadding = 8
+  const minHeight = 140
+  const preferredHeight = 240
+  const spaceBelow = window.innerHeight - rect.bottom - viewportPadding
+  const spaceAbove = rect.top - viewportPadding
+
+  if (spaceBelow < minHeight && spaceAbove > spaceBelow) {
+    openUpward.value = true
+    dropdownMaxHeight.value = Math.max(minHeight, Math.min(preferredHeight, spaceAbove))
+  } else {
+    openUpward.value = false
+    dropdownMaxHeight.value = Math.max(minHeight, Math.min(preferredHeight, spaceBelow))
+  }
 }
 
 const selectOption = (value: string | number) => {
@@ -64,8 +81,8 @@ onUnmounted(() => {
 <template>
   <div class="google-select-container" ref="containerRef">
     <label v-if="label" class="select-label">{{ label }}</label>
-    <div 
-      class="select-trigger" 
+    <div
+      class="select-trigger"
       :class="{ 'is-open': isOpen, 'has-value': !!modelValue, 'is-disabled': disabled }"
       @click="toggleDropdown"
     >
@@ -74,11 +91,16 @@ onUnmounted(() => {
         <ChevronDown :size="20" />
       </span>
     </div>
-    
+
     <transition name="fade">
-      <div v-if="isOpen" class="options-list" :class="{ 'align-right': alignRight }">
-        <div 
-          v-for="option in options" 
+      <div
+        v-if="isOpen"
+        class="options-list"
+        :class="{ 'align-right': alignRight, 'open-upward': openUpward }"
+        :style="{ maxHeight: `${dropdownMaxHeight}px` }"
+      >
+        <div
+          v-for="option in options"
           :key="option.value"
           class="option-item"
           :class="{ 'is-selected': option.value === modelValue }"
@@ -172,11 +194,16 @@ onUnmounted(() => {
   border-radius: var(--line-radius-md);
   box-shadow: var(--line-shadow-lg);
   z-index: var(--line-layer-dropdown);
-  max-height: 300px;
+  max-height: 240px;
   overflow-y: auto;
   padding: 6px;
   animation: slideDown 0.2s ease-out;
   min-width: max(100%, 180px);
+}
+
+.options-list.open-upward {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 
 .options-list.align-right {
@@ -230,8 +257,14 @@ onUnmounted(() => {
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .fade-enter-active,

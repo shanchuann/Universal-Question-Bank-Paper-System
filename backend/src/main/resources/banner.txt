@@ -1,9 +1,11 @@
+  _    _  ____    ____              _       _______     _______ 
+ | |  | |/ __ \  |  _ \            | |     / ____\ \   / / ____|
+ | |  | | |  | | | |_) | __ _ _ __ | | __ | (___  \ \_/ / (___  
+ | |  | | |  | | |  _ < / _` | '_ \| |/ /  \___ \  \   / \___ \ 
+ | |__| | |__| | | |_) | (_| | | | |   <   ____) |  | |  ____) |
+  \____/ \___\_\ |____/ \__,_|_| |_|_|\_\ |_____/   |_| |_____/ 
 
-${AnsiColor.CYAN}    __  ______  ____       ____                        ${AnsiColor.YELLOW}_____ __  ______${AnsiColor.DEFAULT}
-${AnsiColor.CYAN}   / / / / __ \/ __ )     / __ \____ _____  ___  _____${AnsiColor.YELLOW}/ ___// / / / ___/${AnsiColor.DEFAULT}
-${AnsiColor.CYAN}  / / / / / / / __  |    / /_/ / __ `/ __ \/ _ \/ ___/${AnsiColor.YELLOW}\__ \/ /_/ /\__ \ ${AnsiColor.DEFAULT}
-${AnsiColor.CYAN} / /_/ / /_/ / /_/ /    / ____/ /_/ / /_/ /  __/ /   ${AnsiColor.YELLOW}___/ / __  /___/ / ${AnsiColor.DEFAULT}
-${AnsiColor.CYAN} \____/\___\_\____/    /_/    \__,_/ .___/\___/_/   ${AnsiColor.YELLOW}/____/_/ /_//____/  ${AnsiColor.DEFAULT}
-${AnsiColor.CYAN}                                  /_/                                   ${AnsiColor.DEFAULT}
-${AnsiColor.BRIGHT_BLACK}  :: Universal Question Bank ::${AnsiColor.DEFAULT}  Spring Boot ${spring-boot.formatted-version}
+Universal Questions Bank
+                                                                
+                                                                
 

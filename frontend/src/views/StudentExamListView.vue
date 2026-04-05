@@ -29,7 +29,7 @@ const loading = ref(false)
 
 const getAuthHeaders = () => ({
   'Content-Type': 'application/json',
-  'Authorization': `Bearer ${localStorage.getItem('token')}`
+  Authorization: `Bearer ${localStorage.getItem('token')}`
 })
 
 onMounted(() => {
@@ -44,12 +44,10 @@ async function fetchAvailableExams() {
       headers: getAuthHeaders()
     })
     const data: MyExam[] = await response.json()
-    
+
     // 只显示已发布和进行中的考试
     examPlans.value = data
-      .filter((item) => 
-        item.examPlan.status === 'PUBLISHED' || item.examPlan.status === 'ONGOING'
-      )
+      .filter((item) => item.examPlan.status === 'PUBLISHED' || item.examPlan.status === 'ONGOING')
       .map((item) => item.examPlan)
   } catch (error) {
     console.error('Failed to fetch exams:', error)
@@ -63,7 +61,7 @@ function getExamStatus(plan: ExamPlan) {
   const now = new Date()
   const start = new Date(plan.startTime)
   const end = new Date(plan.endTime)
-  
+
   if (now < start) {
     return { status: 'upcoming', label: '未开始', canEnter: false }
   } else if (now > end) {
@@ -90,7 +88,7 @@ function getTimeRemaining(plan: ExamPlan) {
   const now = new Date()
   const start = new Date(plan.startTime)
   const end = new Date(plan.endTime)
-  
+
   if (now < start) {
     const diff = start.getTime() - now.getTime()
     const hours = Math.floor(diff / (1000 * 60 * 60))
@@ -114,16 +112,19 @@ function getTimeRemaining(plan: ExamPlan) {
 function enterExam(plan: ExamPlan) {
   const status = getExamStatus(plan)
   if (!status.canEnter) {
-    showToast({ message: status.status === 'upcoming' ? '考试尚未开始' : '考试已结束', type: 'warning' })
+    showToast({
+      message: status.status === 'upcoming' ? '考试尚未开始' : '考试已结束',
+      type: 'warning'
+    })
     return
   }
   // 跳转到考试页面，传递考试计划ID和试卷ID
-  router.push({ 
-    path: '/exam', 
-    query: { 
+  router.push({
+    path: '/exam',
+    query: {
       planId: plan.id,
       paperId: plan.paperId.toString()
-    } 
+    }
   })
 }
 
@@ -148,7 +149,14 @@ const examTypeLabels: Record<string, string> = {
       </div>
 
       <div v-else-if="examPlans.length === 0" class="empty-state">
-        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1">
+        <svg
+          width="80"
+          height="80"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#9aa0a6"
+          stroke-width="1"
+        >
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
           <line x1="16" y1="2" x2="16" y2="6"></line>
           <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -159,9 +167,9 @@ const examTypeLabels: Record<string, string> = {
       </div>
 
       <div v-else class="exam-list">
-        <div 
-          v-for="plan in examPlans" 
-          :key="plan.id" 
+        <div
+          v-for="plan in examPlans"
+          :key="plan.id"
           class="exam-card"
           :class="getExamStatus(plan).status"
         >
@@ -171,7 +179,7 @@ const examTypeLabels: Record<string, string> = {
               {{ getExamStatus(plan).label }}
             </span>
           </div>
-          
+
           <div class="exam-info">
             <div class="info-row">
               <span class="label">考试类型</span>
@@ -197,13 +205,19 @@ const examTypeLabels: Record<string, string> = {
 
           <div class="exam-footer">
             <span class="time-remaining">{{ getTimeRemaining(plan) }}</span>
-            <button 
+            <button
               class="enter-btn"
               :class="{ disabled: !getExamStatus(plan).canEnter }"
               :disabled="!getExamStatus(plan).canEnter"
               @click="enterExam(plan)"
             >
-              {{ getExamStatus(plan).canEnter ? '进入考试' : (getExamStatus(plan).status === 'upcoming' ? '等待开始' : '已结束') }}
+              {{
+                getExamStatus(plan).canEnter
+                  ? '进入考试'
+                  : getExamStatus(plan).status === 'upcoming'
+                    ? '等待开始'
+                    : '已结束'
+              }}
             </button>
           </div>
         </div>
@@ -237,7 +251,7 @@ const examTypeLabels: Record<string, string> = {
 .content-card {
   background: var(--line-bg);
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 24px;
   min-height: 400px;
 }
@@ -262,7 +276,9 @@ const examTypeLabels: Record<string, string> = {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-state {
@@ -305,7 +321,7 @@ const examTypeLabels: Record<string, string> = {
 }
 
 .exam-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .exam-card.ongoing {

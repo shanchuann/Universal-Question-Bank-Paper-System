@@ -4,9 +4,13 @@ const STORAGE_KEY = 'paper_basket'
 const stored = localStorage.getItem(STORAGE_KEY)
 const basket = ref<string[]>(stored ? JSON.parse(stored) : [])
 
-watch(basket, (newVal) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(newVal))
-}, { deep: true })
+watch(
+  basket,
+  (newVal) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newVal))
+  },
+  { deep: true }
+)
 
 export const useBasket = () => {
   const addToBasket = (id: string) => {

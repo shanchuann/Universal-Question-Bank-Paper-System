@@ -30,6 +30,19 @@ public class ImportController {
     }
   }
 
+  @PostMapping("/photo")
+  public ResponseEntity<List<QuestionCreateRequest>> importPhoto(
+      @RequestParam("file") MultipartFile file,
+      @RequestParam(name = "mode", defaultValue = "PAGE") String mode) {
+    try {
+      List<QuestionCreateRequest> questions =
+          importService.parsePhotoByAi(file.getInputStream(), mode);
+      return ResponseEntity.ok(questions);
+    } catch (IOException e) {
+      return ResponseEntity.internalServerError().build();
+    }
+  }
+
   @PostMapping("/save")
   public ResponseEntity<List<com.universal.qbank.entity.QuestionEntity>> saveQuestions(
       @org.springframework.web.bind.annotation.RequestBody List<QuestionCreateRequest> questions) {

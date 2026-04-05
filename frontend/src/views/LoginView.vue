@@ -15,7 +15,7 @@ const handleLogin = async () => {
   try {
     const response = await authApi.apiAuthLoginPost({
       username: username.value,
-      password: password.value,
+      password: password.value
     })
     const token = response.data.accessToken
     if (token) {
@@ -49,24 +49,38 @@ const handleLogin = async () => {
       </div>
       <h1 class="page-title">欢迎回来</h1>
       <p class="subtitle">登录以继续</p>
-      
+
       <form @submit.prevent="handleLogin">
         <div class="form-group">
-          <input id="username" v-model="username" type="text" required placeholder="用户名" class="google-input" />
+          <input
+            id="username"
+            v-model="username"
+            type="text"
+            required
+            placeholder="用户名"
+            class="google-input"
+          />
         </div>
         <div class="form-group">
-          <input id="password" v-model="password" type="password" required placeholder="密码" class="google-input" />
+          <input
+            id="password"
+            v-model="password"
+            type="password"
+            required
+            placeholder="密码"
+            class="google-input"
+          />
         </div>
-        
+
         <div class="forgot-password">
           <router-link to="/forgot-password">忘记密码？</router-link>
         </div>
-        
+
         <div class="actions">
           <router-link to="/register" class="create-account">创建账号</router-link>
           <button type="submit" class="primary-btn">登录</button>
         </div>
-        
+
         <p v-if="error" class="error">{{ error }}</p>
       </form>
     </div>

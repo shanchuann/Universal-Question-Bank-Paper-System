@@ -1,33 +1,41 @@
 package com.universal.qbank.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.universal.qbank.controller.dto.SystemSettingsUpdateRequest;
 import com.universal.qbank.entity.AnnouncementEntity;
 import com.universal.qbank.entity.OperationLogEntity;
 import com.universal.qbank.entity.UserEntity;
 import com.universal.qbank.service.AnnouncementService;
+import com.universal.qbank.service.OllamaAiService;
+import com.universal.qbank.service.OllamaStartupService;
 import com.universal.qbank.service.OperationLogService;
 import com.universal.qbank.service.StatisticsService;
 import com.universal.qbank.service.SystemConfigService;
 import com.universal.qbank.service.SystemMonitorService;
 import com.universal.qbank.service.UserService;
-import com.universal.qbank.service.OllamaAiService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
+
+  private static final Logger log = LoggerFactory.getLogger(AdminController.class);
 
   @Autowired private UserService userService;
 
@@ -43,23 +51,30 @@ public class AdminController {
 
   @Autowired private OllamaAiService ollamaAiService;
 
+  @Autowired private OllamaStartupService ollamaStartupService;
+
+  private final ObjectMapper objectMapper = new ObjectMapper();
+
   private boolean isAdmin(String token) {
     String userId = getUserIdFromToken(token);
-    System.out.println("Checking admin access for token: " + token + ", userId: " + userId);
+    log.debug("Check admin access for userId={}", userId);
     if (userId == null) return false;
 
     // Allow fallback admin user
     if ("admin".equals(userId)) {
-      System.out.println("Access granted for fallback admin");
+      log.debug("Access granted for fallback admin");
       return true;
     }
 
     Optional<UserEntity> user = userService.getUserById(userId);
-    System.out.println("User found in DB: " + user.isPresent());
-    if (user.isPresent()) {
-      System.out.println("User role: " + user.get().getRole());
-    }
+    log.debug("User found in DB: {}", user.isPresent());
     return user.isPresent() && "ADMIN".equals(user.get().getRole());
+  }
+
+  private void requireAdmin(String token) {
+    if (!isAdmin(token)) {
+      throw new SecurityException("Access denied");
+    }
   }
 
   private String getUserIdFromToken(String token) {
@@ -78,9 +93,7 @@ public class AdminController {
       @RequestParam(required = false) String role,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "10") int size) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     Page<UserEntity> users = userService.getUsers(role, PageRequest.of(page, size));
     return ResponseEntity.ok(users);
   }
@@ -88,9 +101,7 @@ public class AdminController {
   @DeleteMapping("/users/{id}")
   public ResponseEntity<?> deleteUser(
       @RequestHeader("Authorization") String token, @PathVariable String id) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     userService.deleteUser(id);
     return ResponseEntity.ok().build();
   }
@@ -100,9 +111,7 @@ public class AdminController {
       @RequestHeader("Authorization") String token,
       @PathVariable String id,
       @RequestBody Map<String, String> payload) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     String status = payload.get("status");
     UserEntity user = userService.updateUserStatus(id, status);
     return ResponseEntity.ok(user);
@@ -113,9 +122,7 @@ public class AdminController {
       @RequestHeader("Authorization") String token,
       @PathVariable String id,
       @RequestBody Map<String, String> payload) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     String role = payload.get("role");
     UserEntity user = userService.updateUserRole(id, role);
     return ResponseEntity.ok(user);
@@ -123,9 +130,7 @@ public class AdminController {
 
   @GetMapping("/system/status")
   public ResponseEntity<?> getSystemStatus(@RequestHeader("Authorization") String token) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     boolean enabled = systemConfigService.isSystemEnabled();
     return ResponseEntity.ok(Map.of("enabled", enabled));
   }
@@ -133,9 +138,7 @@ public class AdminController {
   @PutMapping("/system/status")
   public ResponseEntity<?> setSystemStatus(
       @RequestHeader("Authorization") String token, @RequestBody Map<String, Boolean> payload) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     Boolean enabled = payload.get("enabled");
     systemConfigService.setSystemEnabled(enabled);
     return ResponseEntity.ok(Map.of("enabled", enabled));
@@ -145,9 +148,7 @@ public class AdminController {
 
   @GetMapping("/system/settings")
   public ResponseEntity<?> getSystemSettings(@RequestHeader("Authorization") String token) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     Map<String, Object> settings = systemConfigService.getAllSettings();
     return ResponseEntity.ok(settings);
   }
@@ -155,12 +156,11 @@ public class AdminController {
   @PutMapping("/system/settings")
   public ResponseEntity<?> updateSystemSettings(
       @RequestHeader("Authorization") String token,
-      @RequestBody Map<String, Object> settings,
+      @Valid @RequestBody SystemSettingsUpdateRequest settings,
       HttpServletRequest request) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
-    systemConfigService.updateAllSettings(settings);
+    requireAdmin(token);
+    systemConfigService.updateAllSettings(settings.toSettingsMap());
+    ollamaStartupService.syncOllamaWithAiSetting();
 
     String userId = getUserIdFromToken(token);
     operationLogService.log(userId, "UPDATE", "系统设置", null, "更新系统设置", request);
@@ -170,27 +170,104 @@ public class AdminController {
 
   @GetMapping("/ai/models")
   public ResponseEntity<?> getAiModels(@RequestHeader("Authorization") String token) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
+    String currentModel = systemConfigService.getConfig(SystemConfigService.AI_MODEL);
+    List<Map<String, Object>> modelItems = ollamaAiService.getModelCatalog(currentModel);
+
+    List<String> installedModels =
+        modelItems.stream()
+            .filter(item -> Boolean.TRUE.equals(item.get("installed")))
+            .map(item -> String.valueOf(item.get("name")))
+            .toList();
+
     Map<String, Object> result = new HashMap<>();
-    result.put("models", ollamaAiService.listAvailableModels());
-    result.put("currentModel", systemConfigService.getConfig(SystemConfigService.AI_MODEL));
+    result.put("models", installedModels);
+    result.put("modelItems", modelItems);
+    result.put("recommendedModels", ollamaAiService.getRecommendedModels(currentModel));
+    result.put("currentModel", currentModel);
     return ResponseEntity.ok(result);
   }
 
   @PutMapping("/ai/model")
   public ResponseEntity<?> setAiModel(
       @RequestHeader("Authorization") String token, @RequestBody Map<String, String> payload) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     String model = payload.get("model");
     if (model == null || model.isBlank()) {
-      return ResponseEntity.badRequest().body(Map.of("error", "model 不能为空"));
+      throw new IllegalArgumentException("model 不能为空");
     }
     systemConfigService.setConfig(SystemConfigService.AI_MODEL, model.trim());
     return ResponseEntity.ok(Map.of("model", model.trim()));
+  }
+
+  @PostMapping("/ai/model/pull")
+  public ResponseEntity<?> pullAiModel(
+      @RequestHeader("Authorization") String token, @RequestBody Map<String, String> payload) {
+    requireAdmin(token);
+    String model = payload.get("model");
+    if (model == null || model.isBlank()) {
+      throw new IllegalArgumentException("model 不能为空");
+    }
+    Map<String, Object> result = ollamaAiService.pullModel(model.trim());
+    return ResponseEntity.ok(result);
+  }
+
+  @PostMapping(value = "/ai/model/pull/progress", produces = "application/x-ndjson")
+  public ResponseEntity<StreamingResponseBody> pullAiModelWithProgress(
+      @RequestHeader("Authorization") String token, @RequestBody Map<String, Object> payload) {
+    requireAdmin(token);
+
+    String model = String.valueOf(payload.getOrDefault("model", "")).trim();
+    boolean autoApply =
+        Boolean.parseBoolean(String.valueOf(payload.getOrDefault("autoApply", true)));
+
+    if (model.isBlank()) {
+      throw new IllegalArgumentException("model 不能为空");
+    }
+
+    StreamingResponseBody stream =
+        outputStream -> {
+          var writer =
+              new java.io.BufferedWriter(
+                  new java.io.OutputStreamWriter(outputStream, StandardCharsets.UTF_8));
+          try {
+            ollamaAiService.pullModelStreaming(
+                model,
+                progress -> {
+                  try {
+                    writer.write(objectMapper.writeValueAsString(progress));
+                    writer.newLine();
+                    writer.flush();
+                  } catch (Exception ignore) {
+                    // ignore push failures
+                  }
+                });
+
+            if (autoApply) {
+              systemConfigService.setConfig(SystemConfigService.AI_MODEL, model);
+            }
+
+            Map<String, Object> done = new HashMap<>();
+            done.put("type", "done");
+            done.put("model", model);
+            done.put("autoApplied", autoApply);
+            writer.write(objectMapper.writeValueAsString(done));
+            writer.newLine();
+            writer.flush();
+          } catch (Exception ex) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("type", "error");
+            error.put("model", model);
+            error.put("message", ex.getMessage());
+            writer.write(objectMapper.writeValueAsString(error));
+            writer.newLine();
+            writer.flush();
+          }
+        };
+
+    return ResponseEntity.ok()
+        .contentType(MediaType.parseMediaType("application/x-ndjson"))
+        .body(stream);
   }
 
   // ==================== 操作日志 API ====================
@@ -202,9 +279,7 @@ public class AdminController {
       @RequestParam(required = false) String action,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     Page<OperationLogEntity> logs = operationLogService.searchLogs(keyword, action, page, size);
     return ResponseEntity.ok(logs);
   }
@@ -215,9 +290,7 @@ public class AdminController {
       @RequestParam(required = false) String keyword,
       @RequestParam(required = false) String action,
       HttpServletRequest request) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
 
     Page<OperationLogEntity> page = operationLogService.searchLogs(keyword, action, 0, 5000);
     StringBuilder csv = new StringBuilder();
@@ -264,9 +337,7 @@ public class AdminController {
   public ResponseEntity<?> getStatistics(
       @RequestHeader("Authorization") String token,
       @RequestParam(defaultValue = "30d") String range) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     Map<String, Object> stats = statisticsService.getOverviewStats(range);
     return ResponseEntity.ok(stats);
   }
@@ -275,9 +346,7 @@ public class AdminController {
   public ResponseEntity<?> getStatisticsTrends(
       @RequestHeader("Authorization") String token,
       @RequestParam(defaultValue = "30d") String range) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     Map<String, Object> trends = new HashMap<>();
     trends.put("userTrend", statisticsService.getUserActivityTrend(range));
     trends.put("questionTrend", statisticsService.getQuestionGrowthTrend(range));
@@ -289,9 +358,7 @@ public class AdminController {
 
   @GetMapping("/monitor")
   public ResponseEntity<?> getSystemMonitor(@RequestHeader("Authorization") String token) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     Map<String, Object> monitorData = new HashMap<>();
     monitorData.put("metrics", systemMonitorService.getSystemMetrics());
     monitorData.put("services", systemMonitorService.getServicesStatus());
@@ -306,9 +373,7 @@ public class AdminController {
       @RequestParam(required = false) String status,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     Page<AnnouncementEntity> announcements =
         announcementService.getAnnouncements(status, page, size);
     return ResponseEntity.ok(announcements);
@@ -319,9 +384,7 @@ public class AdminController {
       @RequestHeader("Authorization") String token,
       @RequestBody Map<String, String> payload,
       HttpServletRequest request) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     String userId = getUserIdFromToken(token);
     AnnouncementEntity announcement =
         announcementService.createAnnouncement(
@@ -345,9 +408,7 @@ public class AdminController {
       @PathVariable String id,
       @RequestBody Map<String, String> payload,
       HttpServletRequest request) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     AnnouncementEntity announcement =
         announcementService.updateAnnouncement(
             id, payload.get("title"), payload.get("content"), payload.get("priority"));
@@ -369,9 +430,7 @@ public class AdminController {
       @RequestHeader("Authorization") String token,
       @PathVariable String id,
       HttpServletRequest request) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     AnnouncementEntity announcement = announcementService.publishAnnouncement(id);
 
     String userId = getUserIdFromToken(token);
@@ -386,9 +445,7 @@ public class AdminController {
       @RequestHeader("Authorization") String token,
       @PathVariable String id,
       HttpServletRequest request) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
     AnnouncementEntity announcement = announcementService.archiveAnnouncement(id);
 
     String userId = getUserIdFromToken(token);
@@ -403,9 +460,7 @@ public class AdminController {
       @RequestHeader("Authorization") String token,
       @PathVariable String id,
       HttpServletRequest request) {
-    if (!isAdmin(token)) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied");
-    }
+    requireAdmin(token);
 
     Optional<AnnouncementEntity> optional = announcementService.getAnnouncementById(id);
     String title = optional.map(AnnouncementEntity::getTitle).orElse("未知");

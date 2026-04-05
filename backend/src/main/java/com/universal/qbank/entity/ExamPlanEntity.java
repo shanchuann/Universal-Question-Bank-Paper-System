@@ -7,7 +7,14 @@ import java.util.UUID;
 
 /** 考试计划实体 */
 @Entity
-@Table(name = "exam_plans")
+@Table(
+    name = "exam_plans",
+    indexes = {
+      @Index(name = "idx_exam_plan_status_start", columnList = "status, startTime"),
+      @Index(name = "idx_exam_plan_status_end", columnList = "status, endTime"),
+      @Index(name = "idx_exam_plan_creator_created", columnList = "createdBy, createdAt"),
+      @Index(name = "idx_exam_plan_course_status", columnList = "courseId, status")
+    })
 public class ExamPlanEntity {
 
   @Id private String id;

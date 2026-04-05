@@ -13,7 +13,7 @@ interface KnowledgePoint {
 const props = defineProps<{
   isOpen: boolean
   initialName: string
-  parentOptions: { id: string, label: string }[]
+  parentOptions: { id: string; label: string }[]
 }>()
 
 const emit = defineEmits(['close', 'save'])
@@ -31,20 +31,23 @@ const levelOptions = [
   { value: 'POINT', label: 'Point' }
 ]
 
-const parentSelectOptions = ref<Array<{ value: string, label: string }>>([])
+const parentSelectOptions = ref<Array<{ value: string; label: string }>>([])
 
-watch(() => props.isOpen, (newVal) => {
-  if (newVal) {
-    form.value.name = props.initialName
-    form.value.level = 'POINT'
-    form.value.parentId = ''
-    form.value.sortOrder = 0
-    parentSelectOptions.value = [
-      { value: '', label: 'None (Top Level)' },
-      ...props.parentOptions.map(opt => ({ value: opt.id, label: opt.label }))
-    ]
+watch(
+  () => props.isOpen,
+  (newVal) => {
+    if (newVal) {
+      form.value.name = props.initialName
+      form.value.level = 'POINT'
+      form.value.parentId = ''
+      form.value.sortOrder = 0
+      parentSelectOptions.value = [
+        { value: '', label: 'None (Top Level)' },
+        ...props.parentOptions.map((opt) => ({ value: opt.id, label: opt.label }))
+      ]
+    }
   }
-})
+)
 
 const handleSave = () => {
   emit('save', {
@@ -61,11 +64,17 @@ const handleSave = () => {
         <h2>Create Knowledge Point</h2>
         <button class="icon-btn" @click="$emit('close')">×</button>
       </div>
-      
+
       <div class="modal-body">
         <div class="form-group">
           <label>Name</label>
-          <input v-model="form.name" type="text" class="google-input" placeholder="e.g. Quadratic Formula" autofocus />
+          <input
+            v-model="form.name"
+            type="text"
+            class="google-input"
+            placeholder="e.g. Quadratic Formula"
+            autofocus
+          />
         </div>
 
         <div class="form-group">
@@ -75,7 +84,11 @@ const handleSave = () => {
 
         <div class="form-group">
           <label>Parent</label>
-          <GoogleSelect v-model="form.parentId" :options="parentSelectOptions" placeholder="Select parent" />
+          <GoogleSelect
+            v-model="form.parentId"
+            :options="parentSelectOptions"
+            placeholder="Select parent"
+          />
         </div>
       </div>
 
@@ -140,8 +153,14 @@ const handleSave = () => {
 }
 
 @keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* Reuse styles from global or scoped */
@@ -160,4 +179,3 @@ const handleSave = () => {
   font-weight: 500;
 }
 </style>
-

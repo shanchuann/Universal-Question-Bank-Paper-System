@@ -10,6 +10,27 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
+  build: {
+    target: 'es2015',
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules')) {
+            if (id.includes('vue') || id.includes('vue-router')) return 'vue-vendor'
+            if (id.includes('lucide-vue-next')) return 'ui-vendor'
+            if (id.includes('chart.js') || id.includes('vue-chartjs')) return 'chart-vendor'
+            if (id.includes('@vueup/vue-quill') || id.includes('katex')) return 'editor-vendor'
+            return 'vendor'
+          }
+        }
+      }
+    } as any
+  },
+  esbuild: {
+    drop: ['console', 'debugger'] as any[]
+  } as any,
   server: {
     proxy: {
       // 统一代理所有 /api 开头的请求到后端

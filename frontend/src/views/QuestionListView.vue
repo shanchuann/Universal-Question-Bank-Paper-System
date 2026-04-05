@@ -86,7 +86,7 @@ const knowledgeTree = computed<KpTreeNode[]>(() => {
 
   const sortNode = (nodes: KpTreeNode[]) => {
     nodes.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
-    nodes.forEach(n => sortNode(n.children))
+    nodes.forEach((n) => sortNode(n.children))
   }
   sortNode(roots)
   return roots
@@ -105,12 +105,12 @@ const findNodePath = (nodes: KpTreeNode[], id: string, path: KpTreeNode[] = []):
 const selectedNodePathText = computed(() => {
   if (!filterKnowledgePoint.value) return '全部知识点'
   const path = findNodePath(knowledgeTree.value, filterKnowledgePoint.value)
-  return path.map(p => p.name).join(' / ') || '全部知识点'
+  return path.map((p) => p.name).join(' / ') || '全部知识点'
 })
 
 const expandPathToNode = (id: string) => {
   const path = findNodePath(knowledgeTree.value, id)
-  path.forEach(p => expandedNodes.value.add(p.id))
+  path.forEach((p) => expandedNodes.value.add(p.id))
 }
 
 const isExpanded = (id: string) => expandedNodes.value.has(id)
@@ -149,7 +149,9 @@ const filterTreeByKeyword = (nodes: KpTreeNode[], keyword: string): KpTreeNode[]
   return dfs(nodes)
 }
 
-const filteredKnowledgeTree = computed(() => filterTreeByKeyword(knowledgeTree.value, kpKeyword.value))
+const filteredKnowledgeTree = computed(() =>
+  filterTreeByKeyword(knowledgeTree.value, kpKeyword.value)
+)
 
 const fetchKnowledgePoints = async () => {
   try {
@@ -158,7 +160,7 @@ const fetchKnowledgePoints = async () => {
     if (filterKnowledgePoint.value) {
       expandPathToNode(filterKnowledgePoint.value)
     } else {
-      knowledgeTree.value.forEach(root => expandedNodes.value.add(root.id))
+      knowledgeTree.value.forEach((root) => expandedNodes.value.add(root.id))
     }
   } catch (err) {
     console.error('Failed to load knowledge points', err)
@@ -190,20 +192,46 @@ const getDescendantIdsFromTree = (nodes: KpTreeNode[], targetId: string): string
 const fetchCategoryStats = async () => {
   try {
     // 获取各类型的数量 (只统计 APPROVED 状态)
-    const types = ['SINGLE_CHOICE', 'MULTI_CHOICE', 'TRUE_FALSE', 'FILL_BLANK', 'SHORT_ANSWER', 'MULTIPLE_CHOICE']
+    const types = [
+      'SINGLE_CHOICE',
+      'MULTI_CHOICE',
+      'TRUE_FALSE',
+      'FILL_BLANK',
+      'SHORT_ANSWER',
+      'MULTIPLE_CHOICE'
+    ]
     const responses = await Promise.all([
       // 总数
-      questionApi.apiQuestionsGet(0, 1, undefined, undefined, undefined, undefined, undefined, undefined),
+      questionApi.apiQuestionsGet(
+        0,
+        1,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined
+      ),
       // 各类型数量
-      ...types.map(type => 
-        questionApi.apiQuestionsGet(0, 1, undefined, undefined, type as any, undefined, undefined, undefined)
+      ...types.map((type) =>
+        questionApi.apiQuestionsGet(
+          0,
+          1,
+          undefined,
+          undefined,
+          type as any,
+          undefined,
+          undefined,
+          undefined
+        )
       )
     ])
-    
+
     categoryStats.value = {
       total: responses[0]?.data?.totalElements || 0,
       singleChoice: responses[1]?.data?.totalElements || 0,
-      multiChoice: (responses[2]?.data?.totalElements || 0) + (responses[6]?.data?.totalElements || 0),
+      multiChoice:
+        (responses[2]?.data?.totalElements || 0) + (responses[6]?.data?.totalElements || 0),
       trueFalse: responses[3]?.data?.totalElements || 0,
       fillBlank: responses[4]?.data?.totalElements || 0,
       shortAnswer: responses[5]?.data?.totalElements || 0
@@ -223,8 +251,8 @@ const fetchQuestions = async () => {
     }
 
     const response = await questionApi.apiQuestionsGet(
-      page.value, 
-      size.value, 
+      page.value,
+      size.value,
       undefined, // subjectId
       kpIds,
       filterType.value as any,
@@ -252,16 +280,16 @@ const toggleBasket = (id: string) => {
 
 const isAllSelected = computed(() => {
   if (questions.value.length === 0) return false
-  return questions.value.every(q => q.id && isInBasket(q.id))
+  return questions.value.every((q) => q.id && isInBasket(q.id))
 })
 
 const toggleSelectAll = () => {
   if (isAllSelected.value) {
-    questions.value.forEach(q => {
+    questions.value.forEach((q) => {
       if (q.id) removeFromBasket(q.id)
     })
   } else {
-    questions.value.forEach(q => {
+    questions.value.forEach((q) => {
       if (q.id) addToBasket(q.id)
     })
   }
@@ -297,7 +325,7 @@ const deleteQuestion = async (id: string) => {
       headers: { Authorization: `Bearer ${token}` }
     })
     // Remove from local list or refresh
-    questions.value = questions.value.filter(q => q.id !== id)
+    questions.value = questions.value.filter((q) => q.id !== id)
     totalElements.value--
   } catch (err) {
     console.error('Failed to delete question', err)
@@ -361,57 +389,49 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
       </div>
       <div class="header-actions">
         <router-link to="/import" class="add-btn-link">
-          <button class="google-btn text-btn">
-            文件导入
-          </button>
+          <button class="google-btn text-btn">导入题目</button>
         </router-link>
         <router-link to="/questions/add" class="add-btn-link">
-          <button class="google-btn primary-btn">
-            添加题目
-          </button>
+          <button class="google-btn primary-btn">添加题目</button>
         </router-link>
       </div>
     </div>
 
     <!-- 分类统计标签 -->
     <div class="category-tabs">
-      <div 
-        class="category-tab" 
-        :class="{ active: filterType === '' }"
-        @click="filterType = ''"
-      >
+      <div class="category-tab" :class="{ active: filterType === '' }" @click="filterType = ''">
         全部 <span class="count">{{ categoryStats.total }}</span>
       </div>
-      <div 
-        class="category-tab" 
+      <div
+        class="category-tab"
         :class="{ active: filterType === 'SINGLE_CHOICE' }"
         @click="filterType = 'SINGLE_CHOICE'"
       >
         单选题 <span class="count">{{ categoryStats.singleChoice }}</span>
       </div>
-      <div 
-        class="category-tab" 
+      <div
+        class="category-tab"
         :class="{ active: filterType === 'MULTIPLE_CHOICE' }"
         @click="filterType = 'MULTIPLE_CHOICE'"
       >
         多选题 <span class="count">{{ categoryStats.multiChoice }}</span>
       </div>
-      <div 
-        class="category-tab" 
+      <div
+        class="category-tab"
         :class="{ active: filterType === 'TRUE_FALSE' }"
         @click="filterType = 'TRUE_FALSE'"
       >
         判断题 <span class="count">{{ categoryStats.trueFalse }}</span>
       </div>
-      <div 
-        class="category-tab" 
+      <div
+        class="category-tab"
         :class="{ active: filterType === 'FILL_BLANK' }"
         @click="filterType = 'FILL_BLANK'"
       >
         填空题 <span class="count">{{ categoryStats.fillBlank }}</span>
       </div>
-      <div 
-        class="category-tab" 
+      <div
+        class="category-tab"
         :class="{ active: filterType === 'SHORT_ANSWER' }"
         @click="filterType = 'SHORT_ANSWER'"
       >
@@ -431,7 +451,10 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
           <div class="tree-list">
             <ul class="tree-root">
               <li v-for="chapter in filteredKnowledgeTree" :key="chapter.id" class="tree-node-item">
-                <div class="node-row chapter-row" :class="{ active: filterKnowledgePoint === chapter.id }">
+                <div
+                  class="node-row chapter-row"
+                  :class="{ active: filterKnowledgePoint === chapter.id }"
+                >
                   <div class="node-info">
                     <button
                       v-if="chapter.children.length > 0"
@@ -442,16 +465,37 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
                     </button>
                     <span v-else class="node-toggle-placeholder"></span>
                     <span class="node-icon">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                      </svg>
                     </span>
-                    <button class="node-name-btn" @click="selectKnowledgeNode(chapter.id)">{{ chapter.name }}</button>
+                    <button class="node-name-btn" @click="selectKnowledgeNode(chapter.id)">
+                      {{ chapter.name }}
+                    </button>
                     <span class="node-level">{{ levelLabels[chapter.level] || '章' }}</span>
                   </div>
                 </div>
 
-                <ul v-if="chapter.children?.length && shouldShowChildren(chapter.id)" class="tree-children">
+                <ul
+                  v-if="chapter.children?.length && shouldShowChildren(chapter.id)"
+                  class="tree-children"
+                >
                   <li v-for="section in chapter.children" :key="section.id" class="tree-node-item">
-                    <div class="node-row section-row" :class="{ active: filterKnowledgePoint === section.id }">
+                    <div
+                      class="node-row section-row"
+                      :class="{ active: filterKnowledgePoint === section.id }"
+                    >
                       <div class="node-info">
                         <button
                           v-if="section.children.length > 0"
@@ -462,23 +506,67 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
                         </button>
                         <span v-else class="node-toggle-placeholder"></span>
                         <span class="node-icon">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <path
+                              d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+                            ></path>
+                          </svg>
                         </span>
-                        <button class="node-name-btn" @click="selectKnowledgeNode(section.id)">{{ section.name }}</button>
+                        <button class="node-name-btn" @click="selectKnowledgeNode(section.id)">
+                          {{ section.name }}
+                        </button>
                         <span class="node-level">{{ levelLabels[section.level] || '节' }}</span>
                       </div>
                     </div>
 
-                    <ul v-if="section.children?.length && shouldShowChildren(section.id)" class="tree-children">
+                    <ul
+                      v-if="section.children?.length && shouldShowChildren(section.id)"
+                      class="tree-children"
+                    >
                       <li v-for="point in section.children" :key="point.id" class="tree-node-item">
-                        <div class="node-row point-row" :class="{ active: filterKnowledgePoint === point.id }">
+                        <div
+                          class="node-row point-row"
+                          :class="{ active: filterKnowledgePoint === point.id }"
+                        >
                           <div class="node-info">
                             <span class="node-toggle-placeholder"></span>
                             <span class="node-icon">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              >
+                                <path
+                                  d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                                ></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                              </svg>
                             </span>
-                            <button class="node-name-btn" @click="selectKnowledgeNode(point.id)">{{ point.name }}</button>
-                            <span class="node-level">{{ levelLabels[point.level] || '知识点' }}</span>
+                            <button class="node-name-btn" @click="selectKnowledgeNode(point.id)">
+                              {{ point.name }}
+                            </button>
+                            <span class="node-level">{{
+                              levelLabels[point.level] || '知识点'
+                            }}</span>
                           </div>
                         </div>
                       </li>
@@ -493,11 +581,7 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
       <div class="filter-group compact-group">
         <label>难度筛选</label>
         <div class="single-filter-card">
-          <GoogleSelect
-            v-model="filterDifficulty"
-            :options="difficultyOptions"
-            label="难度"
-          />
+          <GoogleSelect v-model="filterDifficulty" :options="difficultyOptions" label="难度" />
         </div>
       </div>
     </div>
@@ -512,25 +596,25 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
         </div>
       </div>
     </div>
-    
+
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
       <p>加载中...</p>
     </div>
-    
+
     <div v-else-if="error" class="error-state google-card">
       <p>{{ error }}</p>
       <button @click="fetchQuestions" class="google-btn">重试</button>
     </div>
-    
+
     <div v-else class="google-card table-card">
       <table class="question-table">
         <thead>
           <tr>
             <th class="checkbox-col">
-              <input 
-                type="checkbox" 
-                :checked="isAllSelected" 
+              <input
+                type="checkbox"
+                :checked="isAllSelected"
                 @change="toggleSelectAll"
                 class="google-checkbox"
               />
@@ -546,30 +630,48 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
         <tbody>
           <tr v-for="question in questions" :key="question.id">
             <td class="checkbox-col">
-              <input 
-                type="checkbox" 
-                :checked="isInBasket(question.id!)" 
+              <input
+                type="checkbox"
+                :checked="isInBasket(question.id!)"
                 @change="toggleBasket(question.id!)"
                 class="google-checkbox"
               />
             </td>
             <td>{{ question.subjectId }}</td>
-            <td class="stem-col clickable" :title="stripHtml(question.stem)" @click="editQuestion(question.id!)">
-              {{ stripHtml(question.stem).substring(0, 50) }}{{ stripHtml(question.stem).length > 50 ? '...' : '' }}
+            <td
+              class="stem-col clickable"
+              :title="stripHtml(question.stem)"
+              @click="editQuestion(question.id!)"
+            >
+              {{ stripHtml(question.stem).substring(0, 50)
+              }}{{ stripHtml(question.stem).length > 50 ? '...' : '' }}
             </td>
-            <td><span class="chip type-chip">{{ typeLabels[question.type || ''] || question.type }}</span></td>
+            <td>
+              <span class="chip type-chip">{{
+                typeLabels[question.type || ''] || question.type
+              }}</span>
+            </td>
             <td>
               <span class="chip" :class="question.difficulty?.toLowerCase()">
                 {{ difficultyLabels[question.difficulty || ''] || question.difficulty }}
               </span>
             </td>
             <td>
-              <span class="status-dot" :class="['active', 'published'].includes(question.status?.toLowerCase() || '') ? 'active' : ''"></span>
+              <span
+                class="status-dot"
+                :class="
+                  ['active', 'published'].includes(question.status?.toLowerCase() || '')
+                    ? 'active'
+                    : ''
+                "
+              ></span>
               {{ statusLabels[question.status || ''] || question.status }}
             </td>
             <td class="action-col">
               <button @click="editQuestion(question.id!)" class="google-btn text-btn">编辑</button>
-              <button @click="deleteQuestion(question.id!)" class="google-btn text-btn danger-btn">删除</button>
+              <button @click="deleteQuestion(question.id!)" class="google-btn text-btn danger-btn">
+                删除
+              </button>
             </td>
           </tr>
           <tr v-if="questions.length === 0">
@@ -582,11 +684,25 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
           </tr>
         </tbody>
       </table>
-      
+
       <div class="pagination">
-        <button :disabled="page === 0" @click="page--; fetchQuestions()" class="google-btn text-btn">上一页</button>
-        <span class="page-info">第 {{ page + 1 }} 页 / 共 {{ Math.ceil(totalElements / size) || 1 }} 页</span>
-        <button :disabled="(page + 1) * size >= totalElements" @click="page++; fetchQuestions()" class="google-btn text-btn">下一页</button>
+        <button
+          :disabled="page === 0"
+          @click="page--; fetchQuestions()"
+          class="google-btn text-btn"
+        >
+          上一页
+        </button>
+        <span class="page-info"
+          >第 {{ page + 1 }} 页 / 共 {{ Math.ceil(totalElements / size) || 1 }} 页</span
+        >
+        <button
+          :disabled="(page + 1) * size >= totalElements"
+          @click="page++; fetchQuestions()"
+          class="google-btn text-btn"
+        >
+          下一页
+        </button>
       </div>
     </div>
 
@@ -623,13 +739,23 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
 }
 
 @keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .header-row {
@@ -683,14 +809,14 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
 }
 
 .category-tab .count {
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   padding: 1px 6px;
   border-radius: 12px;
   font-size: 11px;
 }
 
 .category-tab:not(.active) .count {
-    background: var(--line-bg-soft);
+  background: var(--line-bg-soft);
 }
 
 .header-actions {
@@ -738,7 +864,10 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
 
 .restore-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(2px);
   display: flex;
@@ -768,7 +897,7 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
   white-space: nowrap;
 }
 .action-col button {
-    margin-right: 8px;
+  margin-right: 8px;
 }
 
 .checkbox-col {
@@ -777,7 +906,7 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
   vertical-align: middle;
 }
 
-.checkbox-col input[type="checkbox"] {
+.checkbox-col input[type='checkbox'] {
   margin: 0 auto;
   display: block;
 }
@@ -872,7 +1001,7 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
 }
 
 .tree-children .tree-node-item::before {
-  content: "";
+  content: '';
   position: absolute;
   top: 14px;
   left: -24px;
@@ -892,7 +1021,9 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
   border-radius: 6px;
   padding: 8px 10px;
   border: 1px solid transparent;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 }
 
 .node-row:hover {
@@ -973,4 +1104,3 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
   }
 }
 </style>
-

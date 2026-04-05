@@ -6,7 +6,18 @@ import java.util.UUID;
 
 /** 用户-组织关联实体 */
 @Entity
-@Table(name = "user_organizations")
+@Table(
+    name = "user_organizations",
+    uniqueConstraints = {
+      @UniqueConstraint(
+          name = "uk_user_organization_pair",
+          columnNames = {"userId", "organizationId"})
+    },
+    indexes = {
+      @Index(name = "idx_user_org_user", columnList = "userId"),
+      @Index(name = "idx_user_org_org", columnList = "organizationId"),
+      @Index(name = "idx_user_org_org_user", columnList = "organizationId, userId")
+    })
 public class UserOrganizationEntity {
 
   @Id private String id;

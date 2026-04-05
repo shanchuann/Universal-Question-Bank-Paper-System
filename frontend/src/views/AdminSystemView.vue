@@ -1,7 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, onUnmounted, reactive, computed } from 'vue'
 import axios from 'axios'
-import { Settings, Power, Clock, Shield, Bell, Mail, Upload, Download, Save, RefreshCw, Bot } from 'lucide-vue-next'
+import {
+  Settings,
+  Power,
+  Clock,
+  Shield,
+  Bell,
+  Mail,
+  Upload,
+  Download,
+  Save,
+  RefreshCw,
+  Bot
+} from 'lucide-vue-next'
 import { useToast } from '@/composables/useToast'
 import GoogleSelect from '@/components/GoogleSelect.vue'
 
@@ -25,7 +37,6 @@ interface SystemSettings {
   aiEnabled: boolean
   aiAssistantEnabled: boolean
   aiAutoGradingEnabled: boolean
-  aiAutoStartOllama: boolean
   aiModel: string
   systemEmail: string
   siteName: string
@@ -34,10 +45,117 @@ interface SystemSettings {
   copyrightText: string
 }
 
+interface AiModelItem {
+  name: string
+  installed: boolean
+  needDownload: boolean
+  selected: boolean
+}
+
+interface AiRecommendedModel {
+  name: string
+  installed: boolean
+  needDownload: boolean
+  selected: boolean
+}
+
 const loading = ref(false)
 const saving = ref(false)
 const activeSection = ref('general')
 const aiModelOptions = ref<Array<{ label: string; value: string | number }>>([])
+const aiModelItems = ref<AiModelItem[]>([])
+const recommendedModels = ref<AiRecommendedModel[]>([])
+const installedModelSet = ref<Set<string>>(new Set())
+const modelNeedDownload = ref(false)
+const modelDownloadProgress = ref(0)
+const modelDownloadStatus = ref('')
+const modelDownloading = ref(false)
+const modelProgressHeartbeatAt = ref(0)
+const modelStallHint = ref('')
+const MODEL_STALL_THRESHOLD_MS = 45000
+
+let modelProgressWatchTimer: ReturnType<typeof setInterval> | null = null
+
+const toFriendlyProgressStatus = (rawStatus: string) => {
+  const status = String(rawStatus || '').trim()
+  if (!status) return '下载中...'
+
+  const lower = status.toLowerCase()
+  if (lower.includes('pulling manifest')) return '正在获取模型信息...'
+  if (lower.includes('pulling')) return '正在下载模型分片...'
+  if (lower.includes('verifying sha256 digest')) return '正在校验文件完整性...'
+  if (lower.includes('writing manifest')) return '正在写入模型信息...'
+  if (lower.includes('removing any unused layers')) return '正在清理旧缓存层...'
+  if (lower.includes('success')) return '下载成功，正在收尾...'
+
+  return status
+}
+
+const toFriendlyDownloadError = (rawMessage: string) => {
+  const message = String(rawMessage || '').trim()
+  if (!message) {
+    return '模型下载失败，请稍后重试'
+  }
+
+  const lower = message.toLowerCase()
+  if (
+    lower.includes('wsarecv') ||
+    lower.includes('forcibly closed') ||
+    lower.includes('connection reset')
+  ) {
+    return '连接模型仓库时网络中断，模型尚未下载完成，请检查网络后重试'
+  }
+  if (lower.includes('timeout') || lower.includes('timed out') || lower.includes('i/o timeout')) {
+    return '连接模型仓库超时，请稍后重试'
+  }
+  if (
+    lower.includes('no such host') ||
+    lower.includes('name or service not known') ||
+    lower.includes('lookup')
+  ) {
+    return '无法连接模型仓库，请检查网络或 DNS 配置'
+  }
+  if (lower.includes('manifest') && (lower.includes('404') || lower.includes('not found'))) {
+    return '未找到该模型版本，请确认模型名称是否正确'
+  }
+  if (lower.includes('qwen3.5:4b')) {
+    return '模型 qwen3.5:4b 暂不可用，建议改用 qwen3-vl:8b 或 deepseek-r1:8b'
+  }
+  if (message.includes('下载流程结束，但本机未检测到模型安装成功')) {
+    return '下载已结束，但未检测到本机安装成功，请查看 Ollama 日志后重试'
+  }
+  return message
+}
+
+const bumpModelProgressHeartbeat = () => {
+  modelProgressHeartbeatAt.value = Date.now()
+  if (modelStallHint.value) {
+    modelStallHint.value = ''
+  }
+}
+
+const startModelProgressWatch = () => {
+  if (modelProgressWatchTimer) {
+    clearInterval(modelProgressWatchTimer)
+  }
+  bumpModelProgressHeartbeat()
+  modelProgressWatchTimer = setInterval(() => {
+    if (!modelDownloading.value) return
+    const elapsed = Date.now() - modelProgressHeartbeatAt.value
+    if (elapsed >= MODEL_STALL_THRESHOLD_MS) {
+      modelStallHint.value = '进度长时间未变化，可能正在校验/解压大文件，通常属于正常现象'
+    }
+  }, 5000)
+}
+
+const stopModelProgressWatch = () => {
+  if (modelProgressWatchTimer) {
+    clearInterval(modelProgressWatchTimer)
+    modelProgressWatchTimer = null
+  }
+  modelProgressHeartbeatAt.value = 0
+  modelStallHint.value = ''
+}
 
 // 确认弹窗
 const confirmDialog = reactive({
@@ -81,7 +199,6 @@ const settings = reactive<SystemSettings>({
   aiEnabled: false,
   aiAssistantEnabled: true,
   aiAutoGradingEnabled: false,
-  aiAutoStartOllama: true,
   aiModel: 'gemma4',
   systemEmail: 'admin@example.com',
   siteName: 'UQBank 题库系统',
@@ -98,6 +215,8 @@ const sections = [
   { id: 'upload', label: '上传设置', icon: Upload },
   { id: 'notification', label: '通知设置', icon: Bell }
 ]
+
+const aiSettingsDisabled = computed(() => !settings.aiEnabled)
 
 const fetchSettings = async () => {
   loading.value = true
@@ -122,14 +241,177 @@ const fetchAiModels = async () => {
       headers: { Authorization: `Bearer ${token}` }
     })
     const models: string[] = response.data?.models || []
+    installedModelSet.value = new Set(models)
+    const modelItems = Array.isArray(response.data?.modelItems) ? response.data.modelItems : []
+    const recommended = Array.isArray(response.data?.recommendedModels)
+      ? response.data.recommendedModels
+      : []
     const currentModel: string = response.data?.currentModel || settings.aiModel || 'gemma4'
     settings.aiModel = currentModel
 
-    const list = Array.from(new Set([currentModel, ...models].filter(Boolean)))
-    aiModelOptions.value = list.map(model => ({ label: model, value: model }))
+    recommendedModels.value = recommended
+      .map((item: any) => ({
+        name: String(item?.name || ''),
+        installed: installedModelSet.value.has(String(item?.name || '')),
+        needDownload: !installedModelSet.value.has(String(item?.name || '')),
+        selected: Boolean(item?.selected)
+      }))
+      .filter((item: AiRecommendedModel) => item.name)
+
+    if (modelItems.length > 0) {
+      aiModelItems.value = modelItems
+        .map((item: any) => ({
+          name: String(item?.name || ''),
+          installed: installedModelSet.value.has(String(item?.name || '')),
+          needDownload: !installedModelSet.value.has(String(item?.name || '')),
+          selected: Boolean(item?.selected)
+        }))
+        .filter((item: AiModelItem) => item.name)
+    } else {
+      const list = Array.from(new Set([currentModel, ...models].filter(Boolean)))
+      aiModelItems.value = list.map((name) => ({
+        name,
+        installed: models.includes(name),
+        needDownload: !models.includes(name),
+        selected: name === currentModel
+      }))
+    }
+
+    rebuildAiModelOptions()
+    refreshSelectedModelStatus()
   } catch (error) {
-    aiModelOptions.value = [{ label: settings.aiModel || 'gemma4', value: settings.aiModel || 'gemma4' }]
+    aiModelItems.value = [
+      {
+        name: settings.aiModel || 'gemma4',
+        installed: false,
+        needDownload: true,
+        selected: true
+      }
+    ]
+    aiModelOptions.value = [
+      { label: settings.aiModel || 'gemma4', value: settings.aiModel || 'gemma4' }
+    ]
     showToast({ message: '读取模型列表失败', type: 'warning' })
+  }
+}
+
+const rebuildAiModelOptions = () => {
+  const recommendedNameSet = new Set(recommendedModels.value.map((item) => item.name))
+  const recommendedOptions = recommendedModels.value.map((item) => ({
+    label: item.needDownload ? `${item.name}（需下载）` : item.name,
+    value: item.name
+  }))
+  const otherOptions = aiModelItems.value
+    .filter((item) => !recommendedNameSet.has(item.name))
+    .map((item) => ({
+      label: item.needDownload ? `${item.name}（需下载）` : item.name,
+      value: item.name
+    }))
+
+  aiModelOptions.value = [...recommendedOptions, ...otherOptions]
+}
+
+const refreshSelectedModelStatus = () => {
+  const selected = aiModelItems.value.find((item) => item.name === settings.aiModel)
+  if (selected) {
+    modelNeedDownload.value = Boolean(selected.needDownload)
+    return
+  }
+  modelNeedDownload.value = !installedModelSet.value.has(settings.aiModel)
+}
+
+const onAiModelSelected = (value: string | number) => {
+  const nextModel = String(value || '').trim()
+  if (!nextModel) return
+
+  settings.aiModel = nextModel
+  if (!modelDownloading.value) {
+    modelDownloadProgress.value = 0
+    modelDownloadStatus.value = ''
+  }
+  refreshSelectedModelStatus()
+}
+
+const downloadAndAutoApplyModel = async () => {
+  if (!settings.aiModel || !modelNeedDownload.value || modelDownloading.value) return
+
+  modelDownloading.value = true
+  modelDownloadProgress.value = 0
+  modelDownloadStatus.value = `开始下载 ${settings.aiModel}...`
+  startModelProgressWatch()
+
+  try {
+    const token = localStorage.getItem('token') || ''
+    const response = await fetch('/api/admin/ai/model/pull/progress', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        model: settings.aiModel,
+        autoApply: true
+      })
+    })
+
+    if (!response.ok || !response.body) {
+      throw new Error(`下载请求失败（HTTP ${response.status}）`)
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let doneReceived = false
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const text = line.trim()
+        if (!text) continue
+        const payload = JSON.parse(text)
+
+        if (payload.type === 'progress') {
+          bumpModelProgressHeartbeat()
+          modelDownloadStatus.value = toFriendlyProgressStatus(String(payload.status || ''))
+          const percent = Number(payload.percent || 0)
+          modelDownloadProgress.value = Math.max(0, Math.min(100, percent))
+        }
+
+        if (payload.type === 'done') {
+          bumpModelProgressHeartbeat()
+          modelDownloadProgress.value = 100
+          modelDownloadStatus.value = '下载完成，正在同步模型状态...'
+          doneReceived = true
+        }
+
+        if (payload.type === 'error') {
+          throw new Error(toFriendlyDownloadError(String(payload.message || '下载失败')))
+        }
+      }
+    }
+
+    if (!doneReceived) {
+      throw new Error('下载流提前结束，请重试')
+    }
+
+    await fetchAiModels()
+    if (modelNeedDownload.value) {
+      throw new Error('下载流程结束，但本机未检测到模型安装成功，请检查模型名称或查看 Ollama 日志')
+    }
+    modelDownloadStatus.value = '下载完成，已自动配置为当前模型'
+    showToast({ message: `模型 ${settings.aiModel} 下载完成并已自动配置`, type: 'success' })
+  } catch (error: any) {
+    modelDownloadStatus.value = toFriendlyDownloadError(String(error?.message || '下载失败'))
+    showToast({ message: modelDownloadStatus.value, type: 'error' })
+  } finally {
+    modelDownloading.value = false
+    stopModelProgressWatch()
   }
 }
 
@@ -214,6 +496,10 @@ onMounted(() => {
   fetchSettings()
   fetchAiModels()
 })
+
+onUnmounted(() => {
+  stopModelProgressWatch()
+})
 </script>
 
 <template>
@@ -238,8 +524,8 @@ onMounted(() => {
     <div class="settings-layout">
       <!-- 侧边导航 -->
       <div class="settings-nav">
-        <button 
-          v-for="section in sections" 
+        <button
+          v-for="section in sections"
           :key="section.id"
           :class="['nav-item', { active: activeSection === section.id }]"
           @click="activeSection = section.id"
@@ -270,7 +556,11 @@ onMounted(() => {
                 </div>
                 <div class="setting-control">
                   <label class="switch">
-                    <input type="checkbox" v-model="settings.systemEnabled" @change="toggleSystem">
+                    <input
+                      type="checkbox"
+                      v-model="settings.systemEnabled"
+                      @change="toggleSystem"
+                    />
                     <span class="slider"></span>
                   </label>
                   <span :class="['status-label', settings.systemEnabled ? 'enabled' : 'disabled']">
@@ -289,10 +579,14 @@ onMounted(() => {
                 </div>
                 <div class="setting-control">
                   <label class="switch">
-                    <input type="checkbox" v-model="settings.maintenanceMode" @change="toggleMaintenance">
+                    <input
+                      type="checkbox"
+                      v-model="settings.maintenanceMode"
+                      @change="toggleMaintenance"
+                    />
                     <span class="slider"></span>
                   </label>
-                  <span :class="['status-label', settings.maintenanceMode ? 'warning' : '']">
+                  <span :class="['status-label', settings.maintenanceMode ? 'warning' : 'normal']">
                     {{ settings.maintenanceMode ? '维护中' : '正常' }}
                   </span>
                 </div>
@@ -300,8 +594,8 @@ onMounted(() => {
 
               <div class="setting-item column" v-if="settings.maintenanceMode">
                 <label class="input-label">维护提示信息</label>
-                <textarea 
-                  v-model="settings.maintenanceMessage" 
+                <textarea
+                  v-model="settings.maintenanceMessage"
                   class="google-input"
                   rows="3"
                   placeholder="输入维护期间显示的提示信息..."
@@ -357,7 +651,7 @@ onMounted(() => {
                   <p>是否开放用户自行注册账号</p>
                 </div>
                 <label class="switch">
-                  <input type="checkbox" v-model="settings.allowRegistration">
+                  <input type="checkbox" v-model="settings.allowRegistration" />
                   <span class="slider"></span>
                 </label>
               </div>
@@ -368,7 +662,7 @@ onMounted(() => {
                   <p>注册时是否需要验证邮箱</p>
                 </div>
                 <label class="switch">
-                  <input type="checkbox" v-model="settings.requireEmailVerification">
+                  <input type="checkbox" v-model="settings.requireEmailVerification" />
                   <span class="slider"></span>
                 </label>
               </div>
@@ -379,7 +673,7 @@ onMounted(() => {
                   <p>用户是否可以通过邮箱重置密码</p>
                 </div>
                 <label class="switch">
-                  <input type="checkbox" v-model="settings.allowPasswordReset">
+                  <input type="checkbox" v-model="settings.allowPasswordReset" />
                   <span class="slider"></span>
                 </label>
               </div>
@@ -390,7 +684,13 @@ onMounted(() => {
                   <p>用户无操作后自动退出的时间（分钟）</p>
                 </div>
                 <div class="input-with-unit">
-                  <input type="number" v-model="settings.sessionTimeout" class="google-input number-input" min="5" max="1440" />
+                  <input
+                    type="number"
+                    v-model="settings.sessionTimeout"
+                    class="google-input number-input"
+                    min="5"
+                    max="1440"
+                  />
                   <span class="unit">分钟</span>
                 </div>
               </div>
@@ -401,7 +701,13 @@ onMounted(() => {
                   <p>超过次数后账号将被临时锁定</p>
                 </div>
                 <div class="input-with-unit">
-                  <input type="number" v-model="settings.maxLoginAttempts" class="google-input number-input" min="3" max="10" />
+                  <input
+                    type="number"
+                    v-model="settings.maxLoginAttempts"
+                    class="google-input number-input"
+                    min="3"
+                    max="10"
+                  />
                   <span class="unit">次</span>
                 </div>
               </div>
@@ -412,7 +718,13 @@ onMounted(() => {
                   <p>用户设置密码时的最小字符数</p>
                 </div>
                 <div class="input-with-unit">
-                  <input type="number" v-model="settings.passwordMinLength" class="google-input number-input" min="6" max="20" />
+                  <input
+                    type="number"
+                    v-model="settings.passwordMinLength"
+                    class="google-input number-input"
+                    min="6"
+                    max="20"
+                  />
                   <span class="unit">字符</span>
                 </div>
               </div>
@@ -428,7 +740,13 @@ onMounted(() => {
                   <p>考试过程中自动保存答案的时间间隔</p>
                 </div>
                 <div class="input-with-unit">
-                  <input type="number" v-model="settings.examAutoSaveInterval" class="google-input number-input" min="10" max="300" />
+                  <input
+                    type="number"
+                    v-model="settings.examAutoSaveInterval"
+                    class="google-input number-input"
+                    min="10"
+                    max="300"
+                  />
                   <span class="unit">秒</span>
                 </div>
               </div>
@@ -439,7 +757,7 @@ onMounted(() => {
                   <p>是否在考试结束后显示成绩排行榜</p>
                 </div>
                 <label class="switch">
-                  <input type="checkbox" v-model="settings.showLeaderboard">
+                  <input type="checkbox" v-model="settings.showLeaderboard" />
                   <span class="slider"></span>
                 </label>
               </div>
@@ -452,10 +770,13 @@ onMounted(() => {
               <div class="setting-item">
                 <div class="setting-info">
                   <h3>启用 AI 功能</h3>
-                  <p>全局 AI 开关，关闭后教师/学生都无法发起 AI 问答和 AI 评分</p>
+                  <p>
+                    全局 AI 开关。开启后自动尝试启动 Ollama，关闭后自动停止
+                    Ollama，系统启动时也会按此开关同步
+                  </p>
                 </div>
                 <label class="switch">
-                  <input type="checkbox" v-model="settings.aiEnabled">
+                  <input type="checkbox" v-model="settings.aiEnabled" />
                   <span class="slider"></span>
                 </label>
               </div>
@@ -466,7 +787,11 @@ onMounted(() => {
                   <p>为学生和教师显示可拖动圆形 AI 入口（管理员不显示）</p>
                 </div>
                 <label class="switch">
-                  <input type="checkbox" v-model="settings.aiAssistantEnabled">
+                  <input
+                    type="checkbox"
+                    v-model="settings.aiAssistantEnabled"
+                    :disabled="aiSettingsDisabled"
+                  />
                   <span class="slider"></span>
                 </label>
               </div>
@@ -477,34 +802,78 @@ onMounted(() => {
                   <p>仅对考试计划中“开启 AI 自动阅卷”的试卷生效</p>
                 </div>
                 <label class="switch">
-                  <input type="checkbox" v-model="settings.aiAutoGradingEnabled">
+                  <input
+                    type="checkbox"
+                    v-model="settings.aiAutoGradingEnabled"
+                    :disabled="aiSettingsDisabled"
+                  />
                   <span class="slider"></span>
                 </label>
               </div>
 
-              <div class="setting-item">
-                <div class="setting-info">
-                  <h3>后端启动时自动启动 Ollama</h3>
-                  <p>当 AI 开启时，后端启动会尝试执行 ollama serve（需本机已安装 ollama）</p>
-                </div>
-                <label class="switch">
-                  <input type="checkbox" v-model="settings.aiAutoStartOllama">
-                  <span class="slider"></span>
-                </label>
-              </div>
-
-              <div class="setting-item">
+              <div class="setting-item column">
                 <div class="setting-info">
                   <h3>AI 模型</h3>
-                  <p>从 Ollama 自动读取模型列表并选择默认模型</p>
+                  <p>采用下拉列表展示模型，标注“需下载”的模型表示本机尚未安装</p>
                 </div>
                 <div class="model-select-row">
                   <GoogleSelect
-                    v-model="settings.aiModel"
+                    :modelValue="settings.aiModel"
                     :options="aiModelOptions"
                     placeholder="请选择模型"
+                    :disabled="aiSettingsDisabled || modelDownloading"
+                    @update:modelValue="onAiModelSelected"
                   />
-                  <button class="google-btn text-btn" type="button" @click="fetchAiModels">刷新模型</button>
+                  <button
+                    class="google-btn text-btn model-action-btn"
+                    type="button"
+                    :disabled="aiSettingsDisabled || modelDownloading"
+                    @click="fetchAiModels"
+                  >
+                    刷新模型
+                  </button>
+                  <button
+                    class="google-btn primary-btn model-action-btn model-download-inline-btn"
+                    type="button"
+                    :disabled="aiSettingsDisabled || modelDownloading || !modelNeedDownload"
+                    @click="downloadAndAutoApplyModel"
+                  >
+                    {{
+                      modelDownloading
+                        ? '下载中...'
+                        : modelNeedDownload
+                          ? '下载并自动配置'
+                          : '已安装'
+                    }}
+                  </button>
+                </div>
+                <div v-if="aiSettingsDisabled" class="ai-disabled-hint">
+                  AI 全局开关已关闭，以上 AI 配置暂不可编辑。
+                </div>
+                <div class="model-summary-row">
+                  <span class="model-status-label">当前模型状态：</span>
+                  <span :class="['model-status-chip', modelNeedDownload ? 'need' : 'ok']">
+                    {{ modelNeedDownload ? '需下载' : '已安装' }}
+                  </span>
+                  <div
+                    class="model-summary-progress"
+                    v-if="modelDownloading || modelDownloadProgress > 0"
+                  >
+                    <div class="model-progress-wrap">
+                      <div class="model-progress-track">
+                        <div
+                          class="model-progress-fill"
+                          :style="{ width: `${modelDownloadProgress}%` }"
+                        ></div>
+                      </div>
+                    </div>
+                    <div class="model-progress-text">
+                      {{ modelDownloadStatus }} {{ modelDownloadProgress }}%
+                    </div>
+                    <div v-if="modelStallHint && modelDownloading" class="model-progress-hint">
+                      {{ modelStallHint }}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -519,16 +888,22 @@ onMounted(() => {
                   <p>单个文件上传的最大尺寸限制</p>
                 </div>
                 <div class="input-with-unit">
-                  <input type="number" v-model="settings.maxFileSize" class="google-input number-input" min="1" max="100" />
+                  <input
+                    type="number"
+                    v-model="settings.maxFileSize"
+                    class="google-input number-input"
+                    min="1"
+                    max="100"
+                  />
                   <span class="unit">MB</span>
                 </div>
               </div>
 
               <div class="setting-item column">
                 <label class="input-label">允许的文件类型</label>
-                <input 
-                  type="text" 
-                  v-model="settings.allowedFileTypes" 
+                <input
+                  type="text"
+                  v-model="settings.allowedFileTypes"
                   class="google-input"
                   placeholder="用逗号分隔，如：jpg,png,pdf"
                 />
@@ -546,7 +921,7 @@ onMounted(() => {
                   <p>是否向用户发送系统通知</p>
                 </div>
                 <label class="switch">
-                  <input type="checkbox" v-model="settings.enableNotifications">
+                  <input type="checkbox" v-model="settings.enableNotifications" />
                   <span class="slider"></span>
                 </label>
               </div>
@@ -555,9 +930,9 @@ onMounted(() => {
                 <label class="input-label">系统邮箱</label>
                 <div class="input-with-icon">
                   <Mail :size="18" class="input-icon" />
-                  <input 
-                    type="email" 
-                    v-model="settings.systemEmail" 
+                  <input
+                    type="email"
+                    v-model="settings.systemEmail"
                     class="google-input icon-input"
                     placeholder="用于发送系统邮件的邮箱地址"
                   />
@@ -716,10 +1091,106 @@ onMounted(() => {
 
 .model-select-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto;
+  grid-template-columns: minmax(220px, 1.35fr) minmax(140px, 1fr) minmax(140px, 1fr);
   gap: 10px;
+  align-items: stretch;
   width: 100%;
-  max-width: 460px;
+  max-width: 100%;
+}
+
+.model-select-row :deep(.select-trigger) {
+  min-height: 48px;
+}
+
+.model-summary-row {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.model-summary-progress {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 320px;
+  min-width: 220px;
+}
+
+.model-summary-progress .model-progress-wrap {
+  width: 100%;
+}
+
+.ai-disabled-hint {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #b45309;
+}
+
+.model-download-inline-btn {
+  white-space: nowrap;
+}
+
+.model-action-btn {
+  width: 100%;
+  min-height: 48px;
+}
+
+.model-status-label {
+  font-size: 13px;
+  color: var(--line-text-secondary);
+}
+
+.model-status-chip {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  border: 1px solid transparent;
+}
+
+.model-status-chip.ok {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.model-status-chip.need {
+  color: #b45309;
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+.model-progress-wrap {
+  width: min(420px, 100%);
+}
+
+.model-progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line-bg-soft);
+  border: 1px solid var(--line-border);
+  overflow: hidden;
+}
+
+.model-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1a73e8, #34a853);
+  transition: width 0.3s ease;
+}
+
+.model-progress-text {
+  font-size: 12px;
+  color: var(--line-text-secondary);
+  white-space: nowrap;
+}
+
+.model-progress-hint {
+  font-size: 12px;
+  color: #92400e;
 }
 
 .settings-section {
@@ -727,8 +1198,14 @@ onMounted(() => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .section-title {
@@ -823,7 +1300,7 @@ onMounted(() => {
 
 .slider:before {
   position: absolute;
-  content: "";
+  content: '';
   height: 20px;
   width: 20px;
   left: 3px;
@@ -843,21 +1320,42 @@ input:checked + .slider:before {
 }
 
 .status-label {
-  font-size: 13px;
-  font-weight: 500;
-  min-width: 60px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-border);
+  background: var(--line-bg-soft);
+  color: var(--line-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .status-label.enabled {
-  color: #34a853;
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
 }
 
 .status-label.disabled {
-  color: #ea4335;
+  color: #b91c1c;
+  background: #fee2e2;
+  border-color: #fca5a5;
 }
 
 .status-label.warning {
-  color: #fbbc04;
+  color: #92400e;
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+.status-label.normal {
+  color: #1f4c9b;
+  background: #eaf2ff;
+  border-color: #bfdbfe;
 }
 
 /* Inputs */
@@ -955,7 +1453,9 @@ textarea.google-input {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive */
@@ -963,7 +1463,7 @@ textarea.google-input {
   .settings-layout {
     grid-template-columns: 1fr;
   }
-  
+
   .settings-nav {
     flex-direction: row;
     overflow-x: auto;
@@ -972,33 +1472,46 @@ textarea.google-input {
     gap: 8px;
     margin-top: 0;
   }
-  
+
   .nav-item {
     white-space: nowrap;
     padding: 10px 14px;
   }
-  
+
   .header-row {
     flex-direction: column;
     gap: 16px;
   }
-  
+
   .header-actions {
     width: 100%;
   }
-  
+
   .header-actions .google-btn {
     flex: 1;
     justify-content: center;
   }
-  
+
   .setting-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
   }
 
-  
+  .model-select-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .model-select-row > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .model-summary-progress {
+    margin-left: 0;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+  }
+
   .short-input {
     width: 100%;
   }

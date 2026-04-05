@@ -92,11 +92,12 @@ const isAdmin = computed(() => authState.user.role === 'ADMIN')
 const filteredUniversities = computed(() => {
   if (!searchKeyword.value) return universities.value
   const keyword = searchKeyword.value.toLowerCase()
-  return universities.value.filter(u => 
-    u.name.toLowerCase().includes(keyword) ||
-    u.code.toLowerCase().includes(keyword) ||
-    u.city.includes(searchKeyword.value) ||
-    u.province.includes(searchKeyword.value)
+  return universities.value.filter(
+    (u) =>
+      u.name.toLowerCase().includes(keyword) ||
+      u.code.toLowerCase().includes(keyword) ||
+      u.city.includes(searchKeyword.value) ||
+      u.province.includes(searchKeyword.value)
   )
 })
 
@@ -111,15 +112,11 @@ const universitiesByProvince = computed(() => {
 })
 
 // 已选择的院系数量
-const selectedDeptCount = computed(() => 
-  departmentConfigs.value.filter(d => d.selected).length
-)
+const selectedDeptCount = computed(() => departmentConfigs.value.filter((d) => d.selected).length)
 
 // 总班级数量
-const totalClassCount = computed(() => 
-  departmentConfigs.value
-    .filter(d => d.selected)
-    .reduce((sum, d) => sum + d.classes.length, 0)
+const totalClassCount = computed(() =>
+  departmentConfigs.value.filter((d) => d.selected).reduce((sum, d) => sum + d.classes.length, 0)
 )
 
 onMounted(() => {
@@ -148,7 +145,10 @@ async function fetchUniversities() {
   }
 }
 
-function openAddForm(parentId: string | null = null, type: 'SCHOOL' | 'DEPARTMENT' | 'CLASS' = 'SCHOOL') {
+function openAddForm(
+  parentId: string | null = null,
+  type: 'SCHOOL' | 'DEPARTMENT' | 'CLASS' = 'SCHOOL'
+) {
   editingOrg.value = null
   form.value = {
     name: '',
@@ -184,7 +184,7 @@ function openUniversityPicker() {
 function selectUniversity(uni: University) {
   selectedUniversity.value = uni
   // 初始化院系配置，默认都选中，每个院系添加3个默认班级
-  departmentConfigs.value = uni.departments.map(dept => ({
+  departmentConfigs.value = uni.departments.map((dept) => ({
     code: dept.code,
     name: dept.name,
     selected: true,
@@ -202,14 +202,14 @@ function backToUniversityList() {
 }
 
 function toggleDepartment(deptCode: string) {
-  const dept = departmentConfigs.value.find(d => d.code === deptCode)
+  const dept = departmentConfigs.value.find((d) => d.code === deptCode)
   if (dept) {
     dept.selected = !dept.selected
   }
 }
 
 function addClass(deptCode: string) {
-  const dept = departmentConfigs.value.find(d => d.code === deptCode)
+  const dept = departmentConfigs.value.find((d) => d.code === deptCode)
   if (dept) {
     const classNum = dept.classes.length + 1
     dept.classes.push({
@@ -220,14 +220,14 @@ function addClass(deptCode: string) {
 }
 
 function removeClass(deptCode: string, index: number) {
-  const dept = departmentConfigs.value.find(d => d.code === deptCode)
+  const dept = departmentConfigs.value.find((d) => d.code === deptCode)
   if (dept && dept.classes.length > 1) {
     dept.classes.splice(index, 1)
   }
 }
 
 function updateClassName(deptCode: string, index: number, name: string) {
-  const dept = departmentConfigs.value.find(d => d.code === deptCode)
+  const dept = departmentConfigs.value.find((d) => d.code === deptCode)
   if (dept && dept.classes[index]) {
     dept.classes[index].name = name
   }
@@ -235,10 +235,10 @@ function updateClassName(deptCode: string, index: number, name: string) {
 
 async function createFromTemplate() {
   if (!selectedUniversity.value) return
-  
+
   const selectedDepts = departmentConfigs.value
-    .filter(d => d.selected)
-    .map(d => ({
+    .filter((d) => d.selected)
+    .map((d) => ({
       code: d.code,
       classes: d.classes
     }))
@@ -250,14 +250,17 @@ async function createFromTemplate() {
 
   creatingFromTemplate.value = true
   try {
-    const response = await fetch(`/api/universities/${selectedUniversity.value.code}/create-organization`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ departments: selectedDepts })
-    })
-    
+    const response = await fetch(
+      `/api/universities/${selectedUniversity.value.code}/create-organization`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ departments: selectedDepts })
+      }
+    )
+
     const result = await response.json()
-    
+
     if (response.ok) {
       showToast({ message: result.message, type: 'success' })
       showUniversityPicker.value = false
@@ -275,17 +278,17 @@ async function createFromTemplate() {
 
 async function handleSubmit() {
   try {
-    const url = editingOrg.value 
+    const url = editingOrg.value
       ? `/api/organizations/${editingOrg.value.id}`
       : '/api/organizations'
     const method = editingOrg.value ? 'PUT' : 'POST'
-    
+
     const response = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form.value)
     })
-    
+
     if (response.ok) {
       showForm.value = false
       fetchOrganizations()
@@ -308,7 +311,7 @@ async function handleDelete(id: string) {
     cancelText: '取消'
   })
   if (!confirmed) return
-  
+
   try {
     await fetch(`/api/organizations/${id}`, { method: 'DELETE' })
     fetchOrganizations()
@@ -358,7 +361,20 @@ function copyInviteCode(code: string) {
 
     <div class="toolbar-actions" v-if="isAdmin">
       <button class="line-btn primary-btn" @click="openUniversityPicker">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1 2 3 6 3s6-2 6-3v-5"/></svg>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+          <path d="M6 12v5c0 1 2 3 6 3s6-2 6-3v-5" />
+        </svg>
         从高校模板创建
       </button>
       <button class="line-btn outline-btn" @click="openAddForm(null, 'SCHOOL')">
@@ -370,12 +386,19 @@ function copyInviteCode(code: string) {
       <div v-if="loading" class="line-loading">
         <div class="spinner"></div>
       </div>
-      
+
       <div v-else-if="organizations.length === 0" class="empty-state">
         <div class="empty-icon">
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-            <path d="M6 12v5c0 1 2 3 6 3s6-2 6-3v-5"/>
+          <svg
+            width="64"
+            height="64"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1"
+          >
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+            <path d="M6 12v5c0 1 2 3 6 3s6-2 6-3v-5" />
           </svg>
         </div>
         <h3>暂无组织数据</h3>
@@ -383,7 +406,9 @@ function copyInviteCode(code: string) {
         <p v-else>暂无组织架构信息，请联系管理员创建</p>
         <div class="empty-actions" v-if="isAdmin">
           <button class="line-btn primary-btn" @click="openUniversityPicker">从高校模板创建</button>
-          <button class="line-btn text-btn" @click="openAddForm(null, 'SCHOOL')">手动添加学校</button>
+          <button class="line-btn text-btn" @click="openAddForm(null, 'SCHOOL')">
+            手动添加学校
+          </button>
         </div>
       </div>
 
@@ -397,16 +422,54 @@ function copyInviteCode(code: string) {
                 <span class="row-name">{{ school.name }}</span>
                 <span class="row-code">{{ school.code }}</span>
               </div>
-              <span :class="['status-badge', school.status.toLowerCase()]">{{ school.status === 'ACTIVE' ? '启用' : '停用' }}</span>
+              <span :class="['status-badge', school.status.toLowerCase()]">{{
+                school.status === 'ACTIVE' ? '启用' : '停用'
+              }}</span>
               <div class="row-actions" v-if="isAdmin">
-                <button class="action-btn" @click="openAddForm(school.id, 'DEPARTMENT')" title="添加学院">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <button
+                  class="action-btn"
+                  @click="openAddForm(school.id, 'DEPARTMENT')"
+                  title="添加学院"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
                 </button>
                 <button class="action-btn" @click="openEditForm(school)" title="编辑">
-                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
                 </button>
                 <button class="action-btn danger" @click="handleDelete(school.id)" title="删除">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path
+                      d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                    />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -423,14 +486,50 @@ function copyInviteCode(code: string) {
                       <span class="row-code">{{ dept.code }}</span>
                     </div>
                     <div class="row-actions" v-if="isAdmin">
-                      <button class="action-btn" @click="openAddForm(dept.id, 'CLASS')" title="添加班级">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                      <button
+                        class="action-btn"
+                        @click="openAddForm(dept.id, 'CLASS')"
+                        title="添加班级"
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <line x1="12" y1="5" x2="12" y2="19"></line>
+                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
                       </button>
                       <button class="action-btn" @click="openEditForm(dept)" title="编辑">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
                       </button>
                       <button class="action-btn danger" @click="handleDelete(dept.id)" title="删除">
-                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path
+                            d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                          />
+                        </svg>
                       </button>
                     </div>
                   </div>
@@ -445,19 +544,76 @@ function copyInviteCode(code: string) {
                           <span class="row-name">{{ cls.name }}</span>
                           <span class="row-code">{{ cls.code }}</span>
                         </div>
-                        <span v-if="cls.inviteCode" class="invite-code-pill" @click="copyInviteCode(cls.inviteCode!)" title="点击复制">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                        <span
+                          v-if="cls.inviteCode"
+                          class="invite-code-pill"
+                          @click="copyInviteCode(cls.inviteCode!)"
+                          title="点击复制"
+                        >
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                          >
+                            <path
+                              d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"
+                            />
+                          </svg>
                           {{ cls.inviteCode }}
                         </span>
                         <div class="row-actions" v-if="isAdmin">
-                          <button v-if="cls.inviteCode" class="action-btn" @click="refreshInviteCode(cls.id)" title="刷新邀请码">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                          <button
+                            v-if="cls.inviteCode"
+                            class="action-btn"
+                            @click="refreshInviteCode(cls.id)"
+                            title="刷新邀请码"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <polyline points="23 4 23 10 17 10"></polyline>
+                              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                            </svg>
                           </button>
                           <button class="action-btn" @click="openEditForm(cls)" title="编辑">
-                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
                           </button>
-                          <button class="action-btn danger" @click="handleDelete(cls.id)" title="删除">
-                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                          <button
+                            class="action-btn danger"
+                            @click="handleDelete(cls.id)"
+                            title="删除"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                            >
+                              <polyline points="3 6 5 6 21 6"></polyline>
+                              <path
+                                d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"
+                              />
+                            </svg>
                           </button>
                         </div>
                       </div>
@@ -481,33 +637,45 @@ function copyInviteCode(code: string) {
         <form @submit.prevent="handleSubmit">
           <div class="modal-body">
             <div class="form-group">
-                <GoogleSelect
-                  v-model="form.type"
-                  :options="typeOptions"
-                  label="组织类型"
-                  placeholder="请选择组织类型"
-                  :disabled="!!editingOrg"
-                />
+              <GoogleSelect
+                v-model="form.type"
+                :options="typeOptions"
+                label="组织类型"
+                placeholder="请选择组织类型"
+                :disabled="!!editingOrg"
+              />
             </div>
             <div class="form-group">
-                <label>名称</label>
-                <input v-model="form.name" type="text" class="line-input" required placeholder="请输入名称" />
+              <label>名称</label>
+              <input
+                v-model="form.name"
+                type="text"
+                class="line-input"
+                required
+                placeholder="请输入名称"
+              />
             </div>
             <div class="form-group">
-                <label>编码</label>
-                <input v-model="form.code" type="text" class="line-input" required placeholder="唯一编码" />
+              <label>编码</label>
+              <input
+                v-model="form.code"
+                type="text"
+                class="line-input"
+                required
+                placeholder="唯一编码"
+              />
             </div>
             <div class="form-group">
-                <label>排序</label>
-                <input v-model.number="form.sortOrder" type="number" class="line-input" />
+              <label>排序</label>
+              <input v-model.number="form.sortOrder" type="number" class="line-input" />
             </div>
             <div class="form-group">
-                <GoogleSelect
-                  v-model="form.status"
-                  :options="statusOptions"
-                  label="状态"
-                  placeholder="请选择状态"
-                />
+              <GoogleSelect
+                v-model="form.status"
+                :options="statusOptions"
+                label="状态"
+                placeholder="请选择状态"
+              />
             </div>
           </div>
           <div class="modal-footer">
@@ -519,79 +687,133 @@ function copyInviteCode(code: string) {
     </div>
 
     <!-- University Picker Modal -->
-    <div v-if="showUniversityPicker" class="modal-backdrop" @click.self="showUniversityPicker = false">
+    <div
+      v-if="showUniversityPicker"
+      class="modal-backdrop"
+      @click.self="showUniversityPicker = false"
+    >
       <div class="line-modal lg-modal">
         <template v-if="!selectedUniversity">
-            <div class="modal-header">
-                <h2>选择高校</h2>
+          <div class="modal-header">
+            <h2>选择高校</h2>
+          </div>
+          <div class="modal-body">
+            <div class="search-box">
+              <input
+                v-model="searchKeyword"
+                type="text"
+                placeholder="搜索高校名称、代码或城市..."
+                class="line-input search-input"
+              />
             </div>
-            <div class="modal-body">
-                <div class="search-box">
-                    <input v-model="searchKeyword" type="text" placeholder="搜索高校名称、代码或城市..." class="line-input search-input" />
+            <div class="university-list">
+              <template v-for="(unis, province) in universitiesByProvince" :key="province">
+                <div class="province-group">
+                  <div class="province-name">{{ province }}</div>
+                  <div class="university-grid">
+                    <div
+                      v-for="uni in unis"
+                      :key="uni.code"
+                      class="university-card"
+                      @click="selectUniversity(uni)"
+                    >
+                      <div class="uni-name">{{ uni.name }}</div>
+                      <div class="uni-info">
+                        <span class="uni-city">{{ uni.city }}</span>
+                        <span :class="['uni-type', uni.type.toLowerCase()]">{{ uni.type }}</span>
+                      </div>
+                      <div class="uni-depts">{{ uni.departments.length }} 个院系</div>
+                    </div>
+                  </div>
                 </div>
-                <div class="university-list">
-                     <template v-for="(unis, province) in universitiesByProvince" :key="province">
-                        <div class="province-group">
-                            <div class="province-name">{{ province }}</div>
-                            <div class="university-grid">
-                                <div v-for="uni in unis" :key="uni.code" class="university-card" @click="selectUniversity(uni)">
-                                    <div class="uni-name">{{ uni.name }}</div>
-                                    <div class="uni-info">
-                                        <span class="uni-city">{{ uni.city }}</span>
-                                        <span :class="['uni-type', uni.type.toLowerCase()]">{{ uni.type }}</span>
-                                    </div>
-                                    <div class="uni-depts">{{ uni.departments.length }} 个院系</div>
-                                </div>
-                            </div>
-                        </div>
-                     </template>
-                </div>
+              </template>
             </div>
-            <div class="modal-footer">
-                <button class="line-btn text-btn" @click="showUniversityPicker = false">取消</button>
-            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="line-btn text-btn" @click="showUniversityPicker = false">取消</button>
+          </div>
         </template>
 
         <template v-else>
-            <div class="modal-header">
-                <div class="header-with-back">
-                     <button class="icon-btn" @click="backToUniversityList"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg></button> 
-                    <h2>{{ selectedUniversity.name }}</h2>
-                </div>
+          <div class="modal-header">
+            <div class="header-with-back">
+              <button class="icon-btn" @click="backToUniversityList">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+              </button>
+              <h2>{{ selectedUniversity.name }}</h2>
             </div>
-            
-            <div class="modal-body">
-                <div class="config-summary">
-                     <div class="summary-item"><span class="label">已选院系</span> <span class="val">{{ selectedDeptCount }}</span></div>
-                     <div class="summary-item"><span class="label">班级总数</span> <span class="val">{{ totalClassCount }}</span></div>
-                </div>
+          </div>
 
-                <div class="department-list">
-                    <div v-for="dept in departmentConfigs" :key="dept.code" :class="['department-item', { selected: dept.selected }]">
-                         <div class="dept-header" @click="toggleDepartment(dept.code)">
-                            <div class="checkbox-wrapper">
-                                <div v-if="dept.selected" class="line-checkbox checked">✓</div>
-                                <div v-else class="line-checkbox"></div>
-                            </div>
-                            <span class="dept-name">{{ dept.name }}</span>
-                            <span class="dept-count">{{ dept.classes.length }} 班</span>
-                         </div>
-                         <div v-if="dept.selected" class="class-list">
-                            <div v-for="(cls, index) in dept.classes" :key="index" class="class-item">
-                                <input :value="cls.name" @input="updateClassName(dept.code, index, ($event.target as HTMLInputElement).value)" class="line-input sm-input" />
-                                <button v-if="dept.classes.length > 1" class="icon-btn danger sm" @click="removeClass(dept.code, index)">×</button>
-                            </div>
-                            <button class="line-btn outline-btn sm-btn full-width" @click="addClass(dept.code)">+ 添加班级</button>
-                         </div>
-                    </div>
+          <div class="modal-body">
+            <div class="config-summary">
+              <div class="summary-item">
+                <span class="label">已选院系</span> <span class="val">{{ selectedDeptCount }}</span>
+              </div>
+              <div class="summary-item">
+                <span class="label">班级总数</span> <span class="val">{{ totalClassCount }}</span>
+              </div>
+            </div>
+
+            <div class="department-list">
+              <div
+                v-for="dept in departmentConfigs"
+                :key="dept.code"
+                :class="['department-item', { selected: dept.selected }]"
+              >
+                <div class="dept-header" @click="toggleDepartment(dept.code)">
+                  <div class="checkbox-wrapper">
+                    <div v-if="dept.selected" class="line-checkbox checked">✓</div>
+                    <div v-else class="line-checkbox"></div>
+                  </div>
+                  <span class="dept-name">{{ dept.name }}</span>
+                  <span class="dept-count">{{ dept.classes.length }} 班</span>
                 </div>
+                <div v-if="dept.selected" class="class-list">
+                  <div v-for="(cls, index) in dept.classes" :key="index" class="class-item">
+                    <input
+                      :value="cls.name"
+                      @input="
+                        updateClassName(dept.code, index, ($event.target as HTMLInputElement).value)
+                      "
+                      class="line-input sm-input"
+                    />
+                    <button
+                      v-if="dept.classes.length > 1"
+                      class="icon-btn danger sm"
+                      @click="removeClass(dept.code, index)"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <button
+                    class="line-btn outline-btn sm-btn full-width"
+                    @click="addClass(dept.code)"
+                  >
+                    + 添加班级
+                  </button>
+                </div>
+              </div>
             </div>
-            <div class="modal-footer">
-                <button class="line-btn text-btn" @click="showUniversityPicker = false">取消</button>
-                <button class="line-btn primary-btn" @click="createFromTemplate" :disabled="creatingFromTemplate || selectedDeptCount === 0">
-                    {{ creatingFromTemplate ? '创建中...' : '创建组织架构' }}
-                </button>
-            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="line-btn text-btn" @click="showUniversityPicker = false">取消</button>
+            <button
+              class="line-btn primary-btn"
+              @click="createFromTemplate"
+              :disabled="creatingFromTemplate || selectedDeptCount === 0"
+            >
+              {{ creatingFromTemplate ? '创建中...' : '创建组织架构' }}
+            </button>
+          </div>
         </template>
       </div>
     </div>
@@ -628,7 +850,11 @@ function copyInviteCode(code: string) {
   animation: spin 1s linear infinite;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 /* Empty State */
 .empty-state {
@@ -680,7 +906,9 @@ function copyInviteCode(code: string) {
   border-bottom: 1px solid var(--line-border);
 }
 
-.org-row:last-child { border-bottom: none; }
+.org-row:last-child {
+  border-bottom: none;
+}
 
 .row-content {
   display: flex;
@@ -705,14 +933,17 @@ function copyInviteCode(code: string) {
   padding-left: 48px;
   background: #fafafa;
 }
-:root[class~="dark"] .dept-row .row-content { background: rgba(255,255,255,0.02); }
+:root[class~='dark'] .dept-row .row-content {
+  background: rgba(255, 255, 255, 0.02);
+}
 
 .class-row .row-content {
   padding-left: 72px;
   background: #fcfcfc;
 }
-:root[class~="dark"] .class-row .row-content { background: rgba(255,255,255,0.01); }
-
+:root[class~='dark'] .class-row .row-content {
+  background: rgba(255, 255, 255, 0.01);
+}
 
 .tree-line {
   width: 12px;
@@ -731,11 +962,24 @@ function copyInviteCode(code: string) {
   justify-content: center;
   flex-shrink: 0;
 }
-.row-icon svg { width: 18px; height: 18px; stroke-width: 2px; }
+.row-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2px;
+}
 
-.school-icon { background: #e0f2fe; color: #0284c7; }
-.dept-icon { background: #dcfce7; color: #059669; }
-.class-icon { background: #fef3c7; color: #d97706; }
+.school-icon {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+.dept-icon {
+  background: #dcfce7;
+  color: #059669;
+}
+.class-icon {
+  background: #fef3c7;
+  color: #d97706;
+}
 
 .row-info {
   flex: 1;
@@ -761,8 +1005,14 @@ function copyInviteCode(code: string) {
   border-radius: 99px;
   font-weight: 600;
 }
-.status-badge.active { background: #dcfce7; color: #166534; }
-.status-badge.inactive { background: #fef2f2; color: #991b1b; }
+.status-badge.active {
+  background: #dcfce7;
+  color: #166534;
+}
+.status-badge.inactive {
+  background: #fef2f2;
+  color: #991b1b;
+}
 
 .invite-code-pill {
   display: flex;
@@ -779,7 +1029,10 @@ function copyInviteCode(code: string) {
   transition: all 0.2s;
   margin-right: 16px;
 }
-.invite-code-pill svg { width: 12px; height: 12px; }
+.invite-code-pill svg {
+  width: 12px;
+  height: 12px;
+}
 
 .invite-code-pill:hover {
   background: var(--line-bg);
@@ -828,7 +1081,7 @@ function copyInviteCode(code: string) {
   color: var(--line-primary);
   border-color: var(--line-text-secondary);
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .action-btn:hover svg {
@@ -861,11 +1114,23 @@ function copyInviteCode(code: string) {
   align-items: center;
   gap: 12px;
 }
-.header-with-back h2 { margin: 0; font-size: 1.1rem; display: flex; align-items: center; }
+.header-with-back h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+}
 
 /* University Picker List */
-.province-group { margin-bottom: 24px; }
-.province-name { font-size: 0.85rem; font-weight: 600; color: var(--line-text-secondary); margin-bottom: 12px; }
+.province-group {
+  margin-bottom: 24px;
+}
+.province-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--line-text-secondary);
+  margin-bottom: 12px;
+}
 
 .university-grid {
   display: grid;
@@ -882,12 +1147,34 @@ function copyInviteCode(code: string) {
   transition: all 0.2s;
 }
 
-.university-card:hover { border-color: var(--line-primary); box-shadow: var(--line-shadow-md); transform: translateY(-2px); }
+.university-card:hover {
+  border-color: var(--line-primary);
+  box-shadow: var(--line-shadow-md);
+  transform: translateY(-2px);
+}
 
-.uni-name { font-weight: 600; margin-bottom: 6px; color: var(--line-text); }
-.uni-info { display: flex; gap: 8px; font-size: 0.8rem; color: var(--line-text-secondary); margin-bottom: 8px; }
-.uni-type { padding: 2px 6px; background: var(--line-bg-soft); border-radius: 4px; font-weight: 500; }
-.uni-depts { font-size: 0.8rem; color: var(--line-text-secondary); }
+.uni-name {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--line-text);
+}
+.uni-info {
+  display: flex;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--line-text-secondary);
+  margin-bottom: 8px;
+}
+.uni-type {
+  padding: 2px 6px;
+  background: var(--line-bg-soft);
+  border-radius: 4px;
+  font-weight: 500;
+}
+.uni-depts {
+  font-size: 0.8rem;
+  color: var(--line-text-secondary);
+}
 
 /* Picker Config */
 .config-summary {
@@ -900,11 +1187,31 @@ function copyInviteCode(code: string) {
   margin-bottom: 24px;
 }
 
-.summary-item { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.summary-item .label { font-size: 0.8rem; color: var(--line-text-secondary); margin-bottom: 4px; }
-.summary-item .val { font-size: 1.5rem; font-weight: 600; color: var(--line-primary); }
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.summary-item .label {
+  font-size: 0.8rem;
+  color: var(--line-text-secondary);
+  margin-bottom: 4px;
+}
+.summary-item .val {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--line-primary);
+}
 
-.department-list { display: flex; flex-direction: column; gap: 12px; max-height: 400px; overflow-y: auto; padding-right: 8px; }
+.department-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
 
 .department-item {
   border: 1px solid var(--line-border);
@@ -913,8 +1220,13 @@ function copyInviteCode(code: string) {
   transition: all 0.2s;
 }
 
-.department-item.selected { border-color: var(--line-primary); background: #f0f9ff; } /* Light blue tint for selected */
-:root[class~="dark"] .department-item.selected { background: rgba(14, 165, 233, 0.1); }
+.department-item.selected {
+  border-color: var(--line-primary);
+  background: #f0f9ff;
+} /* Light blue tint for selected */
+:root[class~='dark'] .department-item.selected {
+  background: rgba(14, 165, 233, 0.1);
+}
 
 .dept-header {
   padding: 12px 16px;
@@ -925,34 +1237,68 @@ function copyInviteCode(code: string) {
   user-select: none;
 }
 
-.checkbox-wrapper { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; }
+.checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
 .line-checkbox {
-  width: 18px; height: 18px;
+  width: 18px;
+  height: 18px;
   border: 2px solid var(--line-border);
   border-radius: 4px;
   transition: all 0.2s;
-  display: flex; align-items: center; justify-content: center;
-  color: white; font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
 }
-.department-item.selected .line-checkbox { background: var(--line-primary); border-color: var(--line-primary); }
+.department-item.selected .line-checkbox {
+  background: var(--line-primary);
+  border-color: var(--line-primary);
+}
 
-.dept-name { flex: 1; font-weight: 500; font-size: 0.95rem; }
-.dept-count { font-size: 0.8rem; color: var(--line-text-secondary); }
+.dept-name {
+  flex: 1;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+.dept-count {
+  font-size: 0.8rem;
+  color: var(--line-text-secondary);
+}
 
 .class-list {
   padding: 16px;
-  background: rgba(255,255,255,0.5);
+  background: rgba(255, 255, 255, 0.5);
   border-top: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.class-item { display: flex; align-items: center; gap: 8px; }
-.sm { width: 28px; height: 28px; }
+.class-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sm {
+  width: 28px;
+  height: 28px;
+}
 
-.sm-btn { padding: 6px 12px; font-size: 0.8rem; }
-.full-width { width: 100%; margin-top: 8px; border-style: dashed; }
+.sm-btn {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+.full-width {
+  width: 100%;
+  margin-top: 8px;
+  border-style: dashed;
+}
 
 /* Modal Styles */
 .modal-backdrop {
@@ -1074,4 +1420,3 @@ select.line-select:focus {
   box-shadow: 0 0 0 2px var(--line-primary-10) !important;
 }
 </style>
-

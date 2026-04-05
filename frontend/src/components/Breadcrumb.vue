@@ -9,50 +9,50 @@ const router = useRouter()
 const breadcrumbConfig: Record<string, { label: string; parent?: string }> = {
   // 首页
   '/': { label: '首页' },
-  
+
   // 题库管理
   '/questions': { label: '题目列表', parent: '/' },
   '/questions/add': { label: '添加题目', parent: '/questions' },
-  '/import': { label: '批量导入', parent: '/questions' },
+  '/import': { label: '导入题目', parent: '/questions' },
   '/questions/review': { label: '题目审核', parent: '/questions' },
   '/knowledge-point-manage': { label: '知识点管理', parent: '/questions' },
   '/knowledge-points': { label: '知识点', parent: '/' },
-  
+
   // 试卷管理
   '/papers': { label: '试卷列表', parent: '/' },
   '/papers/manual': { label: '手动组卷', parent: '/papers' },
   '/paper-generation': { label: '智能组卷', parent: '/papers' },
-  
+
   // 考试相关
   '/exams/manage': { label: '考试管理', parent: '/' },
   '/exams/list': { label: '我的考试', parent: '/' },
   '/exam': { label: '考试中', parent: '/exams/list' },
   '/my-scores': { label: '我的成绩', parent: '/' },
-  
+
   // 阅卷
   '/grading': { label: '阅卷列表', parent: '/' },
-  
+
   // 练习模式
   '/practice': { label: '练习模式', parent: '/' },
-  
+
   // 排行榜
   '/leaderboard': { label: '排行榜', parent: '/' },
   '/messages': { label: '消息中心', parent: '/' },
-  
+
   // 班级/组织
   '/my-organizations': { label: '我的班级', parent: '/' },
   '/admin/organizations': { label: '组织架构', parent: '/' },
-  
+
   // 个人中心
   '/profile': { label: '个人设置', parent: '/' },
-  
+
   // 管理员功能
   '/admin/users': { label: '用户管理', parent: '/' },
   '/admin/system': { label: '系统设置', parent: '/' },
   '/admin/logs': { label: '操作日志', parent: '/' },
   '/admin/statistics': { label: '数据统计', parent: '/' },
   '/admin/monitor': { label: '系统监控', parent: '/' },
-  '/admin/announcements': { label: '公告管理', parent: '/' },
+  '/admin/announcements': { label: '公告管理', parent: '/' }
 }
 
 // 动态路由的配置（带参数的路由）
@@ -96,20 +96,20 @@ interface BreadcrumbItem {
 
 const breadcrumbs = computed<BreadcrumbItem[]>(() => {
   const path = route.path
-  
+
   // 首页不显示面包屑
   if (path === '/') {
     return []
   }
-  
+
   // 登录、注册、忘记密码页面不显示面包屑
   if (['/login', '/register', '/forgot-password'].includes(path)) {
     return []
   }
-  
+
   const items: BreadcrumbItem[] = []
   let currentPath = path
-  
+
   // 构建面包屑链
   while (currentPath) {
     const config = breadcrumbConfig[currentPath] || getDynamicConfig(currentPath)
@@ -125,7 +125,7 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => {
       break
     }
   }
-  
+
   return items
 })
 
@@ -202,7 +202,7 @@ defineExpose({ navigateTo })
   .breadcrumb-nav {
     padding: 10px 16px;
   }
-  
+
   .breadcrumb-container {
     font-size: 13px;
     gap: 6px;

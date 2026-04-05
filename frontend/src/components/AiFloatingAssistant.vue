@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bot, Clock3, Send, Trash2 } from 'lucide-vue-next'
+import { ArrowUp, X } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
@@ -32,7 +32,7 @@ const dragging = ref(false)
 const moved = ref(false)
 const showHistoryMenu = ref(false)
 const renamingTitle = ref(false)
-const editingTitle = ref('')
+// const editingTitle = ref('')
 const panelDragging = ref(false)
 const panelDragOffsetX = ref(0)
 const panelDragOffsetY = ref(0)
@@ -48,6 +48,7 @@ const expireNotice = ref('')
 
 const MESSAGE_TTL_MS = 3 * 24 * 60 * 60 * 1000
 const FLOAT_ICON_SIZE = 64
+const assistantMountainIcon = '/favicon.png'
 
 const iconX = ref(window.innerWidth - 104)
 const iconY = ref(window.innerHeight - 138)
@@ -56,15 +57,29 @@ const panelY = ref(0)
 const dragOffsetX = ref(0)
 const dragOffsetY = ref(0)
 
-const endpoint = computed(() => (props.mode === 'teacher' ? '/api/ai/teacher/ask' : '/api/ai/student/ask'))
+const endpoint = computed(() =>
+  props.mode === 'teacher' ? '/api/ai/teacher/ask' : '/api/ai/student/ask'
+)
 const title = computed(() => (props.mode === 'teacher' ? 'AI 教师助手' : 'AI 学习助手'))
-const placeholder = computed(() => (props.mode === 'teacher' ? '例如：给出这次考试讲评提纲' : '例如：解释一下最小生成树'))
+// const placeholder = computed(() => (props.mode === 'teacher' ? '例如：给出这次考试讲评提纲' : '例如：解释一下最小生成树'))
 const nowTime = () => new Date().toISOString()
-const sessionStorageKey = computed(() => (props.mode === 'teacher' ? 'ai.float.teacher.sessions' : 'ai.float.student.sessions'))
-const panelStorageKey = computed(() => (props.mode === 'teacher' ? 'ai.float.teacher.panel.position' : 'ai.float.student.panel.position'))
+const getStorageUserId = () => {
+  const token = localStorage.getItem('token') || ''
+  const prefix = 'dummy-jwt-token-'
+  if (token.startsWith(prefix)) {
+    return token.slice(prefix.length)
+  }
+  return 'anonymous'
+}
+const sessionStorageKey = computed(() => `ai.float.${getStorageUserId()}.${props.mode}.sessions`)
+const panelStorageKey = computed(
+  () => `ai.float.${getStorageUserId()}.${props.mode}.panel.position`
+)
 
-const currentSession = computed(() => sessions.value.find(item => item.id === currentSessionId.value) || null)
-const displayTitle = computed(() => currentSession.value?.title || title.value)
+const currentSession = computed(
+  () => sessions.value.find((item) => item.id === currentSessionId.value) || null
+)
+// const displayTitle = computed(() => currentSession.value?.title || title.value)
 
 const panelWidth = 390
 const panelHeight = 620
@@ -146,8 +161,8 @@ const loadHistory = () => {
     const now = Date.now()
 
     const validSessions = parsed
-      .map(item => {
-        const validMessages = (item.messages || []).filter(msg => {
+      .map((item) => {
+        const validMessages = (item.messages || []).filter((msg) => {
           const t = new Date(msg.timestamp || 0).getTime()
           return t > 0 && now - t <= MESSAGE_TTL_MS
         })
@@ -160,7 +175,7 @@ const loadHistory = () => {
           hasExpired
         }
       })
-      .filter(item => item.messages.length > 0 || (item.contextText && item.contextText.trim()))
+      .filter((item) => item.messages.length > 0 || (item.contextText && item.contextText.trim()))
 
     sessions.value = validSessions
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
@@ -205,7 +220,7 @@ const createSession = () => {
 }
 
 const switchSession = (id: string) => {
-  const found = sessions.value.find(item => item.id === id)
+  const found = sessions.value.find((item) => item.id === id)
   if (!found) return
   currentSessionId.value = id
   showHistoryMenu.value = false
@@ -326,8 +341,11 @@ const onPanelPointerUp = () => {
 
 const applyDroppedQuestion = (dataText: string) => {
   if (!dataText.trim()) return
-  const prefix = '\n\n[已关联拖拽题目]\n'
-  contextText.value = (contextText.value + prefix + dataText.trim()).trim()
+  const cleanText = dataText
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .trim()
+  contextText.value = (contextText.value + '\n\n' + cleanText).trim()
   if (!expanded.value) {
     expanded.value = true
   }
@@ -347,14 +365,7 @@ const handleDropPayload = (event: DragEvent) => {
   if (custom) {
     try {
       const obj = JSON.parse(custom)
-      const plain = [
-        `题目ID: ${obj.questionId || '-'}`,
-        `题型: ${obj.type || '-'}`,
-        `题干: ${obj.stem || ''}`,
-        `学生答案: ${obj.userAnswer || '(未作答)'}`,
-        `参考答案: ${obj.reference || '(无)'}`
-      ].join('\n')
-      applyDroppedQuestion(plain)
+      applyDroppedQuestion(obj.stem || '')
       return
     } catch {
       // fallback to plain text
@@ -384,25 +395,25 @@ const toggleHistoryMenu = () => {
   showHistoryMenu.value = !showHistoryMenu.value
 }
 
-const startRenameTitle = () => {
-  if (!currentSession.value) return
-  editingTitle.value = currentSession.value.title
-  renamingTitle.value = true
-  showHistoryMenu.value = false
-}
+// const startRenameTitle = () => {
+//   if (!currentSession.value) return
+//   editingTitle.value = currentSession.value.title
+//   renamingTitle.value = true
+//   showHistoryMenu.value = false
+// }
 
-const saveCustomTitle = () => {
-  const selected = currentSession.value
-  const custom = editingTitle.value.trim()
-  if (!selected) return
-  if (!custom) {
-    showToast({ message: '对话名称不能为空', type: 'warning' })
-    return
-  }
-  selected.title = custom
-  renamingTitle.value = false
-  saveHistory()
-}
+// const saveCustomTitle = () => {
+//   const selected = currentSession.value
+//   const custom = editingTitle.value.trim()
+//   if (!selected) return
+//   if (!custom) {
+//     showToast({ message: '对话名称不能为空', type: 'warning' })
+//     return
+//   }
+//   selected.title = custom
+//   renamingTitle.value = false
+//   saveHistory()
+// }
 
 const onAskInputKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Enter' && !event.shiftKey) {
@@ -415,28 +426,38 @@ const onAskInputKeydown = (event: KeyboardEvent) => {
 
 const sendQuestion = async () => {
   const q = question.value.trim()
-  if (!q) {
+  if (!q && !contextText.value.trim()) {
     showToast({ message: '请输入问题', type: 'warning' })
     return
   }
 
-  messages.value.push({ role: 'user', content: q, timestamp: nowTime() })
-  renameCurrentSessionIfNeeded(q)
+  const actQ = q || '请解答引用题目'
+  const currentContext = contextText.value
+  const displayQ = currentContext ? `[关联题目]\n${currentContext}\n\n${actQ}` : actQ
+
+  messages.value.push({ role: 'user', content: displayQ, timestamp: nowTime() })
+  renameCurrentSessionIfNeeded(actQ)
   question.value = ''
+  contextText.value = ''
   saveHistory()
   await scrollBottom()
 
   sending.value = true
   try {
+    const actQForApi = actQ + '\n\n【系统提示：请用中文，尽量简短地回复】'
     const resp = await axios.post(
       endpoint.value,
       {
-        question: q,
-        context: contextText.value
+        question: actQForApi,
+        context: currentContext
       },
       { headers: getHeaders() }
     )
-    messages.value.push({ role: 'assistant', content: resp.data?.answer || 'AI 未返回有效内容', timestamp: nowTime() })
+    messages.value.push({
+      role: 'assistant',
+      content: resp.data?.answer || 'AI 未返回有效内容',
+      timestamp: nowTime()
+    })
   } catch (error: any) {
     const msg = error?.response?.data?.error || 'AI 请求失败'
     messages.value.push({ role: 'assistant', content: `请求失败：${msg}`, timestamp: nowTime() })
@@ -474,102 +495,132 @@ onMounted(() => {
       :aria-label="title"
       title="AI 助手"
     >
-      <Bot :size="45" />
+      <img :src="assistantMountainIcon" alt="AI 助手图标" class="floating-icon-image" />
     </button>
 
     <div
       v-if="expanded"
-      class="chat-panel"
+      class="chat-panel ds-panel"
       :style="panelStyle"
       @dragover="handleDragOver"
       @drop="handleDropPayload"
     >
-      <div class="panel-header" @pointerdown="startPanelDrag">
-        <div class="title-group">
-          <Bot :size="16" />
-          <h3
-            v-if="!renamingTitle"
-            class="title-text"
-            @pointerdown.stop
-            @dblclick.stop="startRenameTitle"
-            title="双击可重命名"
-          >
-            {{ displayTitle }}
-          </h3>
-          <input
-            v-else
-            v-model="editingTitle"
-            class="title-input"
-            maxlength="30"
-            @pointerdown.stop
-            @keydown.enter.prevent="saveCustomTitle"
-            @keydown.esc.prevent="renamingTitle = false"
-            @blur="saveCustomTitle"
-          />
-        </div>
-        <div class="actions-group">
-          <div class="history-entry">
-            <button class="ghost-btn icon-btn" @pointerdown.stop @click="toggleHistoryMenu" title="对话历史">
-              <Clock3 :size="14" />
-            </button>
-            <div v-if="showHistoryMenu" class="history-menu" @pointerdown.stop>
-              <button
-                v-for="item in sessions"
-                :key="item.id"
-                class="history-item"
-                :class="{ active: item.id === currentSessionId }"
-                @click="switchSession(item.id)"
-              >
-                <span class="history-title">{{ item.title }}</span>
-                <span class="history-time">{{ new Date(item.updatedAt).toLocaleDateString() }}</span>
-              </button>
-            </div>
-          </div>
-          <button class="ghost-btn" @pointerdown.stop @click="createSession">新建</button>
-          <button class="ghost-btn" @pointerdown.stop @click="clearMessages">
-            <Trash2 :size="14" />
-            清空
+      <div class="ds-header" @pointerdown="startPanelDrag">
+        <div class="history-entry">
+          <button class="ds-icon-btn" @pointerdown.stop @click="toggleHistoryMenu" title="对话历史">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="4" x2="20" y1="12" y2="12" />
+              <line x1="4" x2="20" y1="6" y2="6" />
+              <line x1="4" x2="20" y1="18" y2="18" />
+            </svg>
           </button>
+          <div v-if="showHistoryMenu" class="history-menu" @pointerdown.stop>
+            <button
+              v-for="item in sessions"
+              :key="item.id"
+              class="history-item"
+              :class="{ active: item.id === currentSessionId }"
+              @click="switchSession(item.id)"
+            >
+              <span class="history-title">{{ item.title }}</span>
+              <span class="history-time">{{ new Date(item.updatedAt).toLocaleDateString() }}</span>
+            </button>
+            <button class="history-item clear-all" @click="clearMessages">清空当前对话</button>
+          </div>
         </div>
+        <button class="ds-icon-btn" @pointerdown.stop @click="createSession" title="新建对话">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M5 12h14" />
+            <path d="M12 5v14" />
+          </svg>
+        </button>
       </div>
 
-      <div class="limit-tip">对话仅保留3天，超过会提示消息过期。</div>
       <div v-if="expireNotice" class="expire-tip">{{ expireNotice }}</div>
 
-      <div class="context-box">
-        <textarea
-          v-model="contextText"
-          rows="2"
-          class="context-input"
-          placeholder="可选：输入课程背景、要求或评分关注点"
-        ></textarea>
-      </div>
-
-      <div ref="streamRef" class="stream">
-        <div v-if="messages.length === 0" class="empty">在这里提问，助手会在附近弹窗回复。</div>
+      <div ref="streamRef" class="ds-stream">
+        <div v-if="messages.length === 0" class="ds-empty-state">
+          <h2 class="ds-empty-title">今天有什么可以帮到你？</h2>
+        </div>
         <div v-for="(msg, idx) in messages" :key="idx" class="msg-row" :class="msg.role">
-          <div class="avatar-dot">{{ msg.role === 'user' ? '你' : (msg.role === 'assistant' ? 'AI' : '!') }}</div>
+          <img
+            class="avatar-dot"
+            :src="assistantMountainIcon"
+            v-if="msg.role !== 'user'"
+            alt="AI"
+          />
           <div class="msg" :class="msg.role">
             {{ msg.content }}
           </div>
         </div>
-      </div>
-
-      <div class="composer">
-        <div class="ask-wrap">
-          <textarea
-            v-model="question"
-            rows="3"
-            class="ask-input"
-            :placeholder="placeholder"
-            :disabled="sending"
-            @keydown="onAskInputKeydown"
-          ></textarea>
-          <button class="send-btn" :disabled="sending" @click="sendQuestion" :title="sending ? '发送中' : '发送'">
-            <Send :size="16" />
-          </button>
+        <div v-if="sending" class="msg-row assistant">
+          <img class="avatar-dot" :src="assistantMountainIcon" alt="AI" />
+          <div class="msg assistant typing-indicator">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
         </div>
       </div>
+
+      <div class="ds-composer-wrapper">
+        <div class="ds-composer">
+          <div class="ds-context-box" v-if="contextText || dragging">
+            <textarea
+              v-model="contextText"
+              rows="1"
+              class="ds-context-input"
+              placeholder="拖动题目到此处作为关联背景"
+            ></textarea>
+            <button class="ds-clear-context" @click="contextText = ''" title="清除关联题目">
+              <X :size="14" />
+            </button>
+          </div>
+          <textarea
+            v-model="question"
+            rows="1"
+            class="ds-ask-input"
+            placeholder="拖拽题目添加对话背景"
+            :disabled="sending"
+            @keydown="onAskInputKeydown"
+            style="color: #333"
+          ></textarea>
+
+          <div class="ds-composer-tools">
+            <button
+              class="ds-send-btn"
+              :class="{ active: question.trim() || contextText.trim() }"
+              :disabled="sending"
+              @click="sendQuestion"
+              :title="sending ? '发送中' : '发送'"
+            >
+              <ArrowUp :size="18" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="resize-handle"></div>
     </div>
   </div>
 </template>
@@ -580,300 +631,382 @@ onMounted(() => {
   width: 64px;
   height: 64px;
   border-radius: 999px;
-  border: 1px solid #10a37f;
-  background: linear-gradient(155deg, #10a37f, #0e8f70);
-  color: #ffffff;
+  border: none;
+  background: transparent;
+  color: #fff;
   cursor: grab;
   z-index: 3000;
+  padding: 0;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 22px rgba(16, 163, 127, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
-
-.floating-icon:active {
-  cursor: grabbing;
+.floating-icon-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+  pointer-events: none;
 }
-
-.chat-panel {
+.chat-panel.ds-panel {
   position: fixed;
-  width: min(390px, calc(100vw - 26px));
-  height: min(620px, calc(100vh - 32px));
-  border-radius: 18px;
-  border: 1px solid #d9d9e3;
-  background: #ffffff;
+  width: 380px;
+  height: 660px;
+  background: #fdfdfd;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
   z-index: 3001;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 24px 48px rgba(30, 41, 59, 0.2);
 }
-
-.panel-header {
+.ds-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-bottom: 1px solid #ececf1;
-  background: #f7f7f8;
-  cursor: move;
+  padding: 14px 16px;
+  background: transparent;
+  cursor: default;
 }
-
-.title-group {
+.ds-icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #111;
+  padding: 4px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
-  color: #202123;
-}
-
-.panel-header h3 {
-  margin: 0;
-  font-size: 14px;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: #202123;
-}
-
-.title-text {
-  cursor: text;
-}
-
-.title-input {
-  width: 100%;
-  max-width: 220px;
-  min-width: 0;
-  border: 1px solid #d9d9e3;
-  border-radius: 8px;
-  padding: 4px 8px;
-  font-size: 13px;
-  color: #202123;
-  outline: none;
-}
-
-.ghost-btn {
-  border: 1px solid #d9d9e3;
-  background: #ffffff;
-  border-radius: 999px;
-  padding: 6px 10px;
-  min-height: 34px;
-  font-size: 12px;
-  color: #4b5563;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
   justify-content: center;
-  white-space: nowrap;
-  gap: 6px;
 }
-
-.actions-group {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  flex-shrink: 0;
-  gap: 8px;
+.ds-icon-btn:hover {
+  background: #f3f4f6;
 }
-
-.icon-btn {
-  padding: 6px 8px;
-}
-
-.limit-tip {
-  font-size: 12px;
-  color: #6b7280;
-  padding: 8px 12px 0;
-}
-
-.expire-tip {
-  margin: 8px 12px 0;
-  font-size: 12px;
-  color: #92400e;
-  background: #fef3c7;
-  border: 1px solid #fcd34d;
-  border-radius: 10px;
-  padding: 6px 10px;
-}
-
 .history-entry {
   position: relative;
 }
-
 .history-menu {
   position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  width: 220px;
+  left: 0;
+  top: calc(100% + 4px);
+  width: 200px;
   max-height: 240px;
   overflow: auto;
-  border: 1px solid #d9d9e3;
+  border: 1px solid #e5e7eb;
   border-radius: 10px;
-  background: #ffffff;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
-  z-index: 5;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  z-index: 10;
 }
-
 .history-item {
   width: 100%;
   border: none;
-  background: transparent;
+  background: none;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  text-align: left;
-  padding: 9px 10px;
+  padding: 10px 12px;
   cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  color: #374151;
 }
-
-.history-item:hover {
+.history-item:hover,
+.history-item.active {
   background: #f3f4f6;
 }
-
-.history-item.active {
-  background: #e8f0fe;
+.history-item.clear-all {
+  color: #dc2626;
+  border-top: 1px solid #e5e7eb;
+  justify-content: center;
+  font-weight: 500;
 }
-
-.history-title {
-  font-size: 12px;
-  color: #1f2937;
-  max-width: 132px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .history-time {
   font-size: 11px;
-  color: #6b7280;
+  color: #9ca3af;
+}
+.expire-tip {
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #b45309;
+  background: #fef3c7;
+  text-align: center;
 }
 
-.context-box {
-  padding: 10px 12px;
-  border-bottom: 1px solid #ececf1;
-}
-
-.context-input,
-.ask-input {
-  width: 100%;
-  box-sizing: border-box;
-  border-radius: 10px;
-  border: 1px solid #d9d9e3;
-  background: #ffffff;
-  padding: 10px;
-  font-size: 13px;
-  resize: none;
-}
-
-.ask-input {
-  padding-right: 52px;
-  padding-bottom: 40px;
-}
-
-.stream {
+.ds-stream {
   flex: 1;
-  overflow: auto;
-  padding: 12px;
-  background: #ffffff;
+  overflow-y: auto;
+  padding: 0 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 20px;
 }
-
-.empty {
-  color: #6b7280;
-  font-size: 13px;
+.ds-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding-bottom: 2rem;
+  user-select: none;
+}
+.ds-empty-logo {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 12px;
+  object-fit: cover;
+  background: transparent;
+  border-radius: 50%;
+  padding: 0;
+}
+.ds-empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111;
+  margin: 0;
+  letter-spacing: 0.5px;
 }
 
 .msg-row {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   align-items: flex-start;
 }
-
 .msg-row.user {
   justify-content: flex-end;
 }
-
 .avatar-dot {
-  min-width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  font-size: 11px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffffff;
-  background: #10a37f;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: transparent;
+  padding: 0;
+  display: block;
+  flex-shrink: 0;
 }
-
-.msg-row.user .avatar-dot {
-  order: 2;
-  background: #64748b;
-}
-
 .msg-row.system .avatar-dot {
   background: #f59e0b;
 }
-
 .msg {
-  max-width: 84%;
-  padding: 10px 12px;
+  max-width: 85%;
+  padding: 10px 14px;
   border-radius: 12px;
-  font-size: 13px;
-  line-height: 1.5;
-  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: break-word;
 }
-
 .msg.user {
-  background: #f7f7f8;
-  color: #111827;
-  border: 1px solid #ececf1;
+  background: #f3f4f6;
+  color: #111;
+  border-radius: 16px;
+  border-bottom-right-radius: 4px;
+  padding: 8px 16px;
 }
-
 .msg.assistant {
-  background: #10a37f;
-  color: #ffffff;
+  background: transparent;
+  color: #111;
+  padding: 0;
 }
-
 .msg.system {
   background: #fffbeb;
-  border: 1px solid #fcd34d;
-  color: #92400e;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 11px 0;
+  background: transparent;
+}
+.typing-indicator .dot {
+  width: 6px;
+  height: 6px;
+  background-color: #3b82f6;
+  border-radius: 50%;
+  opacity: 0.6;
+  animation: typing-bounce 1.4s infinite ease-in-out both;
+}
+.typing-indicator .dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+.typing-indicator .dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+@keyframes typing-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
-.composer {
-  padding: 12px;
-  border-top: 1px solid #ececf1;
-  background: #f7f7f8;
+.ds-composer-wrapper {
+  padding: 0 16px 20px;
+  background: transparent;
 }
-
-.ask-wrap {
-  position: relative;
+.ds-composer {
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.2s;
 }
-
-.send-btn {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  width: 34px;
-  height: 34px;
+.ds-composer:focus-within {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+.ds-context-input,
+.ds-ask-input {
+  width: 100%;
   border: none;
-  border-radius: 999px;
-  background: #10a37f;
-  color: #ffffff;
+  background: transparent;
+  outline: none;
+  resize: none;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: #111;
+  font-family: inherit;
+}
+.ds-context-box {
+  position: relative;
+  margin-bottom: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed #e5e7eb;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.ds-context-input {
+  font-size: 13px;
+  color: #6b7280;
+  flex: 1;
   padding: 0;
+  margin: 0;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font-family: inherit;
+  line-height: 1.5;
+}
+.ds-clear-context {
+  background: #f3f4f6;
+  color: #9ca3af;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.ds-clear-context:hover {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+.ds-ask-input::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.ds-composer-tools {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 4px;
+}
+.ds-tools-left,
+.ds-tools-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ds-tool-btn {
+  border: none;
+  background: transparent;
+  color: #4b5563;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
-
-.send-btn:disabled {
-  opacity: 0.65;
+.ds-tool-btn:hover {
+  color: #111;
+}
+.ds-tool-btn.circular {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  padding: 0;
+}
+.ds-tool-btn.circular.has-bg {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #dbeafe;
+}
+.ds-tool-btn.circular.has-bg:hover {
+  background: #dbeafe;
+}
+.ds-send-btn {
+  border: none;
+  background: #e5e7eb;
+  color: #fff;
   cursor: not-allowed;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  padding: 0;
+  flex-shrink: 0;
+}
+.ds-send-btn.active {
+  background: #2563eb;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  transform: translateY(-1px);
+}
+.ds-send-btn.active:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+}
+.ds-send-btn.active:hover {
+  background: #1d4ed8;
+}
+.resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(135deg, transparent 50%, #d1d5db 50%);
+  cursor: se-resize;
+  opacity: 0.5;
 }
 </style>

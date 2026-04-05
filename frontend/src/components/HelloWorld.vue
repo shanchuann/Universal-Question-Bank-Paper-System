@@ -3,9 +3,22 @@ import { computed, ref, onMounted, watch } from 'vue'
 import { authState } from '@/states/authState'
 import axios from 'axios'
 import {
-  LogIn, UserPlus, Book, Plus, FileText, CheckCircle,
-  FileClock, Users, Home, Network, ClipboardList,
-  ArrowRight, ScrollText, BarChart3, Activity, Megaphone
+  LogIn,
+  UserPlus,
+  Book,
+  Plus,
+  FileText,
+  CheckCircle,
+  FileClock,
+  Users,
+  Home,
+  Network,
+  ClipboardList,
+  ArrowRight,
+  ScrollText,
+  BarChart3,
+  Activity,
+  Megaphone
 } from 'lucide-vue-next'
 
 defineProps<{ msg: string }>()
@@ -63,7 +76,7 @@ const fetchLeaderboard = async () => {
       if (!myOrgId.value) {
         await fetchMyOrganization()
       }
-      
+
       const token = localStorage.getItem('token')
       let url = '/api/stats/leaderboard?limit=5'
       if (myOrgId.value) {
@@ -346,8 +359,14 @@ watch(
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .hero-section {
@@ -505,9 +524,18 @@ watch(
   margin-right: 12px;
 }
 
-.rank-1 { background: #FCD34D; color: #92400E; } /* Amber 300 */
-.rank-2 { background: #E5E7EB; color: #374151; } /* Gray 200 */
-.rank-3 { background: #FDBA74; color: #9A3412; } /* Orange 300 */
+.rank-1 {
+  background: #fcd34d;
+  color: #92400e;
+} /* Amber 300 */
+.rank-2 {
+  background: #e5e7eb;
+  color: #374151;
+} /* Gray 200 */
+.rank-3 {
+  background: #fdba74;
+  color: #9a3412;
+} /* Orange 300 */
 
 .name {
   flex: 1;
@@ -628,8 +656,14 @@ watch(
 }
 
 @media (max-width: 640px) {
-  .brand-text { font-size: 2rem; }
-  .nav-grid { grid-template-columns: 1fr; }
-  .dashboard-grid { grid-template-columns: 1fr; }
+  .brand-text {
+    font-size: 2rem;
+  }
+  .nav-grid {
+    grid-template-columns: 1fr;
+  }
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -33,9 +33,7 @@ const recentWrongQuestions = ref<string[]>([])
 const autoContext = ref('')
 const auditSummary = ref<Record<string, any> | null>(null)
 
-const pageTitle = computed(() =>
-  props.mode === 'teacher' ? 'AI教师助手' : 'AI学习助手'
-)
+const pageTitle = computed(() => (props.mode === 'teacher' ? 'AI教师助手' : 'AI学习助手'))
 
 const placeholder = computed(() =>
   props.mode === 'teacher'
@@ -212,7 +210,8 @@ onMounted(async () => {
           <span class="label">评分建议采纳率</span>
           <span class="value">
             {{
-              Number(auditSummary.subjectiveSingle?.acceptRate || 0) > Number(auditSummary.subjectiveBatch?.acceptRate || 0)
+              Number(auditSummary.subjectiveSingle?.acceptRate || 0) >
+              Number(auditSummary.subjectiveBatch?.acceptRate || 0)
                 ? auditSummary.subjectiveSingle?.acceptRate
                 : auditSummary.subjectiveBatch?.acceptRate
             }}%
@@ -221,14 +220,19 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section v-if="props.mode === 'student' && (weakPoints.length > 0 || recentWrongQuestions.length > 0)" class="line-card weak-card">
+    <section
+      v-if="props.mode === 'student' && (weakPoints.length > 0 || recentWrongQuestions.length > 0)"
+      class="line-card weak-card"
+    >
       <h3>自动注入的学习弱点上下文</h3>
       <p class="muted">提问时系统会自动拼接以下薄弱点信息，回答会更贴近你的问题。</p>
 
       <div v-if="weakPoints.length > 0" class="weak-point-list">
         <div v-for="item in weakPoints" :key="item.knowledgePointId" class="weak-item">
           <span class="name">{{ item.knowledgePointName }}</span>
-          <span class="meta">错误 {{ item.wrongCount }}/{{ item.attemptCount }}（{{ item.wrongRate }}%）</span>
+          <span class="meta"
+            >错误 {{ item.wrongCount }}/{{ item.attemptCount }}（{{ item.wrongRate }}%）</span
+          >
         </div>
       </div>
 
@@ -255,7 +259,9 @@ onMounted(async () => {
       </div>
 
       <div ref="streamRef" class="chat-stream">
-        <div v-if="messages.length === 0" class="empty">开始提问吧，AI 会根据你的上下文给出建议。</div>
+        <div v-if="messages.length === 0" class="empty">
+          开始提问吧，AI 会根据你的上下文给出建议。
+        </div>
         <div
           v-for="(item, index) in messages"
           :key="`${item.timestamp}-${index}`"
@@ -276,7 +282,11 @@ onMounted(async () => {
           :placeholder="placeholder"
           :disabled="loading"
         ></textarea>
-        <button class="line-btn primary-btn send-btn" :disabled="loading || !aiEnabled" @click="sendQuestion">
+        <button
+          class="line-btn primary-btn send-btn"
+          :disabled="loading || !aiEnabled"
+          @click="sendQuestion"
+        >
           {{ loading ? 'AI 思考中...' : '发送问题' }}
         </button>
       </div>

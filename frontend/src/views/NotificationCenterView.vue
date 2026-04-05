@@ -104,12 +104,12 @@ const sidebarItems = computed<SidebarItem[]>(() => {
 })
 
 const activeConversation = computed(() => {
-  return sidebarItems.value.find(item => item.peerId === activePeerId.value)
+  return sidebarItems.value.find((item) => item.peerId === activePeerId.value)
 })
 
 const visibleMessages = computed(() => {
   const now = Date.now()
-  return messages.value.map(item => {
+  return messages.value.map((item) => {
     const ts = new Date(item.createdAt || 0).getTime()
     if (ts > 0 && now - ts > MESSAGE_TTL_MS) {
       return {
@@ -138,7 +138,7 @@ const isMyMessage = (item: ChatMessage) => {
 }
 
 const ensureActivePeer = () => {
-  if (activePeerId.value && sidebarItems.value.some(item => item.peerId === activePeerId.value)) {
+  if (activePeerId.value && sidebarItems.value.some((item) => item.peerId === activePeerId.value)) {
     return
   }
   activePeerId.value = sidebarItems.value[0]?.peerId || ''
@@ -190,7 +190,7 @@ const fetchMessages = async (peerId: string) => {
       headers: getAuthHeaders()
     })
     messages.value = response.data || []
-    expireNotice.value = messages.value.some(item => {
+    expireNotice.value = messages.value.some((item) => {
       const ts = new Date(item.createdAt || 0).getTime()
       return ts > 0 && Date.now() - ts > MESSAGE_TTL_MS
     })
@@ -210,11 +210,15 @@ const fetchMessages = async (peerId: string) => {
 const markConversationRead = async (peerId: string) => {
   if (!peerId) return
   try {
-    await axios.post(`/api/notifications/conversation/${peerId}/read`, {}, {
-      headers: getAuthHeaders()
-    })
+    await axios.post(
+      `/api/notifications/conversation/${peerId}/read`,
+      {},
+      {
+        headers: getAuthHeaders()
+      }
+    )
 
-    const target = conversations.value.find(item => item.peerId === peerId)
+    const target = conversations.value.find((item) => item.peerId === peerId)
     if (target) {
       target.unreadCount = 0
     }
@@ -244,14 +248,18 @@ const sendMessage = async () => {
 
   sending.value = true
   try {
-    await axios.post('/api/notifications/private', {
-      receiverId: peerId,
-      title: '普通消息',
-      content: messageContent.value,
-      type: 'MESSAGE'
-    }, {
-      headers: getAuthHeaders()
-    })
+    await axios.post(
+      '/api/notifications/private',
+      {
+        receiverId: peerId,
+        title: '普通消息',
+        content: messageContent.value,
+        type: 'MESSAGE'
+      },
+      {
+        headers: getAuthHeaders()
+      }
+    )
 
     messageContent.value = ''
     await fetchConversations()
@@ -294,7 +302,9 @@ onMounted(async () => {
         <div class="sidebar-title">
           <span>会话与联系人</span>
         </div>
-        <div v-if="loadingConversations && sidebarItems.length === 0" class="loading">加载中...</div>
+        <div v-if="loadingConversations && sidebarItems.length === 0" class="loading">
+          加载中...
+        </div>
         <div v-else-if="sidebarItems.length === 0" class="empty">暂无可聊天用户</div>
         <div v-else class="conversation-list">
           <button
@@ -314,8 +324,12 @@ onMounted(async () => {
                 <span class="time">{{ formatTime(item.lastTime) }}</span>
               </div>
               <div class="bottom-row">
-                <span class="last">{{ item.lastMessage || (item.hasHistory ? '开始聊天吧' : '可直接发起聊天') }}</span>
-                <span v-if="item.unreadCount > 0" class="badge">{{ item.unreadCount > 99 ? '99+' : item.unreadCount }}</span>
+                <span class="last">{{
+                  item.lastMessage || (item.hasHistory ? '开始聊天吧' : '可直接发起聊天')
+                }}</span>
+                <span v-if="item.unreadCount > 0" class="badge">{{
+                  item.unreadCount > 99 ? '99+' : item.unreadCount
+                }}</span>
               </div>
             </div>
           </button>
@@ -669,4 +683,3 @@ onMounted(async () => {
   }
 }
 </style>
-

@@ -54,10 +54,10 @@ const handleSubmit = async () => {
   message.value = ''
   error.value = ''
   generatedPaper.value = null
-  
+
   try {
     const token = localStorage.getItem('token')
-    
+
     // Filter out zero counts
     const counts: Record<string, number> = {}
     let hasSpecificCounts = false
@@ -125,17 +125,30 @@ const editPaper = () => {
         <h1 class="page-title">智能组卷</h1>
         <p class="subtitle">快速生成自定义试卷</p>
       </div>
-      
+
       <form @submit.prevent="handleSubmit" class="generation-form">
         <div class="form-grid">
           <div class="form-group">
             <label class="field-label">试卷标题</label>
-            <input v-model="form.title" type="text" required placeholder="请输入试卷标题" class="google-input" />
+            <input
+              v-model="form.title"
+              type="text"
+              required
+              placeholder="请输入试卷标题"
+              class="google-input"
+            />
           </div>
-          
+
           <div class="form-group">
             <label class="field-label">题目总数</label>
-            <input v-model.number="form.total" type="number" min="1" max="50" required class="google-input" />
+            <input
+              v-model.number="form.total"
+              type="number"
+              min="1"
+              max="50"
+              required
+              class="google-input"
+            />
           </div>
 
           <div class="form-group">
@@ -154,23 +167,48 @@ const editPaper = () => {
           <div class="type-grid">
             <div class="form-group">
               <label class="field-label">单选题</label>
-              <input v-model.number="form.typeCounts.SINGLE_CHOICE" type="number" min="0" class="google-input" />
+              <input
+                v-model.number="form.typeCounts.SINGLE_CHOICE"
+                type="number"
+                min="0"
+                class="google-input"
+              />
             </div>
             <div class="form-group">
               <label class="field-label">多选题</label>
-              <input v-model.number="form.typeCounts.MULTI_CHOICE" type="number" min="0" class="google-input" />
+              <input
+                v-model.number="form.typeCounts.MULTI_CHOICE"
+                type="number"
+                min="0"
+                class="google-input"
+              />
             </div>
             <div class="form-group">
               <label class="field-label">判断题</label>
-              <input v-model.number="form.typeCounts.TRUE_FALSE" type="number" min="0" class="google-input" />
+              <input
+                v-model.number="form.typeCounts.TRUE_FALSE"
+                type="number"
+                min="0"
+                class="google-input"
+              />
             </div>
             <div class="form-group">
               <label class="field-label">填空题</label>
-              <input v-model.number="form.typeCounts.FILL_BLANK" type="number" min="0" class="google-input" />
+              <input
+                v-model.number="form.typeCounts.FILL_BLANK"
+                type="number"
+                min="0"
+                class="google-input"
+              />
             </div>
             <div class="form-group">
               <label class="field-label">简答题</label>
-              <input v-model.number="form.typeCounts.SHORT_ANSWER" type="number" min="0" class="google-input" />
+              <input
+                v-model.number="form.typeCounts.SHORT_ANSWER"
+                type="number"
+                min="0"
+                class="google-input"
+              />
             </div>
           </div>
         </div>
@@ -191,7 +229,18 @@ const editPaper = () => {
       </form>
 
       <div v-if="message" class="message success">
-        <svg class="status-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg
+          class="status-icon"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
           <path d="M20 6L9 17l-5-5"></path>
         </svg>
         {{ message }}
@@ -213,17 +262,19 @@ const editPaper = () => {
           <button @click="takeExam" class="google-btn primary-btn">开始答题</button>
         </div>
       </div>
-      
+
       <div class="questions-list">
         <div v-for="(q, index) in generatedPaper.questions" :key="q.id" class="question-item">
           <div class="q-index">{{ index + 1 }}</div>
           <div class="q-content">
             <div class="q-meta">
               <span class="chip type">{{ q.type }}</span>
-              <span class="chip difficulty" :class="q.difficulty.toLowerCase()">{{ q.difficulty }}</span>
+              <span class="chip difficulty" :class="q.difficulty.toLowerCase()">{{
+                q.difficulty
+              }}</span>
               <span class="subject">{{ q.subjectId }}</span>
             </div>
-            <p class="q-stem" v-if="q.stem">{{ q.stem }}</p> 
+            <p class="q-stem" v-if="q.stem">{{ q.stem }}</p>
             <p class="q-id">ID: {{ q.id }}</p>
           </div>
         </div>
@@ -251,7 +302,9 @@ const editPaper = () => {
   transition: all 0.2s;
 }
 
-.generation-card:hover { box-shadow: var(--line-shadow-md); }
+.generation-card:hover {
+  box-shadow: var(--line-shadow-md);
+}
 
 .card-header {
   text-align: center;
@@ -371,7 +424,10 @@ const editPaper = () => {
 }
 
 .result-header h2 {
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
   font-size: 20px;
   font-weight: 600;
   margin-bottom: 4px;
@@ -432,9 +488,21 @@ const editPaper = () => {
   border: 1px solid var(--line-border);
 }
 
-.chip.difficulty.easy { background-color: #ecfdf5; color: #059669; border-color: #d1fae5; }
-.chip.difficulty.medium { background-color: #fffbeb; color: #b45309; border-color: #fef3c7; }
-.chip.difficulty.hard { background-color: #fef2f2; color: #dc2626; border-color: #fee2e2; }
+.chip.difficulty.easy {
+  background-color: #ecfdf5;
+  color: #059669;
+  border-color: #d1fae5;
+}
+.chip.difficulty.medium {
+  background-color: #fffbeb;
+  color: #b45309;
+  border-color: #fef3c7;
+}
+.chip.difficulty.hard {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border-color: #fee2e2;
+}
 
 .subject {
   color: var(--line-text-secondary);
@@ -554,13 +622,13 @@ const editPaper = () => {
   .form-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .result-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
   }
-  
+
   .result-header button {
     width: 100%;
   }
@@ -571,12 +639,22 @@ const editPaper = () => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

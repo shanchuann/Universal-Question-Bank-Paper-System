@@ -26,7 +26,7 @@ const totalElements = ref(0)
 
 const getAuthHeaders = () => ({
   'Content-Type': 'application/json',
-  'Authorization': `Bearer ${localStorage.getItem('token')}`
+  Authorization: `Bearer ${localStorage.getItem('token')}`
 })
 
 const fetchScores = async () => {
@@ -122,7 +122,14 @@ onMounted(() => {
       </div>
 
       <div v-else-if="scores.length === 0" class="empty-state">
-        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1">
+        <svg
+          width="80"
+          height="80"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#9aa0a6"
+          stroke-width="1"
+        >
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
           <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -130,15 +137,13 @@ onMounted(() => {
         </svg>
         <h3>暂无成绩记录</h3>
         <p>您还没有完成任何考试，去参加考试吧！</p>
-        <button @click="router.push('/exams/list')" class="line-btn primary-btn">
-          去考试
-        </button>
+        <button @click="router.push('/exams/list')" class="line-btn primary-btn">去考试</button>
       </div>
 
       <div v-else class="scores-list">
-        <div 
-          v-for="item in scores" 
-          :key="item.sessionId" 
+        <div
+          v-for="item in scores"
+          :key="item.sessionId"
           class="score-card"
           :class="getScoreClass(item.score)"
         >
@@ -165,9 +170,9 @@ onMounted(() => {
             <span class="status-badge" :class="getStatusInfo(item.status).class">
               {{ getStatusInfo(item.status).label }}
             </span>
-            <button 
+            <button
               v-if="item.status === '已阅卷'"
-              @click="viewDetail(item.sessionId)" 
+              @click="viewDetail(item.sessionId)"
               class="line-btn text-btn"
             >
               查看详情 →
@@ -178,17 +183,17 @@ onMounted(() => {
 
       <!-- 分页 -->
       <div v-if="scores.length > 0" class="pagination-bar">
-        <button 
-          :disabled="page === 0" 
-          @click="page--; fetchScores()" 
+        <button
+          :disabled="page === 0"
+          @click="page--; fetchScores()"
           class="line-btn outline-btn sm"
         >
           上一页
         </button>
         <span class="page-info">第 {{ page + 1 }} 页 / 共 {{ totalPages }} 页</span>
-        <button 
-          :disabled="(page + 1) * size >= totalElements" 
-          @click="page++; fetchScores()" 
+        <button
+          :disabled="(page + 1) * size >= totalElements"
+          @click="page++; fetchScores()"
           class="line-btn outline-btn sm"
         >
           下一页
@@ -228,8 +233,7 @@ onMounted(() => {
   border-radius: 16px;
   border: 1px solid var(--line-border);
   background:
-    radial-gradient(circle at top right, rgba(26, 115, 232, 0.06), transparent 40%),
-    var(--line-bg);
+    radial-gradient(circle at top right, rgba(26, 115, 232, 0.06), transparent 40%), var(--line-bg);
 }
 
 .loading-state {
@@ -252,7 +256,9 @@ onMounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-state {
@@ -306,7 +312,7 @@ onMounted(() => {
 }
 
 .score-card:hover {
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
   border-color: var(--line-primary);
   transform: translateY(-1px);
 }
@@ -372,10 +378,18 @@ onMounted(() => {
   line-height: 1;
 }
 
-.score-value.excellent { color: #34a853; }
-.score-value.good { color: #1a73e8; }
-.score-value.pass { color: #fbbc04; }
-.score-value.fail { color: #ea4335; }
+.score-value.excellent {
+  color: #34a853;
+}
+.score-value.good {
+  color: #1a73e8;
+}
+.score-value.pass {
+  color: #fbbc04;
+}
+.score-value.fail {
+  color: #ea4335;
+}
 
 .score-label {
   font-size: 14px;
@@ -488,10 +502,9 @@ onMounted(() => {
   .score-section {
     text-align: left;
   }
-  
+
   .breadcrumb {
     font-size: 13px;
   }
 }
 </style>
-

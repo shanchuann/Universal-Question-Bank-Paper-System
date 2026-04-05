@@ -14,7 +14,6 @@ const user = ref({
   avatarUrl: ''
 })
 
-
 const originalUser = ref({ ...user.value })
 
 const loading = ref(false)
@@ -57,7 +56,7 @@ const preferences = ref({
 onMounted(async () => {
   // Initialize from global state
   user.value = { ...authState.user }
-  
+
   // Fetch fresh data from API
   try {
     const token = localStorage.getItem('token')
@@ -95,7 +94,10 @@ onUnmounted(() => {
 })
 
 const hasSensitiveChanges = computed(() => {
-  return user.value.email !== originalUser.value.email || user.value.username !== originalUser.value.username
+  return (
+    user.value.email !== originalUser.value.email ||
+    user.value.username !== originalUser.value.username
+  )
 })
 
 const validateForm = () => {
@@ -134,11 +136,11 @@ const submitProfileUpdate = async () => {
       ...preferences.value,
       currentPassword: verifyPassword.value
     }
-    
+
     const response = await axios.put('/api/user/profile', payload, {
       headers: { Authorization: `Bearer ${token}` }
     })
-    
+
     authState.updateProfile(response.data)
     originalUser.value = { ...user.value }
     showToast({ message: '个人信息已更新', type: 'success' })
@@ -243,13 +245,17 @@ const buildTransformedAvatarFile = async (file: File) => {
     const quality = outputType === 'image/jpeg' ? 0.92 : undefined
 
     const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((result) => {
-        if (result) {
-          resolve(result)
-          return
-        }
-        reject(new Error('头像导出失败'))
-      }, outputType, quality)
+      canvas.toBlob(
+        (result) => {
+          if (result) {
+            resolve(result)
+            return
+          }
+          reject(new Error('头像导出失败'))
+        },
+        outputType,
+        quality
+      )
     })
 
     const extension = outputType === 'image/png' ? 'png' : 'jpg'
@@ -275,9 +281,13 @@ const uploadAvatarFile = async (file: File) => {
 
     const token = localStorage.getItem('token')
     if (token) {
-      const updateRes = await axios.put('/api/user/profile', { avatarUrl: uploadedUrl }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const updateRes = await axios.put(
+        '/api/user/profile',
+        { avatarUrl: uploadedUrl },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      )
       authState.updateProfile(updateRes.data)
       user.value = { ...user.value, avatarUrl: updateRes.data.avatarUrl || uploadedUrl }
       originalUser.value = { ...user.value }
@@ -309,15 +319,15 @@ const handleFileChange = async (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files[0]) {
     const file = target.files[0]
-    
+
     // Client-side validation
     if (!file.type.startsWith('image/')) {
-        showToast({ message: '只能上传图片文件', type: 'error' })
-        return
+      showToast({ message: '只能上传图片文件', type: 'error' })
+      return
     }
     if (file.size > 5 * 1024 * 1024) {
-        showToast({ message: '文件大小不能超过5MB', type: 'error' })
-        return
+      showToast({ message: '文件大小不能超过5MB', type: 'error' })
+      return
     }
 
     pendingAvatarFile = file
@@ -336,17 +346,21 @@ const handlePasswordUpdate = async () => {
     showToast({ message: '两次输入的新密码不一致', type: 'error' })
     return
   }
-  
+
   loading.value = true
   try {
     const token = localStorage.getItem('token')
-    await axios.put('/api/user/password', {
-      oldPassword: passwordForm.value.oldPassword,
-      newPassword: passwordForm.value.newPassword
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    
+    await axios.put(
+      '/api/user/password',
+      {
+        oldPassword: passwordForm.value.oldPassword,
+        newPassword: passwordForm.value.newPassword
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    )
+
     showToast({ message: '密码已更新', type: 'success' })
     showPasswordModal.value = false
     passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
@@ -374,12 +388,16 @@ const handleSendEmailVerify = async () => {
   emailVerifyLoading.value = true
   try {
     const token = localStorage.getItem('token')
-    await axios.post('/api/user/send-email-verification', {
-      email: user.value.email,
-      currentPassword: emailVerifyPassword.value
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    await axios.post(
+      '/api/user/send-email-verification',
+      {
+        email: user.value.email,
+        currentPassword: emailVerifyPassword.value
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    )
     emailVerifySent.value = true
     emailVerifyCooldown.value = 60
     if (emailCooldownTimer) {
@@ -475,13 +493,38 @@ const closeEmailVerifyModal = () => {
       <!-- Left Column: Avatar & Basic Info -->
       <div class="line-card profile-main-card">
         <div class="avatar-section">
-          <div class="avatar-large" :style="{ backgroundImage: user.avatarUrl ? `url(${user.avatarUrl})` : '' }" @click="triggerFileInput">
+          <div
+            class="avatar-large"
+            :style="{ backgroundImage: user.avatarUrl ? `url(${user.avatarUrl})` : '' }"
+            @click="triggerFileInput"
+          >
             <span v-if="!user.avatarUrl">{{ user.username.charAt(0).toUpperCase() }}</span>
             <div class="avatar-overlay">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+                ></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
             </div>
           </div>
-          <input type="file" id="avatar-input" @change="handleFileChange" accept="image/*" style="display: none" />
+          <input
+            type="file"
+            id="avatar-input"
+            @change="handleFileChange"
+            accept="image/*"
+            style="display: none"
+          />
           <h2 class="profile-name">{{ user.nickname || user.username }}</h2>
           <span class="role-badge">{{ user.role }}</span>
         </div>
@@ -505,7 +548,9 @@ const closeEmailVerifyModal = () => {
         </div>
 
         <div class="card-actions">
-          <button @click="handleReset" :disabled="loading" class="line-btn text-btn">重置更改</button>
+          <button @click="handleReset" :disabled="loading" class="line-btn text-btn">
+            重置更改
+          </button>
           <button @click="handleSaveClick" :disabled="loading" class="line-btn primary-btn">
             {{ loading ? '保存中...' : '保存更改' }}
           </button>
@@ -524,7 +569,9 @@ const closeEmailVerifyModal = () => {
               <h4>登录密码</h4>
               <p>定期修改密码以保护账号安全</p>
             </div>
-            <button class="line-btn outline-btn sm-btn" @click="showPasswordModal = true">修改</button>
+            <button class="line-btn outline-btn sm-btn" @click="showPasswordModal = true">
+              修改
+            </button>
           </div>
         </div>
 
@@ -539,7 +586,7 @@ const closeEmailVerifyModal = () => {
               <p>接收考试提醒和成绩通知</p>
             </div>
             <label class="switch">
-              <input type="checkbox" v-model="preferences.emailNotification">
+              <input type="checkbox" v-model="preferences.emailNotification" />
               <span class="slider round"></span>
             </label>
           </div>
@@ -549,7 +596,7 @@ const closeEmailVerifyModal = () => {
               <p>接收系统维护和更新公告</p>
             </div>
             <label class="switch">
-              <input type="checkbox" v-model="preferences.systemNotification">
+              <input type="checkbox" v-model="preferences.systemNotification" />
               <span class="slider round"></span>
             </label>
           </div>
@@ -566,7 +613,7 @@ const closeEmailVerifyModal = () => {
               <p>允许其他用户查看您的基本信息</p>
             </div>
             <label class="switch">
-              <input type="checkbox" v-model="preferences.publicProfile">
+              <input type="checkbox" v-model="preferences.publicProfile" />
               <span class="slider round"></span>
             </label>
           </div>
@@ -576,7 +623,7 @@ const closeEmailVerifyModal = () => {
               <p>显示您的在线状态</p>
             </div>
             <label class="switch">
-              <input type="checkbox" v-model="preferences.showActivity">
+              <input type="checkbox" v-model="preferences.showActivity" />
               <span class="slider round"></span>
             </label>
           </div>
@@ -595,20 +642,40 @@ const closeEmailVerifyModal = () => {
           <div class="modal-body">
             <div class="form-group">
               <label for="oldPass">当前密码</label>
-              <input v-model="passwordForm.oldPassword" type="password" id="oldPass" class="line-input" required />
+              <input
+                v-model="passwordForm.oldPassword"
+                type="password"
+                id="oldPass"
+                class="line-input"
+                required
+              />
             </div>
             <div class="form-group">
               <label for="newPass">新密码</label>
-              <input v-model="passwordForm.newPassword" type="password" id="newPass" class="line-input" required />
+              <input
+                v-model="passwordForm.newPassword"
+                type="password"
+                id="newPass"
+                class="line-input"
+                required
+              />
             </div>
             <div class="form-group">
               <label for="confirmPass">确认新密码</label>
-              <input v-model="passwordForm.confirmPassword" type="password" id="confirmPass" class="line-input" required />
+              <input
+                v-model="passwordForm.confirmPassword"
+                type="password"
+                id="confirmPass"
+                class="line-input"
+                required
+              />
             </div>
           </div>
           <div class="modal-footer">
             <button @click="showPasswordModal = false" class="line-btn text-btn">取消</button>
-            <button @click="handlePasswordUpdate" :disabled="loading" class="line-btn primary-btn">更新密码</button>
+            <button @click="handlePasswordUpdate" :disabled="loading" class="line-btn primary-btn">
+              更新密码
+            </button>
           </div>
         </div>
       </div>
@@ -624,12 +691,20 @@ const closeEmailVerifyModal = () => {
             <p class="modal-desc">您正在修改敏感信息，请输入当前密码以确认。</p>
             <div class="form-group">
               <label for="verifyPass">当前密码</label>
-              <input v-model="verifyPassword" type="password" id="verifyPass" class="line-input" required />
+              <input
+                v-model="verifyPassword"
+                type="password"
+                id="verifyPass"
+                class="line-input"
+                required
+              />
             </div>
           </div>
           <div class="modal-footer">
             <button @click="showVerifyModal = false" class="line-btn text-btn">取消</button>
-            <button @click="submitProfileUpdate" :disabled="loading" class="line-btn primary-btn">确认修改</button>
+            <button @click="submitProfileUpdate" :disabled="loading" class="line-btn primary-btn">
+              确认修改
+            </button>
           </div>
         </div>
       </div>
@@ -648,7 +723,12 @@ const closeEmailVerifyModal = () => {
             />
           </div>
           <div class="form-group compact-group verify-code-row">
-            <input v-model="emailVerifyCode" type="text" class="line-input" placeholder="输入验证码" />
+            <input
+              v-model="emailVerifyCode"
+              type="text"
+              class="line-input"
+              placeholder="输入验证码"
+            />
             <button
               class="line-btn outline-btn send-code-btn"
               :disabled="emailVerifyLoading || emailVerifyCooldown > 0"
@@ -657,58 +737,103 @@ const closeEmailVerifyModal = () => {
               {{
                 emailVerifyCooldown > 0
                   ? `重新发送(${emailVerifyCooldown}s)`
-                  : (emailVerifySent ? '重新发送' : '发送验证码')
+                  : emailVerifySent
+                    ? '重新发送'
+                    : '发送验证码'
               }}
             </button>
           </div>
           <div class="form-actions">
-            <button class="line-btn primary-btn" :disabled="loading" @click="handleEmailVerifySubmit">验证并保存</button>
             <button
-              class="line-btn text-btn"
-              @click="closeEmailVerifyModal"
+              class="line-btn primary-btn"
+              :disabled="loading"
+              @click="handleEmailVerifySubmit"
             >
-              取消
+              验证并保存
             </button>
+            <button class="line-btn text-btn" @click="closeEmailVerifyModal">取消</button>
           </div>
         </div>
       </div>
 
       <!-- Avatar Preview Modal -->
-      <div v-if="showAvatarPreviewModal" class="modal-overlay" @click.self="resetAvatarPreview" @mouseup="onAvatarDragEnd">
+      <div
+        v-if="showAvatarPreviewModal"
+        class="modal-overlay"
+        @click.self="resetAvatarPreview"
+        @mouseup="onAvatarDragEnd"
+      >
         <div class="modal-card avatar-modal">
           <h2>头像预览编辑</h2>
           <p>这里展示上传后的圆形头像效果，可拖拽微调位置。</p>
           <div class="avatar-preview-stage">
-            <div class="avatar-preview-frame" @mousemove="onAvatarDragMove" @mouseup="onAvatarDragEnd" @mouseleave="onAvatarDragEnd">
+            <div
+              class="avatar-preview-frame"
+              @mousemove="onAvatarDragMove"
+              @mouseup="onAvatarDragEnd"
+              @mouseleave="onAvatarDragEnd"
+            >
               <img
                 v-if="avatarPreviewUrl"
                 :src="avatarPreviewUrl"
                 alt="avatar preview"
                 class="avatar-preview-img"
-                :style="{ transform: `translate(${avatarOffsetX}px, ${avatarOffsetY}px) scale(${avatarZoom}) rotate(${avatarRotate}deg)` }"
+                :style="{
+                  transform: `translate(${avatarOffsetX}px, ${avatarOffsetY}px) scale(${avatarZoom}) rotate(${avatarRotate}deg)`
+                }"
                 @mousedown="onAvatarDragStart"
               />
             </div>
           </div>
           <div class="form-group">
             <label>缩放</label>
-            <input v-model.number="avatarZoom" type="range" min="0.5" max="3" step="0.01" class="line-range" />
+            <input
+              v-model.number="avatarZoom"
+              type="range"
+              min="0.5"
+              max="3"
+              step="0.01"
+              class="line-range"
+            />
           </div>
           <div class="form-group">
             <label>旋转</label>
-            <input v-model.number="avatarRotate" type="range" min="-180" max="180" step="1" class="line-range" />
+            <input
+              v-model.number="avatarRotate"
+              type="range"
+              min="-180"
+              max="180"
+              step="1"
+              class="line-range"
+            />
           </div>
           <div class="form-group">
             <label>水平位置</label>
-            <input v-model.number="avatarOffsetX" type="range" min="-180" max="180" step="1" class="line-range" />
+            <input
+              v-model.number="avatarOffsetX"
+              type="range"
+              min="-180"
+              max="180"
+              step="1"
+              class="line-range"
+            />
           </div>
           <div class="form-group">
             <label>垂直位置</label>
-            <input v-model.number="avatarOffsetY" type="range" min="-180" max="180" step="1" class="line-range" />
+            <input
+              v-model.number="avatarOffsetY"
+              type="range"
+              min="-180"
+              max="180"
+              step="1"
+              class="line-range"
+            />
           </div>
           <div class="form-actions">
             <button class="line-btn outline-btn" @click="resetAvatarAdjustments">重置调整</button>
-            <button class="line-btn primary-btn" :disabled="loading" @click="confirmAvatarUpload">确认上传</button>
+            <button class="line-btn primary-btn" :disabled="loading" @click="confirmAvatarUpload">
+              确认上传
+            </button>
             <button class="line-btn text-btn" @click="resetAvatarPreview">取消</button>
           </div>
         </div>
@@ -887,18 +1012,18 @@ const closeEmailVerifyModal = () => {
   bottom: 0;
   background-color: var(--line-bg-soft);
   border: 1px solid var(--line-border);
-  transition: .4s;
+  transition: 0.4s;
 }
 
 .slider:before {
   position: absolute;
-  content: "";
+  content: '';
   height: 18px;
   width: 18px;
   left: 2px;
   bottom: 2px;
   background-color: var(--line-text-secondary);
-  transition: .4s;
+  transition: 0.4s;
 }
 
 .slider.round {
@@ -1030,7 +1155,11 @@ input:focus + .slider {
     linear-gradient(45deg, transparent 75%, #f6f8fb 75%),
     linear-gradient(-45deg, transparent 75%, #f6f8fb 75%);
   background-size: 18px 18px;
-  background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+  background-position:
+    0 0,
+    0 9px,
+    9px -9px,
+    -9px 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1182,12 +1311,34 @@ input:focus + .slider {
   border-bottom-right-radius: var(--line-radius-lg);
 }
 
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 @media (max-width: 768px) {
-  .profile-layout { grid-template-columns: 1fr; }
-  .form-grid { grid-template-columns: 1fr; }
-  .full-width { grid-column: auto; }
+  .profile-layout {
+    grid-template-columns: 1fr;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .full-width {
+    grid-column: auto;
+  }
 }
 </style>

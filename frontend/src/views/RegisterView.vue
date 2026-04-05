@@ -52,7 +52,7 @@ const sendCode = async () => {
     showToast({ message: '请输入邮箱地址', type: 'error' })
     return
   }
-  
+
   if (!/^[A-Za-z0-9+_.-]+@(.+)$/.test(email.value)) {
     showToast({ message: '邮箱格式不正确', type: 'error' })
     return
@@ -65,7 +65,7 @@ const sendCode = async () => {
       type: 'register'
     })
     showToast({ message: '验证码已发送到您的邮箱', type: 'success' })
-    
+
     // 开始倒计时
     countdown.value = 60
     const timer = setInterval(() => {
@@ -88,22 +88,22 @@ const validateForm = () => {
     showToast({ message: '请输入用户名', type: 'error' })
     return false
   }
-  
+
   if (username.value.length < 3 || username.value.length > 20) {
     showToast({ message: '用户名长度需在3-20个字符之间', type: 'error' })
     return false
   }
-  
+
   if (password.value.length < settings.value.passwordMinLength) {
     showToast({ message: `密码长度不能少于${settings.value.passwordMinLength}位`, type: 'error' })
     return false
   }
-  
+
   if (password.value !== confirmPassword.value) {
     showToast({ message: '两次输入的密码不一致', type: 'error' })
     return false
   }
-  
+
   if (settings.value.requireEmailVerification) {
     if (!email.value) {
       showToast({ message: '请输入邮箱地址', type: 'error' })
@@ -114,7 +114,7 @@ const validateForm = () => {
       return false
     }
   }
-  
+
   return true
 }
 
@@ -131,14 +131,15 @@ const handleRegister = async () => {
       email: email.value || undefined,
       verificationCode: verificationCode.value || undefined
     })
-    
+
     showToast({ message: '注册成功！即将跳转到登录页面...', type: 'success' })
     setTimeout(() => {
       router.push('/login')
     }, 1500)
   } catch (err: any) {
     const errorData = err.response?.data
-    const errorMsg = typeof errorData === 'object' ? errorData.error : errorData || '注册失败，请稍后再试'
+    const errorMsg =
+      typeof errorData === 'object' ? errorData.error : errorData || '注册失败，请稍后再试'
     showToast({ message: errorMsg, type: 'error' })
   } finally {
     loading.value = false
@@ -158,24 +159,42 @@ const passwordHint = computed(() => {
       </div>
       <h1 class="page-title">创建账号</h1>
       <p class="subtitle">继续使用题库系统</p>
-      
+
       <!-- 注册已关闭提示 -->
       <div v-if="!settings.allowRegistration" class="registration-closed">
         <p>系统当前已关闭注册，请联系管理员。</p>
         <router-link to="/login" class="back-link">返回登录</router-link>
       </div>
-      
+
       <form v-else @submit.prevent="handleRegister">
         <div class="form-group">
-          <input v-model="username" type="text" required placeholder="用户名" class="google-input" />
+          <input
+            v-model="username"
+            type="text"
+            required
+            placeholder="用户名"
+            class="google-input"
+          />
         </div>
-        
+
         <div class="form-row">
           <div class="form-group half">
-            <input v-model="password" type="password" required placeholder="密码" class="google-input" />
+            <input
+              v-model="password"
+              type="password"
+              required
+              placeholder="密码"
+              class="google-input"
+            />
           </div>
           <div class="form-group half">
-            <input v-model="confirmPassword" type="password" required placeholder="确认密码" class="google-input" />
+            <input
+              v-model="confirmPassword"
+              type="password"
+              required
+              placeholder="确认密码"
+              class="google-input"
+            />
           </div>
         </div>
         <p class="hint-text">{{ passwordHint }}</p>
@@ -183,25 +202,33 @@ const passwordHint = computed(() => {
         <!-- 邮箱验证区域 -->
         <template v-if="settings.requireEmailVerification">
           <div class="form-group">
-            <input v-model="email" type="email" required placeholder="邮箱地址" class="google-input" />
+            <input
+              v-model="email"
+              type="email"
+              required
+              placeholder="邮箱地址"
+              class="google-input"
+            />
           </div>
-          
+
           <div class="form-group verification-group">
-            <input 
-              v-model="verificationCode" 
-              type="text" 
-              required 
-              placeholder="验证码" 
-              class="google-input verification-input" 
+            <input
+              v-model="verificationCode"
+              type="text"
+              required
+              placeholder="验证码"
+              class="google-input verification-input"
               maxlength="6"
             />
-            <button 
-              type="button" 
+            <button
+              type="button"
               class="send-code-btn"
               :disabled="sendingCode || countdown > 0"
               @click="sendCode"
             >
-              {{ countdown > 0 ? `${countdown}秒后重发` : sendingCode ? '发送中...' : '发送验证码' }}
+              {{
+                countdown > 0 ? `${countdown}秒后重发` : sendingCode ? '发送中...' : '发送验证码'
+              }}
             </button>
           </div>
         </template>

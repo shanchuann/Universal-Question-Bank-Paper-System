@@ -1,14 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import LoginView from '../views/LoginView.vue'
-import RegisterView from '../views/RegisterView.vue'
-import ForgotPasswordView from '../views/ForgotPasswordView.vue'
-import QuestionListView from '../views/QuestionListView.vue'
-import QuestionAddView from '../views/QuestionAddView.vue'
-import PaperGenerationView from '../views/PaperGenerationView.vue'
-import PaperPreviewView from '../views/PaperPreviewView.vue'
-import PaperEditView from '../views/PaperEditView.vue'
-import ExamView from '../views/ExamView.vue'
-import HelloWorld from '../components/HelloWorld.vue'
 import { authState } from '../states/authState'
 
 const router = createRouter({
@@ -17,38 +7,38 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HelloWorld,
+      component: () => import('../components/HelloWorld.vue'),
       props: { msg: 'Welcome to Universal Question Bank' }
     },
     {
       path: '/login',
       name: 'login',
-      component: LoginView
+      component: () => import('../views/LoginView.vue')
     },
     {
       path: '/register',
       name: 'register',
-      component: RegisterView
+      component: () => import('../views/RegisterView.vue')
     },
     {
       path: '/forgot-password',
       name: 'forgot-password',
-      component: ForgotPasswordView
+      component: () => import('../views/ForgotPasswordView.vue')
     },
     {
       path: '/questions',
       name: 'questions',
-      component: QuestionListView
+      component: () => import('../views/QuestionListView.vue')
     },
     {
       path: '/questions/add',
       name: 'add-question',
-      component: QuestionAddView
+      component: () => import('../views/QuestionAddView.vue')
     },
     {
       path: '/questions/:id/edit',
       name: 'edit-question',
-      component: QuestionAddView,
+      component: () => import('../views/QuestionAddView.vue'),
       props: true
     },
     {
@@ -59,7 +49,7 @@ const router = createRouter({
     {
       path: '/paper-generation',
       name: 'paper-generation',
-      component: PaperGenerationView
+      component: () => import('../views/PaperGenerationView.vue')
     },
     {
       path: '/papers/manual',
@@ -79,17 +69,17 @@ const router = createRouter({
     {
       path: '/papers/:id/preview',
       name: 'paper-preview',
-      component: PaperPreviewView
+      component: () => import('../views/PaperPreviewView.vue')
     },
     {
       path: '/papers/:id/edit',
       name: 'paper-edit',
-      component: PaperEditView
+      component: () => import('../views/PaperEditView.vue')
     },
     {
       path: '/exam',
       name: 'exam',
-      component: ExamView
+      component: () => import('../views/ExamView.vue')
     },
     {
       path: '/knowledge-points',

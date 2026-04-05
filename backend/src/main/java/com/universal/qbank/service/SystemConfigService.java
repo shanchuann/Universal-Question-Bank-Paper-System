@@ -2,9 +2,9 @@ package com.universal.qbank.service;
 
 import com.universal.qbank.entity.SystemConfigEntity;
 import com.universal.qbank.repository.SystemConfigRepository;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,70 +12,73 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class SystemConfigService {
 
-  @Autowired private SystemConfigRepository systemConfigRepository;
+  private final SystemConfigRepository systemConfigRepository;
 
   // 配置键常量
-  public static final String SYSTEM_ENABLED = "SYSTEM_ENABLED";
-  public static final String MAINTENANCE_MODE = "MAINTENANCE_MODE";
-  public static final String MAINTENANCE_MESSAGE = "MAINTENANCE_MESSAGE";
-  public static final String ALLOW_REGISTRATION = "ALLOW_REGISTRATION";
-  public static final String REQUIRE_EMAIL_VERIFICATION = "REQUIRE_EMAIL_VERIFICATION";
-  public static final String SESSION_TIMEOUT = "SESSION_TIMEOUT";
-  public static final String MAX_LOGIN_ATTEMPTS = "MAX_LOGIN_ATTEMPTS";
-  public static final String PASSWORD_MIN_LENGTH = "PASSWORD_MIN_LENGTH";
-  public static final String ALLOW_PASSWORD_RESET = "ALLOW_PASSWORD_RESET";
-  public static final String MAX_FILE_SIZE = "MAX_FILE_SIZE";
-  public static final String ALLOWED_FILE_TYPES = "ALLOWED_FILE_TYPES";
-  public static final String EXAM_AUTO_SAVE_INTERVAL = "EXAM_AUTO_SAVE_INTERVAL";
-  public static final String SHOW_LEADERBOARD = "SHOW_LEADERBOARD";
-  public static final String ENABLE_NOTIFICATIONS = "ENABLE_NOTIFICATIONS";
-  public static final String AI_ENABLED = "AI_ENABLED";
-  public static final String AI_ASSISTANT_ENABLED = "AI_ASSISTANT_ENABLED";
-  public static final String AI_AUTO_GRADING_ENABLED = "AI_AUTO_GRADING_ENABLED";
-  public static final String AI_AUTO_START_OLLAMA = "AI_AUTO_START_OLLAMA";
-  public static final String AI_MODEL = "AI_MODEL";
-  public static final String SYSTEM_EMAIL = "SYSTEM_EMAIL";
-  public static final String SITE_NAME = "SITE_NAME";
-  public static final String SITE_DESCRIPTION = "SITE_DESCRIPTION";
-  public static final String SITE_LOGO_URL = "SITE_LOGO_URL";
-  public static final String COPYRIGHT_TEXT = "COPYRIGHT_TEXT";
+  public static final String SYSTEM_ENABLED = SystemConfigKey.SYSTEM_ENABLED.key();
+  public static final String MAINTENANCE_MODE = SystemConfigKey.MAINTENANCE_MODE.key();
+  public static final String MAINTENANCE_MESSAGE = SystemConfigKey.MAINTENANCE_MESSAGE.key();
+  public static final String ALLOW_REGISTRATION = SystemConfigKey.ALLOW_REGISTRATION.key();
+  public static final String REQUIRE_EMAIL_VERIFICATION =
+      SystemConfigKey.REQUIRE_EMAIL_VERIFICATION.key();
+  public static final String SESSION_TIMEOUT = SystemConfigKey.SESSION_TIMEOUT.key();
+  public static final String MAX_LOGIN_ATTEMPTS = SystemConfigKey.MAX_LOGIN_ATTEMPTS.key();
+  public static final String PASSWORD_MIN_LENGTH = SystemConfigKey.PASSWORD_MIN_LENGTH.key();
+  public static final String ALLOW_PASSWORD_RESET = SystemConfigKey.ALLOW_PASSWORD_RESET.key();
+  public static final String MAX_FILE_SIZE = SystemConfigKey.MAX_FILE_SIZE.key();
+  public static final String ALLOWED_FILE_TYPES = SystemConfigKey.ALLOWED_FILE_TYPES.key();
+  public static final String EXAM_AUTO_SAVE_INTERVAL =
+      SystemConfigKey.EXAM_AUTO_SAVE_INTERVAL.key();
+  public static final String SHOW_LEADERBOARD = SystemConfigKey.SHOW_LEADERBOARD.key();
+  public static final String ENABLE_NOTIFICATIONS = SystemConfigKey.ENABLE_NOTIFICATIONS.key();
+  public static final String AI_ENABLED = SystemConfigKey.AI_ENABLED.key();
+  public static final String AI_ASSISTANT_ENABLED = SystemConfigKey.AI_ASSISTANT_ENABLED.key();
+  public static final String AI_AUTO_GRADING_ENABLED =
+      SystemConfigKey.AI_AUTO_GRADING_ENABLED.key();
+  public static final String AI_MODEL = SystemConfigKey.AI_MODEL.key();
+  public static final String SYSTEM_EMAIL = SystemConfigKey.SYSTEM_EMAIL.key();
+  public static final String SITE_NAME = SystemConfigKey.SITE_NAME.key();
+  public static final String SITE_DESCRIPTION = SystemConfigKey.SITE_DESCRIPTION.key();
+  public static final String SITE_LOGO_URL = SystemConfigKey.SITE_LOGO_URL.key();
+  public static final String COPYRIGHT_TEXT = SystemConfigKey.COPYRIGHT_TEXT.key();
 
   // 默认值
-  private static final Map<String, String> DEFAULTS = new HashMap<>();
+  private static final Map<String, String> DEFAULTS;
 
   static {
-    DEFAULTS.put(SYSTEM_ENABLED, "true");
-    DEFAULTS.put(MAINTENANCE_MODE, "false");
-    DEFAULTS.put(MAINTENANCE_MESSAGE, "系统正在维护中，请稍后再试...");
-    DEFAULTS.put(ALLOW_REGISTRATION, "true");
-    DEFAULTS.put(REQUIRE_EMAIL_VERIFICATION, "false");
-    DEFAULTS.put(SESSION_TIMEOUT, "30");
-    DEFAULTS.put(MAX_LOGIN_ATTEMPTS, "5");
-    DEFAULTS.put(PASSWORD_MIN_LENGTH, "6");
-    DEFAULTS.put(ALLOW_PASSWORD_RESET, "true");
-    DEFAULTS.put(MAX_FILE_SIZE, "10");
-    DEFAULTS.put(ALLOWED_FILE_TYPES, "jpg,jpeg,png,gif,pdf,doc,docx");
-    DEFAULTS.put(EXAM_AUTO_SAVE_INTERVAL, "60");
-    DEFAULTS.put(SHOW_LEADERBOARD, "true");
-    DEFAULTS.put(ENABLE_NOTIFICATIONS, "true");
-    DEFAULTS.put(AI_ENABLED, "false");
-    DEFAULTS.put(AI_ASSISTANT_ENABLED, "true");
-    DEFAULTS.put(AI_AUTO_GRADING_ENABLED, "false");
-    DEFAULTS.put(AI_AUTO_START_OLLAMA, "true");
-    DEFAULTS.put(AI_MODEL, "gemma4");
-    DEFAULTS.put(SYSTEM_EMAIL, "admin@example.com");
-    DEFAULTS.put(SITE_NAME, "UQBank 题库系统");
-    DEFAULTS.put(SITE_DESCRIPTION, "通用题库与组卷系统");
-    DEFAULTS.put(SITE_LOGO_URL, "");
-    DEFAULTS.put(COPYRIGHT_TEXT, "© UQBank 题库系统");
+    Map<String, String> defaults = new HashMap<>();
+    for (SystemConfigKey key : SystemConfigKey.values()) {
+      defaults.put(key.key(), key.defaultValue());
+    }
+    DEFAULTS = Collections.unmodifiableMap(defaults);
+  }
+
+  public SystemConfigService(SystemConfigRepository systemConfigRepository) {
+    this.systemConfigRepository = systemConfigRepository;
   }
 
   public boolean isSystemEnabled() {
-    return getBooleanConfig(SYSTEM_ENABLED, true);
+    return getBooleanConfig(SystemConfigKey.SYSTEM_ENABLED);
   }
 
   public void setSystemEnabled(boolean enabled) {
-    setConfig(SYSTEM_ENABLED, String.valueOf(enabled));
+    setConfig(SystemConfigKey.SYSTEM_ENABLED, String.valueOf(enabled));
+  }
+
+  public String getConfig(SystemConfigKey key) {
+    return getConfig(key.key());
+  }
+
+  public boolean getBooleanConfig(SystemConfigKey key) {
+    return getBooleanConfig(key.key(), Boolean.parseBoolean(key.defaultValue()));
+  }
+
+  public int getIntConfig(SystemConfigKey key) {
+    return getIntConfig(key.key(), parseIntOrDefault(key.defaultValue(), 0));
+  }
+
+  public void setConfig(SystemConfigKey key, String value) {
+    setConfig(key.key(), value);
   }
 
   // 获取单个配置
@@ -107,6 +110,14 @@ public class SystemConfigService {
         .orElse(defaultValue);
   }
 
+  private int parseIntOrDefault(String value, int defaultValue) {
+    try {
+      return Integer.parseInt(value);
+    } catch (Exception ignored) {
+      return defaultValue;
+    }
+  }
+
   // 设置单个配置
   public void setConfig(String key, String value) {
     SystemConfigEntity config = new SystemConfigEntity(key, value);
@@ -116,120 +127,77 @@ public class SystemConfigService {
   // 获取所有系统设置
   public Map<String, Object> getAllSettings() {
     Map<String, Object> settings = new HashMap<>();
-    settings.put("systemEnabled", getBooleanConfig(SYSTEM_ENABLED, true));
-    settings.put("maintenanceMode", getBooleanConfig(MAINTENANCE_MODE, false));
-    settings.put("maintenanceMessage", getConfig(MAINTENANCE_MESSAGE));
-    settings.put("allowRegistration", getBooleanConfig(ALLOW_REGISTRATION, true));
-    settings.put("requireEmailVerification", getBooleanConfig(REQUIRE_EMAIL_VERIFICATION, false));
-    settings.put("sessionTimeout", getIntConfig(SESSION_TIMEOUT, 30));
-    settings.put("maxLoginAttempts", getIntConfig(MAX_LOGIN_ATTEMPTS, 5));
-    settings.put("passwordMinLength", getIntConfig(PASSWORD_MIN_LENGTH, 6));
-    settings.put("allowPasswordReset", getBooleanConfig(ALLOW_PASSWORD_RESET, true));
-    settings.put("maxFileSize", getIntConfig(MAX_FILE_SIZE, 10));
-    settings.put("allowedFileTypes", getConfig(ALLOWED_FILE_TYPES));
-    settings.put("examAutoSaveInterval", getIntConfig(EXAM_AUTO_SAVE_INTERVAL, 60));
-    settings.put("showLeaderboard", getBooleanConfig(SHOW_LEADERBOARD, true));
-    settings.put("enableNotifications", getBooleanConfig(ENABLE_NOTIFICATIONS, true));
-    settings.put("aiEnabled", getBooleanConfig(AI_ENABLED, false));
-    settings.put("aiAssistantEnabled", getBooleanConfig(AI_ASSISTANT_ENABLED, true));
-    settings.put("aiAutoGradingEnabled", getBooleanConfig(AI_AUTO_GRADING_ENABLED, false));
-    settings.put("aiAutoStartOllama", getBooleanConfig(AI_AUTO_START_OLLAMA, true));
-    settings.put("aiModel", getConfig(AI_MODEL));
-    settings.put("systemEmail", getConfig(SYSTEM_EMAIL));
-    settings.put("siteName", getConfig(SITE_NAME));
-    settings.put("siteDescription", getConfig(SITE_DESCRIPTION));
-    settings.put("siteLogoUrl", getConfig(SITE_LOGO_URL));
-    settings.put("copyrightText", getConfig(COPYRIGHT_TEXT));
+    settings.put("systemEnabled", getBooleanConfig(SystemConfigKey.SYSTEM_ENABLED));
+    settings.put("maintenanceMode", getBooleanConfig(SystemConfigKey.MAINTENANCE_MODE));
+    settings.put("maintenanceMessage", getConfig(SystemConfigKey.MAINTENANCE_MESSAGE));
+    settings.put("allowRegistration", getBooleanConfig(SystemConfigKey.ALLOW_REGISTRATION));
+    settings.put(
+        "requireEmailVerification", getBooleanConfig(SystemConfigKey.REQUIRE_EMAIL_VERIFICATION));
+    settings.put("sessionTimeout", getIntConfig(SystemConfigKey.SESSION_TIMEOUT));
+    settings.put("maxLoginAttempts", getIntConfig(SystemConfigKey.MAX_LOGIN_ATTEMPTS));
+    settings.put("passwordMinLength", getIntConfig(SystemConfigKey.PASSWORD_MIN_LENGTH));
+    settings.put("allowPasswordReset", getBooleanConfig(SystemConfigKey.ALLOW_PASSWORD_RESET));
+    settings.put("maxFileSize", getIntConfig(SystemConfigKey.MAX_FILE_SIZE));
+    settings.put("allowedFileTypes", getConfig(SystemConfigKey.ALLOWED_FILE_TYPES));
+    settings.put("examAutoSaveInterval", getIntConfig(SystemConfigKey.EXAM_AUTO_SAVE_INTERVAL));
+    settings.put("showLeaderboard", getBooleanConfig(SystemConfigKey.SHOW_LEADERBOARD));
+    settings.put("enableNotifications", getBooleanConfig(SystemConfigKey.ENABLE_NOTIFICATIONS));
+    settings.put("aiEnabled", getBooleanConfig(SystemConfigKey.AI_ENABLED));
+    settings.put("aiAssistantEnabled", getBooleanConfig(SystemConfigKey.AI_ASSISTANT_ENABLED));
+    settings.put("aiAutoGradingEnabled", getBooleanConfig(SystemConfigKey.AI_AUTO_GRADING_ENABLED));
+    settings.put("aiModel", getConfig(SystemConfigKey.AI_MODEL));
+    settings.put("systemEmail", getConfig(SystemConfigKey.SYSTEM_EMAIL));
+    settings.put("siteName", getConfig(SystemConfigKey.SITE_NAME));
+    settings.put("siteDescription", getConfig(SystemConfigKey.SITE_DESCRIPTION));
+    settings.put("siteLogoUrl", getConfig(SystemConfigKey.SITE_LOGO_URL));
+    settings.put("copyrightText", getConfig(SystemConfigKey.COPYRIGHT_TEXT));
     return settings;
   }
 
   public Map<String, Object> getPublicSettings() {
     Map<String, Object> settings = new HashMap<>();
-    settings.put("siteName", getConfig(SITE_NAME));
-    settings.put("siteDescription", getConfig(SITE_DESCRIPTION));
-    settings.put("siteLogoUrl", getConfig(SITE_LOGO_URL));
-    settings.put("copyrightText", getConfig(COPYRIGHT_TEXT));
-    settings.put("maintenanceMode", getBooleanConfig(MAINTENANCE_MODE, false));
-    settings.put("maintenanceMessage", getConfig(MAINTENANCE_MESSAGE));
-    settings.put("aiEnabled", getBooleanConfig(AI_ENABLED, false));
-    settings.put("aiAssistantEnabled", getBooleanConfig(AI_ASSISTANT_ENABLED, true));
+    settings.put("siteName", getConfig(SystemConfigKey.SITE_NAME));
+    settings.put("siteDescription", getConfig(SystemConfigKey.SITE_DESCRIPTION));
+    settings.put("siteLogoUrl", getConfig(SystemConfigKey.SITE_LOGO_URL));
+    settings.put("copyrightText", getConfig(SystemConfigKey.COPYRIGHT_TEXT));
+    settings.put("maintenanceMode", getBooleanConfig(SystemConfigKey.MAINTENANCE_MODE));
+    settings.put("maintenanceMessage", getConfig(SystemConfigKey.MAINTENANCE_MESSAGE));
+    settings.put("aiEnabled", getBooleanConfig(SystemConfigKey.AI_ENABLED));
+    settings.put("aiAssistantEnabled", getBooleanConfig(SystemConfigKey.AI_ASSISTANT_ENABLED));
     return settings;
+  }
+
+  private void updateIfPresent(Map<String, Object> settings, String field, SystemConfigKey key) {
+    if (settings.containsKey(field)) {
+      setConfig(key, String.valueOf(settings.get(field)));
+    }
   }
 
   // 批量更新设置
   public void updateAllSettings(Map<String, Object> settings) {
-    if (settings.containsKey("systemEnabled")) {
-      setConfig(SYSTEM_ENABLED, String.valueOf(settings.get("systemEnabled")));
-    }
-    if (settings.containsKey("maintenanceMode")) {
-      setConfig(MAINTENANCE_MODE, String.valueOf(settings.get("maintenanceMode")));
-    }
-    if (settings.containsKey("maintenanceMessage")) {
-      setConfig(MAINTENANCE_MESSAGE, String.valueOf(settings.get("maintenanceMessage")));
-    }
-    if (settings.containsKey("allowRegistration")) {
-      setConfig(ALLOW_REGISTRATION, String.valueOf(settings.get("allowRegistration")));
-    }
-    if (settings.containsKey("requireEmailVerification")) {
-      setConfig(
-          REQUIRE_EMAIL_VERIFICATION, String.valueOf(settings.get("requireEmailVerification")));
-    }
-    if (settings.containsKey("sessionTimeout")) {
-      setConfig(SESSION_TIMEOUT, String.valueOf(settings.get("sessionTimeout")));
-    }
-    if (settings.containsKey("maxLoginAttempts")) {
-      setConfig(MAX_LOGIN_ATTEMPTS, String.valueOf(settings.get("maxLoginAttempts")));
-    }
-    if (settings.containsKey("passwordMinLength")) {
-      setConfig(PASSWORD_MIN_LENGTH, String.valueOf(settings.get("passwordMinLength")));
-    }
-    if (settings.containsKey("allowPasswordReset")) {
-      setConfig(ALLOW_PASSWORD_RESET, String.valueOf(settings.get("allowPasswordReset")));
-    }
-    if (settings.containsKey("maxFileSize")) {
-      setConfig(MAX_FILE_SIZE, String.valueOf(settings.get("maxFileSize")));
-    }
-    if (settings.containsKey("allowedFileTypes")) {
-      setConfig(ALLOWED_FILE_TYPES, String.valueOf(settings.get("allowedFileTypes")));
-    }
-    if (settings.containsKey("examAutoSaveInterval")) {
-      setConfig(EXAM_AUTO_SAVE_INTERVAL, String.valueOf(settings.get("examAutoSaveInterval")));
-    }
-    if (settings.containsKey("showLeaderboard")) {
-      setConfig(SHOW_LEADERBOARD, String.valueOf(settings.get("showLeaderboard")));
-    }
-    if (settings.containsKey("enableNotifications")) {
-      setConfig(ENABLE_NOTIFICATIONS, String.valueOf(settings.get("enableNotifications")));
-    }
-    if (settings.containsKey("aiEnabled")) {
-      setConfig(AI_ENABLED, String.valueOf(settings.get("aiEnabled")));
-    }
-    if (settings.containsKey("aiAssistantEnabled")) {
-      setConfig(AI_ASSISTANT_ENABLED, String.valueOf(settings.get("aiAssistantEnabled")));
-    }
-    if (settings.containsKey("aiAutoGradingEnabled")) {
-      setConfig(AI_AUTO_GRADING_ENABLED, String.valueOf(settings.get("aiAutoGradingEnabled")));
-    }
-    if (settings.containsKey("aiAutoStartOllama")) {
-      setConfig(AI_AUTO_START_OLLAMA, String.valueOf(settings.get("aiAutoStartOllama")));
-    }
-    if (settings.containsKey("aiModel")) {
-      setConfig(AI_MODEL, String.valueOf(settings.get("aiModel")));
-    }
-    if (settings.containsKey("systemEmail")) {
-      setConfig(SYSTEM_EMAIL, String.valueOf(settings.get("systemEmail")));
-    }
-    if (settings.containsKey("siteName")) {
-      setConfig(SITE_NAME, String.valueOf(settings.get("siteName")));
-    }
-    if (settings.containsKey("siteDescription")) {
-      setConfig(SITE_DESCRIPTION, String.valueOf(settings.get("siteDescription")));
-    }
-    if (settings.containsKey("siteLogoUrl")) {
-      setConfig(SITE_LOGO_URL, String.valueOf(settings.get("siteLogoUrl")));
-    }
-    if (settings.containsKey("copyrightText")) {
-      setConfig(COPYRIGHT_TEXT, String.valueOf(settings.get("copyrightText")));
-    }
+    updateIfPresent(settings, "systemEnabled", SystemConfigKey.SYSTEM_ENABLED);
+    updateIfPresent(settings, "maintenanceMode", SystemConfigKey.MAINTENANCE_MODE);
+    updateIfPresent(settings, "maintenanceMessage", SystemConfigKey.MAINTENANCE_MESSAGE);
+    updateIfPresent(settings, "allowRegistration", SystemConfigKey.ALLOW_REGISTRATION);
+    updateIfPresent(
+        settings, "requireEmailVerification", SystemConfigKey.REQUIRE_EMAIL_VERIFICATION);
+    updateIfPresent(settings, "sessionTimeout", SystemConfigKey.SESSION_TIMEOUT);
+    updateIfPresent(settings, "maxLoginAttempts", SystemConfigKey.MAX_LOGIN_ATTEMPTS);
+    updateIfPresent(settings, "passwordMinLength", SystemConfigKey.PASSWORD_MIN_LENGTH);
+    updateIfPresent(settings, "allowPasswordReset", SystemConfigKey.ALLOW_PASSWORD_RESET);
+    updateIfPresent(settings, "maxFileSize", SystemConfigKey.MAX_FILE_SIZE);
+    updateIfPresent(settings, "allowedFileTypes", SystemConfigKey.ALLOWED_FILE_TYPES);
+    updateIfPresent(settings, "examAutoSaveInterval", SystemConfigKey.EXAM_AUTO_SAVE_INTERVAL);
+    updateIfPresent(settings, "showLeaderboard", SystemConfigKey.SHOW_LEADERBOARD);
+    updateIfPresent(settings, "enableNotifications", SystemConfigKey.ENABLE_NOTIFICATIONS);
+    updateIfPresent(settings, "aiEnabled", SystemConfigKey.AI_ENABLED);
+    updateIfPresent(settings, "aiAssistantEnabled", SystemConfigKey.AI_ASSISTANT_ENABLED);
+    updateIfPresent(settings, "aiAutoGradingEnabled", SystemConfigKey.AI_AUTO_GRADING_ENABLED);
+    updateIfPresent(settings, "aiModel", SystemConfigKey.AI_MODEL);
+    updateIfPresent(settings, "systemEmail", SystemConfigKey.SYSTEM_EMAIL);
+    updateIfPresent(settings, "siteName", SystemConfigKey.SITE_NAME);
+    updateIfPresent(settings, "siteDescription", SystemConfigKey.SITE_DESCRIPTION);
+    updateIfPresent(settings, "siteLogoUrl", SystemConfigKey.SITE_LOGO_URL);
+    updateIfPresent(settings, "copyrightText", SystemConfigKey.COPYRIGHT_TEXT);
   }
 }

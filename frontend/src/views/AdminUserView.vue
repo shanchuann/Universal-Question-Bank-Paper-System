@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
-import { Users, Search, UserCheck, UserX, Trash2, RefreshCw, Shield, GraduationCap, User as UserIcon } from 'lucide-vue-next'
+import {
+  Users,
+  Search,
+  UserCheck,
+  UserX,
+  Trash2,
+  RefreshCw,
+  Shield,
+  GraduationCap,
+  User as UserIcon
+} from 'lucide-vue-next'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
 
@@ -45,7 +55,10 @@ const applyClientFilters = (list: User[]) => {
   return list.filter((u) => {
     if (u.role === 'ADMIN') return false
     if (!keyword) return true
-    return (u.username || '').toLowerCase().includes(keyword) || (u.nickname || '').toLowerCase().includes(keyword)
+    return (
+      (u.username || '').toLowerCase().includes(keyword) ||
+      (u.nickname || '').toLowerCase().includes(keyword)
+    )
   })
 }
 
@@ -131,9 +144,13 @@ const toggleStatus = async (user: User) => {
   const newStatus = user.status === 'ACTIVE' ? 'BANNED' : 'ACTIVE'
   try {
     const token = localStorage.getItem('token')
-    await axios.put(`/api/admin/users/${user.id}/status`, { status: newStatus }, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    await axios.put(
+      `/api/admin/users/${user.id}/status`,
+      { status: newStatus },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    )
     user.status = newStatus
   } catch (error) {
     console.error('Failed to update status', error)
@@ -154,9 +171,13 @@ const toggleRole = async (user: User) => {
   if (!confirmed) return
   try {
     const token = localStorage.getItem('token')
-    await axios.put(`/api/admin/users/${user.id}/role`, { role: newRole }, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    await axios.put(
+      `/api/admin/users/${user.id}/role`,
+      { role: newRole },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    )
     user.role = newRole
   } catch (error) {
     console.error('Failed to update role', error)
@@ -190,9 +211,9 @@ const refresh = () => {
 
 const getRoleLabel = (role: string) => {
   const labels: Record<string, string> = {
-    'ADMIN': '管理员',
-    'TEACHER': '教师',
-    'USER': '学生'
+    ADMIN: '管理员',
+    TEACHER: '教师',
+    USER: '学生'
   }
   return labels[role] || role
 }
@@ -228,7 +249,10 @@ onMounted(() => {
           全部
           <span class="tab-count">{{ roleCounts.ALL }}</span>
         </button>
-        <button :class="['tab-btn', currentTab === 'TEACHER' ? 'active' : '']" @click="setTab('TEACHER')">
+        <button
+          :class="['tab-btn', currentTab === 'TEACHER' ? 'active' : '']"
+          @click="setTab('TEACHER')"
+        >
           <GraduationCap :size="16" />
           教师
           <span class="tab-count">{{ roleCounts.TEACHER }}</span>
@@ -241,10 +265,10 @@ onMounted(() => {
       </div>
       <div class="search-box">
         <Search :size="18" class="search-icon" />
-        <input 
-          v-model="searchKeyword" 
-          type="text" 
-          placeholder="搜索用户名或昵称..." 
+        <input
+          v-model="searchKeyword"
+          type="text"
+          placeholder="搜索用户名或昵称..."
           class="google-input search-input"
           @keyup.enter="handleSearch"
         />
@@ -274,10 +298,10 @@ onMounted(() => {
           <tr v-for="user in users" :key="user.id">
             <td class="col-user">
               <div class="user-info">
-                <img 
-                  v-if="user.avatarUrl" 
-                  :src="user.avatarUrl" 
-                  :alt="user.username" 
+                <img
+                  v-if="user.avatarUrl"
+                  :src="user.avatarUrl"
+                  :alt="user.username"
                   class="user-avatar-img"
                 />
                 <div v-else class="user-avatar">
@@ -291,21 +315,35 @@ onMounted(() => {
             </td>
             <td class="col-role">
               <span :class="['role-badge', `role-${user.role.toLowerCase()}`]">
-                <component :is="user.role === 'ADMIN' ? Shield : user.role === 'TEACHER' ? GraduationCap : UserIcon" :size="14" />
+                <component
+                  :is="
+                    user.role === 'ADMIN'
+                      ? Shield
+                      : user.role === 'TEACHER'
+                        ? GraduationCap
+                        : UserIcon
+                  "
+                  :size="14"
+                />
                 {{ getRoleLabel(user.role) }}
               </span>
             </td>
             <td class="col-status">
-              <span :class="['status-badge', user.status === 'ACTIVE' ? 'status-active' : 'status-banned']">
+              <span
+                :class="[
+                  'status-badge',
+                  user.status === 'ACTIVE' ? 'status-active' : 'status-banned'
+                ]"
+              >
                 <span class="status-dot"></span>
                 {{ getStatusLabel(user.status || 'ACTIVE') }}
               </span>
             </td>
             <td class="col-actions">
               <div class="actions">
-                <button 
-                  class="action-btn" 
-                  :class="user.status === 'ACTIVE' ? 'warning' : 'success'" 
+                <button
+                  class="action-btn"
+                  :class="user.status === 'ACTIVE' ? 'warning' : 'success'"
                   @click="toggleStatus(user)"
                   :title="user.status === 'ACTIVE' ? '禁用用户' : '启用用户'"
                 >
@@ -330,11 +368,13 @@ onMounted(() => {
         <p>未找到用户</p>
         <span class="empty-hint">尝试更改筛选条件或刷新页面</span>
       </div>
-      
+
       <div class="pagination" v-if="users.length > 0">
         <button class="google-btn text-btn" :disabled="page === 0" @click="prevPage">上一页</button>
         <span>第 {{ page + 1 }} 页 / 共 {{ totalPages }} 页</span>
-        <button class="google-btn text-btn" :disabled="page >= totalPages - 1" @click="nextPage">下一页</button>
+        <button class="google-btn text-btn" :disabled="page >= totalPages - 1" @click="nextPage">
+          下一页
+        </button>
       </div>
     </div>
   </div>
@@ -401,7 +441,9 @@ onMounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Toolbar */
@@ -833,11 +875,11 @@ onMounted(() => {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .search-box {
     width: 100%;
   }
-  
+
   .actions {
     flex-wrap: wrap;
   }
@@ -847,20 +889,19 @@ onMounted(() => {
   .admin-container {
     padding: 16px;
   }
-  
+
   .tabs {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   .google-table th,
   .google-table td {
     padding: 12px 16px;
   }
-  
+
   .action-btn span {
     display: none;
   }
 }
 </style>
-

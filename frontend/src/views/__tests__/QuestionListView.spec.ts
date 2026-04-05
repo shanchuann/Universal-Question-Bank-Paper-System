@@ -23,10 +23,24 @@ describe('QuestionListView', () => {
     })
 
     const mockQuestions = [
-      { id: '1', type: 'SINGLE_CHOICE', difficulty: 'EASY', status: 'APPROVED', subjectId: 'math', stem: 'Question 1' },
-      { id: '2', type: 'MULTI_CHOICE', difficulty: 'HARD', status: 'DRAFT', subjectId: 'english', stem: 'Question 2' }
+      {
+        id: '1',
+        type: 'SINGLE_CHOICE',
+        difficulty: 'EASY',
+        status: 'APPROVED',
+        subjectId: 'math',
+        stem: 'Question 1'
+      },
+      {
+        id: '2',
+        type: 'MULTI_CHOICE',
+        difficulty: 'HARD',
+        status: 'DRAFT',
+        subjectId: 'english',
+        stem: 'Question 2'
+      }
     ]
-    
+
     // Setup mock response
     const mockGet = questionApi.apiQuestionsGet as unknown as ReturnType<typeof vi.fn>
     mockGet.mockResolvedValue({
@@ -43,11 +57,11 @@ describe('QuestionListView', () => {
         stubs: ['GoogleSelect']
       }
     })
-    
+
     // Initial loading state
     // Note: flushPromises might be needed if the component does async setup immediately
     // but here we want to catch the loading state before it resolves
-    
+
     // Wait for async operations
     await flushPromises()
 
@@ -57,7 +71,7 @@ describe('QuestionListView', () => {
     // Check table headers - The first header is checkbox, second is Subject
     const headers = wrapper.findAll('th')
     expect(headers[1].text()).toBe('Subject')
-    
+
     // Check data rows
     const rows = wrapper.findAll('tbody tr')
     expect(rows).toHaveLength(2)

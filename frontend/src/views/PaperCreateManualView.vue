@@ -13,12 +13,12 @@ const error = ref('')
 const debugMsg = ref('')
 
 interface PaperItem {
-  uuid: string;
-  type: 'QUESTION' | 'SECTION';
-  id?: string;
-  data?: any;
-  sectionTitle?: string;
-  score: number;
+  uuid: string
+  type: 'QUESTION' | 'SECTION'
+  id?: string
+  data?: any
+  sectionTitle?: string
+  score: number
 }
 
 const items = ref<PaperItem[]>([])
@@ -28,28 +28,32 @@ const generateUuid = () => Math.random().toString(36).substring(2, 15)
 const totalScore = computed(() => items.value.reduce((sum, item) => sum + (item.score || 0), 0))
 
 const createPaper = async () => {
-  if (items.value.length === 0) return;
+  if (items.value.length === 0) return
 
   loading.value = true
   error.value = ''
   try {
     const token = localStorage.getItem('token')
-    const itemsPayload = items.value.map(item => ({
+    const itemsPayload = items.value.map((item) => ({
       type: item.type,
       id: item.id,
       sectionTitle: item.sectionTitle,
       score: item.score
-    }));
+    }))
 
-    const response = await axios.post('/api/papers/manual', {
-      title: title.value,
-      items: itemsPayload
-    }, {
-      headers: {
-        Authorization: `Bearer ${token}`
+    const response = await axios.post(
+      '/api/papers/manual',
+      {
+        title: title.value,
+        items: itemsPayload
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       }
-    })
-    
+    )
+
     clearBasket()
     router.push(`/papers/${response.data.id}/preview`)
   } catch (err) {
@@ -63,14 +67,15 @@ const createPaper = async () => {
 const loadQuestions = async () => {
   if (basket.value.length === 0) {
     debugMsg.value = '题篮为空'
-    return;
+    return
   }
-  
-  loading.value = true;
-  error.value = '';
+
+  loading.value = true
+  error.value = ''
   try {
-    const promises = basket.value.map(id => 
-      questionApi.apiQuestionsQuestionIdGet(id)
+    const promises = basket.value.map((id) =>
+      questionApi
+        .apiQuestionsQuestionIdGet(id)
         .then((res: any) => ({
           uuid: generateUuid(),
           type: 'QUESTION' as const,
@@ -79,33 +84,32 @@ const loadQuestions = async () => {
           score: 5
         }))
         .catch((err: any) => {
-          console.error(`Failed to load question ${id}`, err);
-          return null;
+          console.error(`Failed to load question ${id}`, err)
+          return null
         })
-    );
-    
-    const results = await Promise.all(promises);
-    items.value = results.filter((i: any) => i !== null) as PaperItem[];
-    
+    )
+
+    const results = await Promise.all(promises)
+    items.value = results.filter((i: any) => i !== null) as PaperItem[]
+
     if (items.value.length === 0 && basket.value.length > 0) {
-      error.value = '加载选中的题目失败，请重试。';
+      error.value = '加载选中的题目失败，请重试。'
     }
-    
   } catch (err) {
-    console.error(err);
-    error.value = '加载题目失败。';
+    console.error(err)
+    error.value = '加载题目失败。'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
 }
 
 onMounted(() => {
   loadQuestions()
-});
+})
 
 const removeItem = (index: number) => {
-  items.value.splice(index, 1);
-};
+  items.value.splice(index, 1)
+}
 
 const addSection = () => {
   items.value.push({
@@ -113,80 +117,80 @@ const addSection = () => {
     type: 'SECTION',
     sectionTitle: '新分区',
     score: 0
-  });
-};
+  })
+}
 
-const dragIndex = ref<number | null>(null);
-const dragOverIndex = ref<number | null>(null);
-const dropPosition = ref<'top' | 'bottom' | null>(null);
+const dragIndex = ref<number | null>(null)
+const dragOverIndex = ref<number | null>(null)
+const dropPosition = ref<'top' | 'bottom' | null>(null)
 
 const onDragStart = (event: DragEvent, index: number) => {
-  dragIndex.value = index;
+  dragIndex.value = index
   if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.dropEffect = 'move';
-    
-    const target = event.target as HTMLElement;
-    const row = target.closest('.paper-item');
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.dropEffect = 'move'
+
+    const target = event.target as HTMLElement
+    const row = target.closest('.paper-item')
     if (row) {
-       event.dataTransfer.setDragImage(row, 0, 0);
+      event.dataTransfer.setDragImage(row, 0, 0)
     }
   }
-};
+}
 
 const onDragOver = (event: DragEvent, index: number) => {
-  event.preventDefault();
+  event.preventDefault()
   if (dragIndex.value === null || dragIndex.value === index) {
-    dragOverIndex.value = null;
-    dropPosition.value = null;
-    return;
+    dragOverIndex.value = null
+    dropPosition.value = null
+    return
   }
 
-  const target = event.currentTarget as HTMLElement;
-  const rect = target.getBoundingClientRect();
-  const offset = event.clientY - rect.top;
-  
+  const target = event.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  const offset = event.clientY - rect.top
+
   if (offset < rect.height / 2) {
-    dropPosition.value = 'top';
+    dropPosition.value = 'top'
   } else {
-    dropPosition.value = 'bottom';
+    dropPosition.value = 'bottom'
   }
-  dragOverIndex.value = index;
-};
+  dragOverIndex.value = index
+}
 
 const onDrop = (event: DragEvent, index: number) => {
-  event.preventDefault();
-  if (dragIndex.value === null) return;
-  
-  const fromIndex = dragIndex.value;
-  let toIndex = index;
-  
+  event.preventDefault()
+  if (dragIndex.value === null) return
+
+  const fromIndex = dragIndex.value
+  let toIndex = index
+
   if (dropPosition.value === 'bottom') {
-    toIndex = index + 1;
+    toIndex = index + 1
   }
-  
+
   // Adjust index if moving downwards because removal shifts indices
   if (toIndex > fromIndex) {
-    toIndex--;
+    toIndex--
   }
-  
-  const itemToMove = items.value[fromIndex];
-  if (!itemToMove) return;
-  items.value.splice(fromIndex, 1);
-  items.value.splice(toIndex, 0, itemToMove);
-  
-  resetDragState();
-};
+
+  const itemToMove = items.value[fromIndex]
+  if (!itemToMove) return
+  items.value.splice(fromIndex, 1)
+  items.value.splice(toIndex, 0, itemToMove)
+
+  resetDragState()
+}
 
 const onDragEnd = () => {
-  resetDragState();
-};
+  resetDragState()
+}
 
 const resetDragState = () => {
-  dragIndex.value = null;
-  dragOverIndex.value = null;
-  dropPosition.value = null;
-};
+  dragIndex.value = null
+  dragOverIndex.value = null
+  dropPosition.value = null
+}
 </script>
 
 <template>
@@ -204,26 +208,24 @@ const resetDragState = () => {
 
       <div class="toolbar">
         <span class="total-score">总分: {{ totalScore }}</span>
-        <button @click="addSection" class="google-btn text-btn">
-          添加分区标题
-        </button>
+        <button @click="addSection" class="google-btn text-btn">添加分区标题</button>
       </div>
 
       <div class="paper-content">
         <div v-if="loading" class="loading-state">正在加载题目...</div>
-        
+
         <div v-else-if="items.length === 0" class="empty-state">
           未选择题目。请先到题库中添加题目。
         </div>
 
         <div v-else class="items-list">
-          <div 
-            v-for="(item, index) in items" 
-            :key="item.uuid" 
+          <div
+            v-for="(item, index) in items"
+            :key="item.uuid"
             class="paper-item"
-            :class="{ 
-              'section-item': item.type === 'SECTION', 
-              'dragging': dragIndex === index,
+            :class="{
+              'section-item': item.type === 'SECTION',
+              dragging: dragIndex === index,
               'drop-target-top': dragOverIndex === index && dropPosition === 'top',
               'drop-target-bottom': dragOverIndex === index && dropPosition === 'bottom'
             }"
@@ -231,22 +233,55 @@ const resetDragState = () => {
             @drop="onDrop($event, index)"
           >
             <div class="item-controls">
-              <span 
-                class="drag-handle" 
+              <span
+                class="drag-handle"
                 title="拖动排序"
                 draggable="true"
                 @dragstart="onDragStart($event, index)"
                 @dragend="onDragEnd"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="9" cy="12" r="1"></circle>
+                  <circle cx="9" cy="5" r="1"></circle>
+                  <circle cx="9" cy="19" r="1"></circle>
+                  <circle cx="15" cy="12" r="1"></circle>
+                  <circle cx="15" cy="5" r="1"></circle>
+                  <circle cx="15" cy="19" r="1"></circle>
+                </svg>
               </span>
               <button @click="removeItem(index)" class="control-btn delete-btn" title="移除">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
               </button>
             </div>
 
             <div v-if="item.type === 'SECTION'" class="item-body section-body">
-              <input v-model="item.sectionTitle" type="text" class="section-input" placeholder="分区标题（如：第一部分）" />
+              <input
+                v-model="item.sectionTitle"
+                type="text"
+                class="section-input"
+                placeholder="分区标题（如：第一部分）"
+              />
             </div>
 
             <div v-else class="item-body question-body">
@@ -265,11 +300,15 @@ const resetDragState = () => {
       </div>
 
       <div class="form-actions">
-        <button @click="createPaper" :disabled="loading || items.length === 0" class="google-btn primary-btn full-width">
+        <button
+          @click="createPaper"
+          :disabled="loading || items.length === 0"
+          class="google-btn primary-btn full-width"
+        >
           创建试卷
         </button>
       </div>
-      
+
       <div v-if="error" class="message error">{{ error }}</div>
     </div>
   </div>
@@ -590,7 +629,7 @@ h1 {
 }
 
 .drop-target-top::before {
-  content: "";
+  content: '';
   position: absolute;
   top: -10px;
   left: 0;
@@ -607,7 +646,7 @@ h1 {
 }
 
 .drop-target-bottom::after {
-  content: "";
+  content: '';
   position: absolute;
   bottom: -10px;
   left: 0;
@@ -620,7 +659,13 @@ h1 {
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

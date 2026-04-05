@@ -41,7 +41,7 @@ const fetchExams = async () => {
     if (filterUserId.value) params.append('userId', filterUserId.value)
     params.append('page', String(page.value))
     params.append('size', String(size.value))
-    
+
     const response = await axios.get(`/api/exams?${params.toString()}`, {
       headers: getAuthHeaders()
     })
@@ -65,7 +65,7 @@ watch([filterPaperId, filterUserId], () => {
 })
 
 const getStatusClass = (status?: string) => {
-  if (!status || status === '待阅卷') return 'pending' 
+  if (!status || status === '待阅卷') return 'pending'
   if (status === '已阅卷') return 'completed'
   if (status === '进行中') return 'grading'
   return 'pending'
@@ -101,7 +101,14 @@ onMounted(fetchExams)
 
     <div v-else-if="error" class="line-card error-state">
       <div class="error-content">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        >
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="8" x2="12" y2="12"></line>
           <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -130,13 +137,15 @@ onMounted(fetchExams)
             <td class="col-user">
               <div class="user-info">
                 <div class="avatar-sm" :class="{ 'has-img': exam.avatarUrl }">
-                  <img 
-                    v-if="exam.avatarUrl" 
-                    :src="exam.avatarUrl" 
+                  <img
+                    v-if="exam.avatarUrl"
+                    :src="exam.avatarUrl"
                     :alt="exam.nickname || exam.username || ''"
                     @error="($event.target as HTMLImageElement).style.display = 'none'"
                   />
-                  <span v-else>{{ (exam.nickname || exam.username || exam.userId || 'U').charAt(0).toUpperCase() }}</span>
+                  <span v-else>{{
+                    (exam.nickname || exam.username || exam.userId || 'U').charAt(0).toUpperCase()
+                  }}</span>
                 </div>
                 <span>{{ exam.nickname || exam.username || exam.userId }}</span>
               </div>
@@ -148,15 +157,20 @@ onMounted(fetchExams)
               </span>
             </td>
             <td class="col-action">
-              <button @click="goToGrade(exam.sessionId)" class="line-btn text-btn sm">
-                阅卷
-              </button>
+              <button @click="goToGrade(exam.sessionId)" class="line-btn text-btn sm">阅卷</button>
             </td>
           </tr>
           <tr v-if="exams.length === 0">
             <td colspan="6" class="empty-state-cell">
               <div class="empty-state-content">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <svg
+                  width="48"
+                  height="48"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                >
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
                   <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -171,17 +185,19 @@ onMounted(fetchExams)
       </table>
 
       <div class="pagination-bar">
-        <button 
-          :disabled="page === 0" 
-          @click="page--; fetchExams()" 
+        <button
+          :disabled="page === 0"
+          @click="page--; fetchExams()"
           class="line-btn outline-btn sm"
         >
           上一页
         </button>
-        <span class="page-info">第 {{ page + 1 }} 页 / 共 {{ Math.ceil(totalElements / size) || 1 }} 页</span>
-        <button 
-          :disabled="(page + 1) * size >= totalElements" 
-          @click="page++; fetchExams()" 
+        <span class="page-info"
+          >第 {{ page + 1 }} 页 / 共 {{ Math.ceil(totalElements / size) || 1 }} 页</span
+        >
+        <button
+          :disabled="(page + 1) * size >= totalElements"
+          @click="page++; fetchExams()"
           class="line-btn outline-btn sm"
         >
           下一页
@@ -277,10 +293,20 @@ onMounted(fetchExams)
   border-bottom: none;
 }
 
-.col-id { width: 100px; color: var(--line-text-secondary); }
-.col-score { width: 100px; font-weight: 600; }
-.col-status { width: 120px; }
-.col-action { width: 100px; }
+.col-id {
+  width: 100px;
+  color: var(--line-text-secondary);
+}
+.col-score {
+  width: 100px;
+  font-weight: 600;
+}
+.col-status {
+  width: 120px;
+}
+.col-action {
+  width: 100px;
+}
 
 .font-mono {
   font-family: 'SF Mono', 'Roboto Mono', Menlo, monospace;
@@ -331,18 +357,18 @@ onMounted(fetchExams)
 }
 
 .status-badge.completed {
-  background: #DCFCE7; /* Green 100 */
+  background: #dcfce7; /* Green 100 */
   color: #166534; /* Green 800 */
 }
 
 .status-badge.pending {
-  background: #FEF9C3; /* Yellow 100 */
-  color: #854D0E; /* Yellow 800 */
+  background: #fef9c3; /* Yellow 100 */
+  color: #854d0e; /* Yellow 800 */
 }
 
 .status-badge.grading {
-  background: #DBEAFE; /* Blue 100 */
-  color: #1E40AF; /* Blue 800 */
+  background: #dbeafe; /* Blue 100 */
+  color: #1e40af; /* Blue 800 */
 }
 
 .pagination-bar {
@@ -377,7 +403,11 @@ onMounted(fetchExams)
   margin: 0 auto 16px;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 .empty-state-cell {
   padding: 64px 0 !important;

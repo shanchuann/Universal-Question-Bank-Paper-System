@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
-import { Server, Cpu, HardDrive, Wifi, Clock, CheckCircle, AlertTriangle, XCircle, RefreshCw } from 'lucide-vue-next'
+import {
+  Server,
+  Cpu,
+  HardDrive,
+  Wifi,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  RefreshCw
+} from 'lucide-vue-next'
 
 interface ServiceStatus {
   name: string
@@ -83,10 +93,14 @@ const stopAutoRefresh = () => {
 
 const getStatusIcon = (status: string) => {
   switch (status) {
-    case 'online': return CheckCircle
-    case 'warning': return AlertTriangle
-    case 'offline': return XCircle
-    default: return CheckCircle
+    case 'online':
+      return CheckCircle
+    case 'warning':
+      return AlertTriangle
+    case 'offline':
+      return XCircle
+    default:
+      return CheckCircle
   }
 }
 
@@ -118,7 +132,9 @@ onUnmounted(() => {
       <div class="header-left">
         <h1 class="page-title">系统监控</h1>
         <p class="page-subtitle">服务健康状态实时监控</p>
-        <p class="data-note">数据来源：CPU/内存/磁盘为实时采集；网络吞吐为基于近 1 分钟行为日志的估算值。</p>
+        <p class="data-note">
+          数据来源：CPU/内存/磁盘为实时采集；网络吞吐为基于近 1 分钟行为日志的估算值。
+        </p>
       </div>
       <div class="header-actions">
         <span class="last-update">最后更新: {{ lastUpdate }}</span>
@@ -126,8 +142,8 @@ onUnmounted(() => {
           <RefreshCw :size="18" :class="{ spinning: loading }" />
           刷新
         </button>
-        <button 
-          class="google-btn" 
+        <button
+          class="google-btn"
           :class="autoRefresh ? 'primary-btn' : 'text-btn'"
           @click="toggleAutoRefresh"
         >
@@ -150,8 +166,8 @@ onUnmounted(() => {
           <div class="metric-value">{{ metrics.cpuUsage.toFixed(1) }}%</div>
           <div class="metric-detail">&nbsp;</div>
           <div class="progress-bar">
-            <div 
-              class="progress-fill" 
+            <div
+              class="progress-fill"
               :class="getProgressClass(metrics.cpuUsage)"
               :style="{ width: metrics.cpuUsage + '%' }"
             ></div>
@@ -166,8 +182,8 @@ onUnmounted(() => {
           <div class="metric-value">{{ metrics.memoryUsage.toFixed(1) }}%</div>
           <div class="metric-detail">{{ metrics.memoryUsed }} / {{ metrics.memoryTotal }}</div>
           <div class="progress-bar">
-            <div 
-              class="progress-fill" 
+            <div
+              class="progress-fill"
               :class="getProgressClass(metrics.memoryUsage)"
               :style="{ width: metrics.memoryUsage + '%' }"
             ></div>
@@ -182,8 +198,8 @@ onUnmounted(() => {
           <div class="metric-value">{{ metrics.diskUsage.toFixed(2) }}%</div>
           <div class="metric-detail">{{ metrics.diskUsed }} / {{ metrics.diskTotal }}</div>
           <div class="progress-bar">
-            <div 
-              class="progress-fill" 
+            <div
+              class="progress-fill"
               :class="getProgressClass(metrics.diskUsage)"
               :style="{ width: metrics.diskUsage.toFixed(2) + '%' }"
             ></div>
@@ -213,9 +229,9 @@ onUnmounted(() => {
     <div class="google-card services-card">
       <h3 class="section-title">服务状态</h3>
       <div class="services-grid">
-        <div 
-          v-for="service in services" 
-          :key="service.name" 
+        <div
+          v-for="service in services"
+          :key="service.name"
           class="service-item"
           :class="getStatusClass(service.status)"
         >
@@ -315,7 +331,9 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Section Title */
@@ -391,15 +409,27 @@ onUnmounted(() => {
 }
 
 .progress-fill.normal {
-  background: linear-gradient(90deg, var(--line-success), color-mix(in srgb, var(--line-success) 78%, white));
+  background: linear-gradient(
+    90deg,
+    var(--line-success),
+    color-mix(in srgb, var(--line-success) 78%, white)
+  );
 }
 
 .progress-fill.warning {
-  background: linear-gradient(90deg, var(--line-warning), color-mix(in srgb, var(--line-warning) 80%, white));
+  background: linear-gradient(
+    90deg,
+    var(--line-warning),
+    color-mix(in srgb, var(--line-warning) 80%, white)
+  );
 }
 
 .progress-fill.danger {
-  background: linear-gradient(90deg, var(--line-error), color-mix(in srgb, var(--line-error) 80%, white));
+  background: linear-gradient(
+    90deg,
+    var(--line-error),
+    color-mix(in srgb, var(--line-error) 80%, white)
+  );
 }
 
 .network-stats {
@@ -425,8 +455,12 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-.network-value.in { color: var(--line-success); }
-.network-value.out { color: var(--line-primary); }
+.network-value.in {
+  color: var(--line-success);
+}
+.network-value.out {
+  color: var(--line-primary);
+}
 
 /* Services Card */
 .services-card {
@@ -457,7 +491,9 @@ onUnmounted(() => {
   border: 1px solid var(--line-border);
   border-radius: 12px;
   background: var(--line-card-bg);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .service-item:hover {
@@ -488,9 +524,15 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.status-online .status-icon { color: var(--line-success); }
-.status-warning .status-icon { color: var(--line-warning); }
-.status-offline .status-icon { color: var(--line-error); }
+.status-online .status-icon {
+  color: var(--line-success);
+}
+.status-warning .status-icon {
+  color: var(--line-warning);
+}
+.status-offline .status-icon {
+  color: var(--line-error);
+}
 
 .service-name {
   font-size: 15px;
@@ -553,9 +595,15 @@ onUnmounted(() => {
   border-radius: 50%;
 }
 
-.legend-dot.online { background: var(--line-success); }
-.legend-dot.warning { background: var(--line-warning); }
-.legend-dot.offline { background: var(--line-error); }
+.legend-dot.online {
+  background: var(--line-success);
+}
+.legend-dot.warning {
+  background: var(--line-warning);
+}
+.legend-dot.offline {
+  background: var(--line-error);
+}
 
 /* Buttons */
 .google-btn {
@@ -594,4 +642,3 @@ onUnmounted(() => {
   background: var(--line-primary-hover);
 }
 </style>
-

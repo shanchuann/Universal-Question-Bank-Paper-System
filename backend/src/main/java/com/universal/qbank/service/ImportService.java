@@ -8,7 +8,10 @@ import com.universal.qbank.repository.QuestionRepository;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -21,6 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ImportService {
 
   @Autowired private QuestionRepository questionRepository;
+
+  @Autowired private OllamaAiService ollamaAiService;
 
   private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -146,6 +151,161 @@ public class ImportService {
       }
     }
     return questions;
+  }
+
+  public List<QuestionCreateRequest> parsePhotoByAi(InputStream inputStream, String parseMode)
+      throws IOException {
+    byte[] imageBytes = inputStream.readAllBytes();
+    if (imageBytes.length == 0) {
+      return List.of();
+    }
+
+    String normalizedMode = "SINGLE".equalsIgnoreCase(parseMode) ? "SINGLE" : "PAGE";
+    String modeGuide =
+        "SINGLE".equals(normalizedMode) ? "当前为单题导入：仅输出 1 道题。" : "当前为整页导入：请尽可能完整识别所有题目。";
+
+    String systemPrompt =
+        "你是题库导入助手。你必须只返回 JSON，不要返回任何解释文字或 Markdown。"
+            + "输出格式必须是数组，每个元素包含字段："
+            + "stem,type,difficulty,score,analysis,answerSchema,options。"
+            + "type 仅允许：SINGLE_CHOICE,MULTI_CHOICE,TRUE_FALSE,FILL_BLANK,SHORT_ANSWER。"
+            + "difficulty 仅允许：EASY,MEDIUM,HARD。"
+            + "options 为数组，元素字段：key,text,isCorrect。"
+            + "如果是填空/简答，options 可为空，但 answerSchema.correctAnswer 尽量给出。";
+
+    String userPrompt =
+        modeGuide
+            + "\n"
+            + "请识别图片中的题目并转换为 JSON 数组。"
+            + "\n"
+            + "每道题 score 默认给 5。subjectId 前端会补充，这里无需输出。";
+
+    String base64 = Base64.getEncoder().encodeToString(imageBytes);
+    try {
+      String raw = ollamaAiService.chatWithImages(systemPrompt, userPrompt, List.of(base64));
+      return parseAiQuestions(raw);
+    } catch (RuntimeException ex) {
+      throw new RuntimeException(
+          "图片解析失败：" + ex.getMessage() + "。请在管理员 AI 设置中选择支持视觉的模型（例如 qwen3-vl:8b），并确认模型已下载。", ex);
+    }
+  }
+
+  private List<QuestionCreateRequest> parseAiQuestions(String raw) {
+    List<QuestionCreateRequest> results = new ArrayList<>();
+    if (raw == null || raw.isBlank()) {
+      return results;
+    }
+
+    try {
+      String cleaned = raw.trim();
+      if (cleaned.startsWith("```") && cleaned.endsWith("```")) {
+        cleaned = cleaned.replaceFirst("^```[a-zA-Z]*\\n?", "");
+        cleaned = cleaned.replaceFirst("\\n?```$", "");
+      }
+
+      int arrayStart = cleaned.indexOf('[');
+      int arrayEnd = cleaned.lastIndexOf(']');
+      String json;
+      if (arrayStart >= 0 && arrayEnd > arrayStart) {
+        json = cleaned.substring(arrayStart, arrayEnd + 1);
+      } else {
+        int objStart = cleaned.indexOf('{');
+        int objEnd = cleaned.lastIndexOf('}');
+        if (objStart < 0 || objEnd <= objStart) {
+          return results;
+        }
+        String objJson = cleaned.substring(objStart, objEnd + 1);
+        var node = objectMapper.readTree(objJson);
+        if (node.has("questions") && node.get("questions").isArray()) {
+          json = node.get("questions").toString();
+        } else {
+          json = "[" + objJson + "]";
+        }
+      }
+
+      var root = objectMapper.readTree(json);
+      if (!root.isArray()) {
+        return results;
+      }
+
+      for (var item : root) {
+        String stem = item.path("stem").asText("").trim();
+        if (stem.isBlank()) {
+          continue;
+        }
+
+        QuestionCreateRequest req = new QuestionCreateRequest();
+        req.setStem(stem);
+        req.setSubjectId("general");
+        req.setType(parseType(item.path("type").asText("SINGLE_CHOICE")));
+        req.setDifficulty(parseDifficulty(item.path("difficulty").asText("MEDIUM")));
+        req.setScore((float) item.path("score").asDouble(5.0));
+        req.setAnalysis(item.path("analysis").asText(""));
+
+        List<QuestionOption> options = new ArrayList<>();
+        var optionsNode = item.path("options");
+        if (optionsNode.isArray()) {
+          int index = 0;
+          for (var opt : optionsNode) {
+            String text = opt.path("text").asText("").trim();
+            if (text.isBlank()) {
+              continue;
+            }
+            QuestionOption option = new QuestionOption();
+            String key = opt.path("key").asText("").trim();
+            if (key.isBlank()) {
+              key = String.valueOf((char) ('A' + index));
+            }
+            option.setKey(key.toUpperCase());
+            option.setText(text);
+            option.setIsCorrect(opt.path("isCorrect").asBoolean(false));
+            options.add(option);
+            index++;
+          }
+        }
+        req.setOptions(options);
+
+        var answerSchemaNode = item.path("answerSchema");
+        if (!answerSchemaNode.isMissingNode() && !answerSchemaNode.isNull()) {
+          req.setAnswerSchema(objectMapper.convertValue(answerSchemaNode, Object.class));
+        } else {
+          String answer = item.path("answer").asText("").trim();
+          if (!answer.isBlank()) {
+            Map<String, Object> answerSchema = new LinkedHashMap<>();
+            answerSchema.put("correctAnswer", answer);
+            req.setAnswerSchema(answerSchema);
+          }
+        }
+
+        results.add(req);
+      }
+    } catch (Exception ignored) {
+      return List.of();
+    }
+
+    return results;
+  }
+
+  private QuestionCreateRequest.TypeEnum parseType(String raw) {
+    if (raw == null) {
+      return QuestionCreateRequest.TypeEnum.SINGLE_CHOICE;
+    }
+    try {
+      return QuestionCreateRequest.TypeEnum.fromValue(raw.trim().toUpperCase());
+    } catch (Exception ignored) {
+      return QuestionCreateRequest.TypeEnum.SINGLE_CHOICE;
+    }
+  }
+
+  private QuestionCreateRequest.DifficultyEnum parseDifficulty(String raw) {
+    if (raw == null) {
+      return QuestionCreateRequest.DifficultyEnum.MEDIUM;
+    }
+    try {
+      return QuestionCreateRequest.DifficultyEnum.fromValue(raw.trim().toUpperCase());
+    } catch (Exception ignored) {
+      return QuestionCreateRequest.DifficultyEnum.MEDIUM;
+    }
   }
 
   private void finalizeQuestion(QuestionCreateRequest question, List<QuestionOption> options) {

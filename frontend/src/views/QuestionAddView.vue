@@ -4,15 +4,15 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { QuillEditor } from '@vueup/vue-quill'
 import { useToast } from '@/composables/useToast'
-import '@vueup/vue-quill/dist/vue-quill.snow.css';
-import 'katex/dist/katex.min.css';
-import katex from 'katex';
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import 'katex/dist/katex.min.css'
+import katex from 'katex'
 import GoogleSelect from '@/components/GoogleSelect.vue'
 import GoogleCombobox from '@/components/GoogleCombobox.vue'
 import KnowledgePointDialog from '@/components/KnowledgePointDialog.vue'
 
 // Expose katex to window for Quill's formula module
-(window as any).katex = katex;
+;(window as any).katex = katex
 
 const { showToast: globalToast } = useToast()
 
@@ -54,7 +54,7 @@ const difficultyOptions = [
 ]
 
 const kpOptions = computed(() => {
-  return flatPoints.value.map(p => ({
+  return flatPoints.value.map((p) => ({
     label: p.name,
     value: p.id
   }))
@@ -74,18 +74,18 @@ const fetchKnowledgePoints = async () => {
       headers: { Authorization: `Bearer ${token}` }
     })
     knowledgePoints.value = response.data
-    
+
     // Flatten for select
     const flat: any[] = []
     const map = new Map(response.data.map((p: any) => [p.id, p]))
-    
+
     const buildPath = (p: any): string => {
       if (p.parentId && map.has(p.parentId)) {
         return buildPath(map.get(p.parentId)) + ' > ' + p.name
       }
       return p.name
     }
-    
+
     response.data.forEach((p: any) => {
       if (p.level === 'POINT') {
         flat.push({
@@ -103,7 +103,7 @@ const fetchKnowledgePoints = async () => {
 // 加载题目数据（编辑模式）
 const loadQuestion = async () => {
   if (!isEditMode.value) return
-  
+
   loading.value = true
   try {
     const token = localStorage.getItem('token')
@@ -111,14 +111,14 @@ const loadQuestion = async () => {
       headers: { Authorization: `Bearer ${token}` }
     })
     const question = response.data
-    
+
     form.value.subjectId = question.subjectId || ''
     form.value.type = question.type || 'SINGLE_CHOICE'
     form.value.difficulty = question.difficulty || 'EASY'
     form.value.stem = question.stem || ''
     form.value.tags = question.tags ? question.tags.join(', ') : ''
     form.value.knowledgePointIds = question.knowledgePointIds || []
-    
+
     // 解析选项 - 支持多种格式
     let parsedOptions: any[] = []
     if (question.options && Array.isArray(question.options)) {
@@ -126,18 +126,20 @@ const loadQuestion = async () => {
     } else if (question.optionsJson) {
       try {
         parsedOptions = JSON.parse(question.optionsJson)
-      } catch { parsedOptions = [] }
+      } catch {
+        parsedOptions = []
+      }
     }
-    
+
     // 处理选项和答案
     if (['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(question.type)) {
       if (parsedOptions.length > 0) {
-        form.value.options = parsedOptions.map((opt: any) => 
-          typeof opt === 'string' ? opt : (opt.text || opt.content || '')
+        form.value.options = parsedOptions.map((opt: any) =>
+          typeof opt === 'string' ? opt : opt.text || opt.content || ''
         )
         // 确保至少4个选项
         while (form.value.options.length < 4) form.value.options.push('')
-        
+
         // 找到正确答案 - 支持多种格式
         if (question.answerSchema) {
           // 如果有 answerSchema，直接使用
@@ -164,8 +166,8 @@ const loadQuestion = async () => {
     } else if (question.type === 'TRUE_FALSE') {
       form.value.answer = question.answerSchema || 'True'
     } else if (question.type === 'FILL_BLANK') {
-      form.value.options = parsedOptions.map((opt: any) => 
-        typeof opt === 'string' ? opt : (opt.text || '')
+      form.value.options = parsedOptions.map((opt: any) =>
+        typeof opt === 'string' ? opt : opt.text || ''
       )
       if (form.value.options.length === 0) form.value.options = ['']
     } else if (question.type === 'SHORT_ANSWER') {
@@ -182,9 +184,13 @@ const loadQuestion = async () => {
 // 多选题答案
 const multiAnswer = ref<string[]>([])
 
-watch(multiAnswer, (val) => {
-  form.value.answer = val.join(',')
-}, { deep: true })
+watch(
+  multiAnswer,
+  (val) => {
+    form.value.answer = val.join(',')
+  },
+  { deep: true }
+)
 
 const handleCreateKP = (name: string) => {
   newKPName.value = name
@@ -194,21 +200,25 @@ const handleCreateKP = (name: string) => {
 const saveNewKP = async (kpData: any) => {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.post('/api/knowledge-points', {
-      ...kpData,
-      subjectId: form.value.subjectId || 'general'
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    
+    const res = await axios.post(
+      '/api/knowledge-points',
+      {
+        ...kpData,
+        subjectId: form.value.subjectId || 'general'
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` }
+      }
+    )
+
     // Refresh list
     await fetchKnowledgePoints()
-    
+
     // Add new ID to selection
     if (res.data && res.data.id) {
       form.value.knowledgePointIds.push(res.data.id)
     }
-    
+
     showKPDialog.value = false
   } catch (err) {
     console.error('Failed to create KP', err)
@@ -222,7 +232,6 @@ onMounted(() => {
     loadQuestion()
   }
 })
-
 
 const loading = ref(false)
 const message = ref('')
@@ -248,58 +257,58 @@ const showToast = (msg: string, type: 'success' | 'error') => {
 const toolbarOptions = [
   ['bold', 'italic', 'underline', 'strike'],
   ['blockquote', 'code-block'],
-  [{ 'header': 1 }, { 'header': 2 }],
-  [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-  [{ 'script': 'sub'}, { 'script': 'super' }],
-  [{ 'indent': '-1'}, { 'indent': '+1' }],
-  [{ 'direction': 'rtl' }],
-  [{ 'size': ['small', false, 'large', 'huge'] }],
-  [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-  [{ 'color': [] }, { 'background': [] }],
-  [{ 'font': [] }],
-  [{ 'align': [] }],
+  [{ header: 1 }, { header: 2 }],
+  [{ list: 'ordered' }, { list: 'bullet' }],
+  [{ script: 'sub' }, { script: 'super' }],
+  [{ indent: '-1' }, { indent: '+1' }],
+  [{ direction: 'rtl' }],
+  [{ size: ['small', false, 'large', 'huge'] }],
+  [{ header: [1, 2, 3, 4, 5, 6, false] }],
+  [{ color: [] }, { background: [] }],
+  [{ font: [] }],
+  [{ align: [] }],
   ['clean'],
   ['link', 'image', 'video', 'formula']
-];
+]
 
 const imageHandler = () => {
-  const input = document.createElement('input');
-  input.setAttribute('type', 'file');
-  input.setAttribute('accept', 'image/*');
-  input.click();
+  const input = document.createElement('input')
+  input.setAttribute('type', 'file')
+  input.setAttribute('accept', 'image/*')
+  input.click()
 
   input.onchange = async () => {
-    const file = input.files ? input.files[0] : null;
+    const file = input.files ? input.files[0] : null
     if (file) {
-      const formData = new FormData();
-      formData.append('file', file);
+      const formData = new FormData()
+      formData.append('file', file)
 
       try {
         const res = await axios.post('/api/files/upload', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
-        });
-        const url = res.data.fileUrl;
-        
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        const url = res.data.fileUrl
+
         // Insert image into editor
         if (quillEditor.value) {
-            const quill = quillEditor.value.getQuill();
-            const range = quill.getSelection();
-            quill.insertEmbed(range ? range.index : 0, 'image', url);
+          const quill = quillEditor.value.getQuill()
+          const range = quill.getSelection()
+          quill.insertEmbed(range ? range.index : 0, 'image', url)
         }
       } catch (err) {
-        console.error('Image upload failed', err);
-        globalToast({ message: '图片上传失败', type: 'error' });
+        console.error('Image upload failed', err)
+        globalToast({ message: '图片上传失败', type: 'error' })
       }
     }
-  };
-};
+  }
+}
 
 const onEditorReady = (quill: any) => {
-  const toolbar = quill.getModule('toolbar');
-  toolbar.addHandler('image', imageHandler);
-};
+  const toolbar = quill.getModule('toolbar')
+  toolbar.addHandler('image', imageHandler)
+}
 
 const addOption = () => {
   form.value.options.push('')
@@ -311,27 +320,30 @@ const removeOption = (index: number) => {
 
 const insertBlank = () => {
   if (quillEditor.value) {
-    const quill = quillEditor.value.getQuill();
-    const range = quill.getSelection(true);
-    quill.insertText(range.index, ' _____ ');
-    quill.setSelection(range.index + 7);
+    const quill = quillEditor.value.getQuill()
+    const range = quill.getSelection(true)
+    quill.insertText(range.index, ' _____ ')
+    quill.setSelection(range.index + 7)
   }
 }
 
-watch(() => form.value.stem, (newVal) => {
-  if (form.value.type === 'FILL_BLANK') {
-    const matches = newVal.match(/_____/g);
-    const count = matches ? matches.length : 0;
-    // Adjust options array size
-    if (count > form.value.options.length) {
+watch(
+  () => form.value.stem,
+  (newVal) => {
+    if (form.value.type === 'FILL_BLANK') {
+      const matches = newVal.match(/_____/g)
+      const count = matches ? matches.length : 0
+      // Adjust options array size
+      if (count > form.value.options.length) {
         for (let i = form.value.options.length; i < count; i++) {
-            form.value.options.push('');
+          form.value.options.push('')
         }
-    } else if (count < form.value.options.length) {
-        form.value.options.splice(count);
+      } else if (count < form.value.options.length) {
+        form.value.options.splice(count)
+      }
     }
   }
-});
+)
 
 const handleSubmit = async () => {
   loading.value = true
@@ -339,30 +351,30 @@ const handleSubmit = async () => {
   error.value = ''
 
   try {
-    let apiOptions: { text: string; isCorrect: boolean }[] = [];
+    let apiOptions: { text: string; isCorrect: boolean }[] = []
 
     // 解析答案字母列表
-    const answerLetters = form.value.answer.split(',').map(a => a.trim())
-    
+    const answerLetters = form.value.answer.split(',').map((a) => a.trim())
+
     if (['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(form.value.type)) {
-        apiOptions = form.value.options.map((optText, idx) => ({
-          text: optText,
-          isCorrect: answerLetters.includes(String.fromCharCode(65 + idx))
-        }));
+      apiOptions = form.value.options.map((optText, idx) => ({
+        text: optText,
+        isCorrect: answerLetters.includes(String.fromCharCode(65 + idx))
+      }))
     } else if (form.value.type === 'TRUE_FALSE') {
-        apiOptions = [
-            { text: 'True', isCorrect: form.value.answer === 'True' },
-            { text: 'False', isCorrect: form.value.answer === 'False' }
-        ];
+      apiOptions = [
+        { text: 'True', isCorrect: form.value.answer === 'True' },
+        { text: 'False', isCorrect: form.value.answer === 'False' }
+      ]
     } else if (form.value.type === 'FILL_BLANK') {
-        // 填空题：允许答案为空（不设标准答案）
-        apiOptions = form.value.options.map(optText => ({
-            text: optText,
-            isCorrect: true
-        }));
+      // 填空题：允许答案为空（不设标准答案）
+      apiOptions = form.value.options.map((optText) => ({
+        text: optText,
+        isCorrect: true
+      }))
     } else if (form.value.type === 'SHORT_ANSWER') {
-         // 简答题：允许答案为空，默认为需人工判卷
-         apiOptions = [{ text: form.value.answer || '', isCorrect: true }];
+      // 简答题：允许答案为空，默认为需人工判卷
+      apiOptions = [{ text: form.value.answer || '', isCorrect: true }]
     }
 
     // Construct payload strictly matching backend expectations
@@ -374,11 +386,11 @@ const handleSubmit = async () => {
       options: apiOptions,
       answerSchema: form.value.answer, // 保存实际答案字母
       score: 1.0,
-      tags: form.value.tags ? form.value.tags.split(',').map(t => t.trim()) : [],
+      tags: form.value.tags ? form.value.tags.split(',').map((t) => t.trim()) : [],
       knowledgePointIds: form.value.knowledgePointIds
     }
     const token = localStorage.getItem('token')
-    
+
     if (isEditMode.value) {
       // 编辑模式 - PUT 请求
       await axios.put(`/api/questions/${questionId.value}`, payload, {
@@ -433,23 +445,23 @@ const handleSubmit = async () => {
         <div class="form-grid">
           <div class="form-group">
             <label>科目</label>
-            <input v-model="form.subjectId" type="text" required placeholder="例如：数学" class="google-input" />
+            <input
+              v-model="form.subjectId"
+              type="text"
+              required
+              placeholder="例如：数学"
+              class="google-input"
+            />
           </div>
 
           <div class="form-group">
             <label>题型</label>
-            <GoogleSelect
-              v-model="form.type"
-              :options="typeOptions"
-            />
+            <GoogleSelect v-model="form.type" :options="typeOptions" />
           </div>
 
           <div class="form-group">
             <label>难度</label>
-            <GoogleSelect
-              v-model="form.difficulty"
-              :options="difficultyOptions"
-            />
+            <GoogleSelect v-model="form.difficulty" :options="difficultyOptions" />
           </div>
 
           <div class="form-group">
@@ -468,50 +480,93 @@ const handleSubmit = async () => {
         <div class="form-group full-width">
           <label>题干</label>
           <div class="editor-wrapper">
-            <QuillEditor 
+            <QuillEditor
               ref="quillEditor"
-              theme="snow" 
-              v-model:content="form.stem" 
-              contentType="html" 
+              theme="snow"
+              v-model:content="form.stem"
+              contentType="html"
               :toolbar="toolbarOptions"
               @ready="onEditorReady"
             />
           </div>
-          <button v-if="form.type === 'FILL_BLANK'" type="button" @click="insertBlank" class="google-btn text-btn small-btn mt-2">
+          <button
+            v-if="form.type === 'FILL_BLANK'"
+            type="button"
+            @click="insertBlank"
+            class="google-btn text-btn small-btn mt-2"
+          >
             插入空 (_____)
           </button>
         </div>
 
         <!-- Options for Choice Questions -->
-        <div v-if="['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(form.type)" class="options-section">
+        <div
+          v-if="['SINGLE_CHOICE', 'MULTIPLE_CHOICE'].includes(form.type)"
+          class="options-section"
+        >
           <label>选项</label>
           <div v-for="(_opt, idx) in form.options" :key="idx" class="option-row">
             <span class="option-label">{{ String.fromCharCode(65 + idx) }}.</span>
-            <input v-model="form.options[idx]" type="text" required placeholder="选项内容" class="google-input" />
-            <button type="button" @click="removeOption(idx)" class="icon-btn remove-opt" v-if="form.options.length > 2">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <input
+              v-model="form.options[idx]"
+              type="text"
+              required
+              placeholder="选项内容"
+              class="google-input"
+            />
+            <button
+              type="button"
+              @click="removeOption(idx)"
+              class="icon-btn remove-opt"
+              v-if="form.options.length > 2"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
             </button>
           </div>
-          <button type="button" @click="addOption" class="google-btn text-btn small-btn">添加选项</button>
+          <button type="button" @click="addOption" class="google-btn text-btn small-btn">
+            添加选项
+          </button>
         </div>
 
         <!-- Fill Blank Answers -->
         <div v-if="form.type === 'FILL_BLANK'" class="options-section">
-           <label>正确答案（按顺序）</label>
-           <div v-for="(_opt, idx) in form.options" :key="idx" class="option-row">
-              <span class="option-label">{{ idx + 1 }}.</span>
-              <input v-model="form.options[idx]" type="text" placeholder="填空答案（可选）" class="google-input" />
-           </div>
-           <p v-if="form.options.length === 0" class="helper-text">在题干中输入"_____"添加空</p>
+          <label>正确答案（按顺序）</label>
+          <div v-for="(_opt, idx) in form.options" :key="idx" class="option-row">
+            <span class="option-label">{{ idx + 1 }}.</span>
+            <input
+              v-model="form.options[idx]"
+              type="text"
+              placeholder="填空答案（可选）"
+              class="google-input"
+            />
+          </div>
+          <p v-if="form.options.length === 0" class="helper-text">在题干中输入"_____"添加空</p>
         </div>
 
         <div class="form-group full-width">
           <label>正确答案</label>
-          
+
           <!-- Single Choice Answer -->
           <div v-if="form.type === 'SINGLE_CHOICE'" class="radio-group">
             <label v-for="(_opt, idx) in form.options" :key="idx" class="radio-label">
-              <input type="radio" :value="String.fromCharCode(65 + idx)" v-model="form.answer" name="singleAnswer" />
+              <input
+                type="radio"
+                :value="String.fromCharCode(65 + idx)"
+                v-model="form.answer"
+                name="singleAnswer"
+              />
               <span class="radio-text">{{ String.fromCharCode(65 + idx) }}</span>
             </label>
           </div>
@@ -538,21 +593,32 @@ const handleSubmit = async () => {
 
           <!-- Fill Blank (handled above) -->
           <div v-else-if="form.type === 'FILL_BLANK'">
-             <!-- Answers are input in the options section above -->
+            <!-- Answers are input in the options section above -->
           </div>
 
           <!-- Text Answer -->
-          <input v-else v-model="form.answer" type="text" placeholder="参考答案（可选，用于自动评分或阅卷参考）" class="google-input" />
+          <input
+            v-else
+            v-model="form.answer"
+            type="text"
+            placeholder="参考答案（可选，用于自动评分或阅卷参考）"
+            class="google-input"
+          />
         </div>
 
         <div class="form-group full-width">
           <label>标签（用逗号分隔）</label>
-          <input v-model="form.tags" type="text" placeholder="数学, 代数, 一年级" class="google-input" />
+          <input
+            v-model="form.tags"
+            type="text"
+            placeholder="数学, 代数, 一年级"
+            class="google-input"
+          />
         </div>
 
         <div class="form-actions">
           <button type="submit" class="google-btn primary-btn" :disabled="loading">
-            {{ loading ? '保存中...' : (isEditMode ? '保存修改' : '创建题目') }}
+            {{ loading ? '保存中...' : isEditMode ? '保存修改' : '创建题目' }}
           </button>
           <button type="button" @click="$router.back()" class="google-btn text-btn">取消</button>
         </div>
@@ -560,12 +626,32 @@ const handleSubmit = async () => {
 
       <!-- Toast 提示 -->
       <Transition name="toast">
-        <div v-if="message || error" class="toast" :class="{ 'toast-error': error, 'toast-success': message }">
-          <svg v-if="message" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <div
+          v-if="message || error"
+          class="toast"
+          :class="{ 'toast-error': error, 'toast-success': message }"
+        >
+          <svg
+            v-if="message"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
             <polyline points="22 4 12 14.01 9 11.01"></polyline>
           </svg>
-          <svg v-if="error" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            v-if="error"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="15" y1="9" x2="9" y2="15"></line>
             <line x1="9" y1="9" x2="15" y2="15"></line>
@@ -583,7 +669,6 @@ const handleSubmit = async () => {
     />
   </div>
 </template>
-
 
 <style scoped>
 .add-question-container {
@@ -709,14 +794,16 @@ label {
   width: 24px;
 }
 
-.radio-group, .checkbox-group {
+.radio-group,
+.checkbox-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 8px 0;
 }
 
-.radio-label, .checkbox-label {
+.radio-label,
+.checkbox-label {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -730,7 +817,8 @@ label {
   user-select: none;
 }
 
-.radio-label:hover, .checkbox-label:hover {
+.radio-label:hover,
+.checkbox-label:hover {
   background: var(--line-bg-hover);
   border-color: var(--line-text-secondary);
   color: var(--line-text-primary);
@@ -738,7 +826,8 @@ label {
 }
 
 /* Hide native input but keep accessibility if possible (here mostly generic) */
-.radio-label input, .checkbox-label input {
+.radio-label input,
+.checkbox-label input {
   position: absolute;
   opacity: 0;
   width: 0;
@@ -746,14 +835,15 @@ label {
 }
 
 /* Active State */
-.radio-label:has(input:checked), 
+.radio-label:has(input:checked),
 .checkbox-label:has(input:checked) {
   background: var(--line-primary);
   border-color: var(--line-primary);
   box-shadow: var(--line-shadow-md);
 }
 
-.radio-text, .checkbox-text {
+.radio-text,
+.checkbox-text {
   font-size: 16px;
   font-weight: 500;
   color: var(--line-text-secondary);
@@ -835,19 +925,32 @@ label {
   padding: 8px;
 }
 
-.mt-2 { margin-top: 8px; }
+.mt-2 {
+  margin-top: 8px;
+}
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px) translateX(-50%); }
-  to { opacity: 1; transform: translateY(0) translateX(-50%); }
+  from {
+    opacity: 0;
+    transform: translateY(20px) translateX(-50%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(-50%);
+  }
 }
 
 .add-question-container {
-    animation: fadeIn 0.5s ease-out;
+  animation: fadeIn 0.5s ease-out;
 }
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
-

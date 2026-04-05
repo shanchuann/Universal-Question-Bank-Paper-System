@@ -7,7 +7,18 @@ import java.util.UUID;
 
 /** 考试报名/名单实体 */
 @Entity
-@Table(name = "exam_enrollments")
+@Table(
+    name = "exam_enrollments",
+    uniqueConstraints = {
+      @UniqueConstraint(
+          name = "uk_exam_enrollment_plan_student",
+          columnNames = {"examPlanId", "studentId"})
+    },
+    indexes = {
+      @Index(name = "idx_exam_enrollment_plan", columnList = "examPlanId"),
+      @Index(name = "idx_exam_enrollment_student", columnList = "studentId"),
+      @Index(name = "idx_exam_enrollment_plan_status", columnList = "examPlanId, status")
+    })
 public class ExamEnrollmentEntity {
 
   @Id private String id;

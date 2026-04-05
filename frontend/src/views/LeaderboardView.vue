@@ -6,7 +6,7 @@ import GoogleSelect from '@/components/GoogleSelect.vue'
 
 interface StudentStats {
   id: number
-  oderId?: string  // legacy field
+  oderId?: string // legacy field
   userId?: string
   nickname?: string
   avatarUrl?: string
@@ -44,7 +44,7 @@ const markAvatarBroken = (user: StudentStats | undefined, index: number) => {
 
 // Convert to options for GoogleSelect
 const classOptions = computed(() => {
-  return allClasses.value.map(org => ({
+  return allClasses.value.map((org) => ({
     label: org.name,
     value: org.id
   }))
@@ -158,7 +158,14 @@ onMounted(() => {
     <!-- 没有班级时显示的提示 -->
     <div class="line-card empty-card" v-if="allClasses.length === 0 && !loading">
       <div class="empty-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        >
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
           <circle cx="9" cy="7" r="4"></circle>
           <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -168,8 +175,12 @@ onMounted(() => {
         <p v-else>您还没有加入任何班级</p>
         <span class="hint" v-if="isTeacher">请先在组织架构中创建班级</span>
         <span class="hint" v-else>请先加入班级后查看班级排行榜</span>
-        <router-link v-if="isTeacher" to="/admin/organizations" class="line-btn primary-btn mt-4">去创建班级</router-link>
-        <router-link v-else to="/my-organizations" class="line-btn primary-btn mt-4">去加入班级</router-link>
+        <router-link v-if="isTeacher" to="/admin/organizations" class="line-btn primary-btn mt-4"
+          >去创建班级</router-link
+        >
+        <router-link v-else to="/my-organizations" class="line-btn primary-btn mt-4"
+          >去加入班级</router-link
+        >
       </div>
     </div>
 
@@ -180,7 +191,14 @@ onMounted(() => {
       </div>
 
       <div v-else-if="leaderboard.length === 0" class="empty-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        >
           <path d="M12 15l-2 5l9-13h-5l2-5l-9 13h5z"></path>
         </svg>
         <p>暂无排行数据</p>
@@ -201,21 +219,49 @@ onMounted(() => {
                 class="avatar-img"
                 @error="markAvatarBroken(leaderboard[1], 1)"
               />
-              <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg
+                v-else
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
             </div>
             <div class="name">{{ leaderboard[1]?.nickname || leaderboard[1]?.userId }}</div>
-            <div class="score">{{ leaderboard[1]?.correctAnswers }} <span class="unit">题</span></div>
-            <div class="accuracy">正确率 {{ leaderboard[1]?.accuracy !== undefined ? (leaderboard[1]?.accuracy * 100).toFixed(0) : 0 }}%</div>
+            <div class="score">
+              {{ leaderboard[1]?.correctAnswers }} <span class="unit">题</span>
+            </div>
+            <div class="accuracy">
+              正确率
+              {{
+                leaderboard[1]?.accuracy !== undefined
+                  ? (leaderboard[1]?.accuracy * 100).toFixed(0)
+                  : 0
+              }}%
+            </div>
           </div>
-          
+
           <!-- First Place -->
           <div class="podium-item first">
             <div class="rank-medal gold">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polygon
+                  points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+                ></polygon>
               </svg>
             </div>
             <div class="avatar gold">
@@ -226,16 +272,33 @@ onMounted(() => {
                 class="avatar-img"
                 @error="markAvatarBroken(leaderboard[0], 0)"
               />
-              <svg v-else width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg
+                v-else
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
             </div>
             <div class="name">{{ leaderboard[0]?.nickname || leaderboard[0]?.userId }}</div>
-            <div class="score">{{ leaderboard[0]?.correctAnswers }} <span class="unit">题</span></div>
-            <div class="accuracy">正确率 {{ leaderboard[0]?.accuracy !== undefined ? (leaderboard[0]?.accuracy * 100).toFixed(0) : 0 }}%</div>
+            <div class="score">
+              {{ leaderboard[0]?.correctAnswers }} <span class="unit">题</span>
+            </div>
+            <div class="accuracy">
+              正确率
+              {{
+                leaderboard[0]?.accuracy !== undefined
+                  ? (leaderboard[0]?.accuracy * 100).toFixed(0)
+                  : 0
+              }}%
+            </div>
           </div>
-          
+
           <!-- Third Place -->
           <div class="podium-item third" v-if="leaderboard.length >= 3">
             <div class="rank-medal bronze">3</div>
@@ -247,14 +310,31 @@ onMounted(() => {
                 class="avatar-img"
                 @error="markAvatarBroken(leaderboard[2], 2)"
               />
-              <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg
+                v-else
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
             </div>
             <div class="name">{{ leaderboard[2]?.nickname || leaderboard[2]?.userId }}</div>
-            <div class="score">{{ leaderboard[2]?.correctAnswers }} <span class="unit">题</span></div>
-            <div class="accuracy">正确率 {{ leaderboard[2]?.accuracy !== undefined ? (leaderboard[2]?.accuracy * 100).toFixed(0) : 0 }}%</div>
+            <div class="score">
+              {{ leaderboard[2]?.correctAnswers }} <span class="unit">题</span>
+            </div>
+            <div class="accuracy">
+              正确率
+              {{
+                leaderboard[2]?.accuracy !== undefined
+                  ? (leaderboard[2]?.accuracy * 100).toFixed(0)
+                  : 0
+              }}%
+            </div>
           </div>
         </div>
 
@@ -272,11 +352,7 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody>
-              <tr 
-                v-for="(user, index) in leaderboard.slice(3)" 
-                :key="user.id"
-                class="table-row"
-              >
+              <tr v-for="(user, index) in leaderboard.slice(3)" :key="user.id" class="table-row">
                 <td class="col-rank">
                   <span class="rank-badge">{{ index + 4 }}</span>
                 </td>
@@ -290,7 +366,15 @@ onMounted(() => {
                         class="avatar-img"
                         @error="markAvatarBroken(user, index + 3)"
                       />
-                      <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <svg
+                        v-else
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
                       </svg>
@@ -303,7 +387,14 @@ onMounted(() => {
                 <td class="col-accuracy">{{ (user.accuracy * 100).toFixed(1) }}%</td>
                 <td class="col-streak">
                   <span v-if="user.currentStreak > 0" class="streak-badge">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
                       <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
                     </svg>
                     {{ user.currentStreak }}
@@ -361,7 +452,8 @@ onMounted(() => {
   align-items: center;
 }
 
-.loading-state, .empty-state {
+.loading-state,
+.empty-state {
   text-align: center;
   padding: 64px 24px;
   color: var(--line-text-secondary);
@@ -380,7 +472,9 @@ onMounted(() => {
   margin-bottom: 24px;
 }
 
-.mt-4 { margin-top: 16px; }
+.mt-4 {
+  margin-top: 16px;
+}
 
 .spinner {
   width: 32px;
@@ -393,7 +487,9 @@ onMounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Podium */
@@ -442,8 +538,12 @@ onMounted(() => {
   box-shadow: 0 20px 40px -10px rgba(251, 191, 36, 0.5);
 }
 
-.podium-item.second { z-index: 1; }
-.podium-item.third { z-index: 1; }
+.podium-item.second {
+  z-index: 1;
+}
+.podium-item.third {
+  z-index: 1;
+}
 
 .rank-medal {
   position: absolute;
@@ -464,17 +564,17 @@ onMounted(() => {
   width: 40px;
   height: 40px;
   top: -20px;
-  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.4);
 }
 
 .rank-medal.silver {
-  background: linear-gradient(135deg, #94A3B8 0%, #64748B 100%);
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
   box-shadow: 0 4px 6px -1px rgba(100, 116, 139, 0.4);
 }
 
 .rank-medal.bronze {
-  background: linear-gradient(135deg, #D97706 0%, #92400E 100%);
+  background: linear-gradient(135deg, #d97706 0%, #92400e 100%);
   box-shadow: 0 4px 6px -1px rgba(180, 83, 9, 0.4);
 }
 
@@ -506,13 +606,21 @@ onMounted(() => {
 .avatar.gold {
   width: 72px;
   height: 72px;
-  color: #F59E0B;
-  background: #FEF3C7;
-  border-color: #F59E0B;
+  color: #f59e0b;
+  background: #fef3c7;
+  border-color: #f59e0b;
 }
 
-.avatar.silver { color: #64748B; background: #F1F5F9; border-color: #CBD5E1; }
-.avatar.bronze { color: #D97706; background: #FFF7ED; border-color: #FED7AA; }
+.avatar.silver {
+  color: #64748b;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+.avatar.bronze {
+  color: #d97706;
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
 
 .podium-item .name {
   font-size: 15px;
@@ -525,7 +633,9 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.podium-item.first .name { font-size: 18px; }
+.podium-item.first .name {
+  font-size: 18px;
+}
 
 .podium-item .score {
   font-size: 24px;
@@ -535,7 +645,9 @@ onMounted(() => {
   margin-bottom: 4px;
 }
 
-.podium-item.first .score { font-size: 32px; }
+.podium-item.first .score {
+  font-size: 32px;
+}
 
 .podium-item .score .unit {
   font-size: 14px;
@@ -585,12 +697,20 @@ onMounted(() => {
   background: var(--line-bg-hover);
 }
 
-.col-rank, .col-correct, .col-total, .col-accuracy, .col-streak {
+.col-rank,
+.col-correct,
+.col-total,
+.col-accuracy,
+.col-streak {
   text-align: center;
 }
 
-.col-rank { width: 80px; }
-.col-name { text-align: left; }
+.col-rank {
+  width: 80px;
+}
+.col-name {
+  text-align: left;
+}
 
 .rank-badge {
   display: inline-flex;
@@ -644,8 +764,8 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  background: #FEF3C7;
-  color: #D97706;
+  background: #fef3c7;
+  color: #d97706;
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;

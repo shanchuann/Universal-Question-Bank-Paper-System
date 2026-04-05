@@ -5,7 +5,14 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "exams")
+@Table(
+    name = "exams",
+    indexes = {
+      @Index(name = "idx_exam_user_end", columnList = "userId, endTime"),
+      @Index(name = "idx_exam_user_start", columnList = "userId, startTime"),
+      @Index(name = "idx_exam_paper_start", columnList = "paperId, startTime"),
+      @Index(name = "idx_exam_grading_start", columnList = "gradingStatus, startTime")
+    })
 public class ExamEntity {
 
   @Id

@@ -76,7 +76,7 @@ const form = ref({
 const paperOptions = computed(() => {
   return [
     { label: '请选择试卷', value: '' },
-    ...papers.value.map(paper => ({ label: paper.title, value: String(paper.id) }))
+    ...papers.value.map((paper) => ({ label: paper.title, value: String(paper.id) }))
   ]
 })
 
@@ -102,9 +102,7 @@ const examTypeSelectValue = computed({
 })
 
 const classOptions = computed(() => {
-  return [
-    ...organizations.value.map(org => ({ label: org.name, value: org.id }))
-  ]
+  return [...organizations.value.map((org) => ({ label: org.name, value: org.id }))]
 })
 
 const selectedClassToAdd = ref('')
@@ -125,17 +123,17 @@ const addSelectedClass = () => {
 }
 
 const removeClass = (classId: string) => {
-  form.value.classIds = form.value.classIds.filter(id => id !== classId)
+  form.value.classIds = form.value.classIds.filter((id) => id !== classId)
 }
 
 const getClassName = (classId: string) => {
-  const org = organizations.value.find(o => o.id === classId)
+  const org = organizations.value.find((o) => o.id === classId)
   return org?.name || classId
 }
 
 const getAuthHeaders = () => ({
   'Content-Type': 'application/json',
-  'Authorization': `Bearer ${localStorage.getItem('token')}`
+  Authorization: `Bearer ${localStorage.getItem('token')}`
 })
 
 onMounted(() => {
@@ -251,7 +249,7 @@ function toISODateTime(localDateTime: string): string {
 // 获取试卷名称
 function getPaperName(paperId: number | null): string {
   if (!paperId) return '未选择'
-  const paper = papers.value.find(p => p.id === paperId)
+  const paper = papers.value.find((p) => p.id === paperId)
   return paper ? paper.title : `试卷#${paperId}`
 }
 
@@ -286,15 +284,21 @@ async function submitForm() {
 
     showForm.value = false
     await fetchExamPlans()
-    showToast({ message: editingPlan.value ? '考试计划更新成功' : '考试计划创建成功', type: 'success' })
+    showToast({
+      message: editingPlan.value ? '考试计划更新成功' : '考试计划创建成功',
+      type: 'success'
+    })
   } catch (error) {
     console.error('Failed to save exam plan:', error)
-    showToast({ message: '保存失败: ' + (error instanceof Error ? error.message : '未知错误'), type: 'error' })
+    showToast({
+      message: '保存失败: ' + (error instanceof Error ? error.message : '未知错误'),
+      type: 'error'
+    })
   }
 }
 
 async function publishPlan(id: string) {
-  const plan = examPlans.value.find(p => p.id === id)
+  const plan = examPlans.value.find((p) => p.id === id)
   if (!plan?.paperId) {
     showToast({ message: '请先选择试卷后再发布', type: 'warning' })
     return
@@ -309,7 +313,7 @@ async function publishPlan(id: string) {
   if (!confirmed) return
 
   try {
-    const response = await fetch(`/api/exam-plans/${id}/publish`, { 
+    const response = await fetch(`/api/exam-plans/${id}/publish`, {
       method: 'POST',
       headers: getAuthHeaders()
     })
@@ -321,7 +325,10 @@ async function publishPlan(id: string) {
     showToast({ message: '考试计划发布成功', type: 'success' })
   } catch (error) {
     console.error('Failed to publish plan:', error)
-    showToast({ message: '发布失败: ' + (error instanceof Error ? error.message : '未知错误'), type: 'error' })
+    showToast({
+      message: '发布失败: ' + (error instanceof Error ? error.message : '未知错误'),
+      type: 'error'
+    })
   }
 }
 
@@ -336,7 +343,7 @@ async function cancelPlan(id: string) {
   if (!confirmed) return
 
   try {
-    await fetch(`/api/exam-plans/${id}/cancel`, { 
+    await fetch(`/api/exam-plans/${id}/cancel`, {
       method: 'POST',
       headers: getAuthHeaders()
     })
@@ -425,18 +432,23 @@ const statusLabels: Record<string, string> = {
     </div>
 
     <div class="toolbar">
-      <button class="google-btn primary-btn" @click="openAddForm">
-        创建考试计划
-      </button>
+      <button class="google-btn primary-btn" @click="openAddForm">创建考试计划</button>
     </div>
 
     <div class="content-card">
       <div v-if="loading" class="loading">加载中...</div>
 
       <div v-else-if="examPlans.length === 0" class="empty-state">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1">
-          <path d="M8 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-5"/>
-          <path d="M21 5H7M21 9H7M21 13H7"/>
+        <svg
+          width="64"
+          height="64"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#9aa0a6"
+          stroke-width="1"
+        >
+          <path d="M8 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-5" />
+          <path d="M21 5H7M21 9H7M21 13H7" />
         </svg>
         <p>暂无考试计划</p>
       </div>
@@ -473,41 +485,70 @@ const statusLabels: Record<string, string> = {
             </td>
             <td>
               <div class="action-buttons">
-                <button class="icon-btn" @click="openEditForm(plan)" title="编辑" :disabled="plan.status !== 'DRAFT'">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                </button>
-                <button 
-                  class="icon-btn primary"
-                  @click="openEnrollModal(plan)"
-                  title="报名管理"
+                <button
+                  class="icon-btn"
+                  @click="openEditForm(plan)"
+                  title="编辑"
+                  :disabled="plan.status !== 'DRAFT'"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-                    <path d="M16 3.13a4 4 0 010 7.75"/>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                   </svg>
                 </button>
-                <button 
+                <button class="icon-btn primary" @click="openEnrollModal(plan)" title="报名管理">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                    <path d="M16 3.13a4 4 0 010 7.75" />
+                  </svg>
+                </button>
+                <button
                   v-if="plan.status === 'DRAFT'"
                   class="icon-btn success"
                   @click="publishPlan(plan.id)"
                   title="发布"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                 </button>
-                <button 
+                <button
                   v-if="plan.status === 'PUBLISHED' || plan.status === 'ONGOING'"
                   class="icon-btn danger"
                   @click="cancelPlan(plan.id)"
                   title="取消"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
                   </svg>
@@ -519,22 +560,32 @@ const statusLabels: Record<string, string> = {
       </table>
 
       <div v-if="total > size" class="pagination">
-        <button 
-          :disabled="page === 0"
-          class="icon-btn"
-          @click="goToPage(page - 1)"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button :disabled="page === 0" class="icon-btn" @click="goToPage(page - 1)">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
         <span class="page-info">第 {{ page + 1 }} 页，共 {{ Math.ceil(total / size) }} 页</span>
-        <button 
+        <button
           :disabled="page >= Math.ceil(total / size) - 1"
           class="icon-btn"
           @click="goToPage(page + 1)"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <polyline points="9 18 15 12 9 6"></polyline>
           </svg>
         </button>
@@ -545,160 +596,199 @@ const statusLabels: Record<string, string> = {
       <!-- Form Modal -->
       <div v-if="showForm" class="modal-overlay" @click.self="showForm = false">
         <div class="modal-content">
-        <h2>{{ editingPlan ? '编辑考试计划' : '创建考试计划' }}</h2>
-        <form @submit.prevent="submitForm">
-          <div class="form-group">
-            <label>计划名称</label>
-            <input v-model="form.name" type="text" class="google-input" required placeholder="例如：期末考试" />
-          </div>
-
-          <div class="form-row">
+          <h2>{{ editingPlan ? '编辑考试计划' : '创建考试计划' }}</h2>
+          <form @submit.prevent="submitForm">
             <div class="form-group">
-              <label>关联试卷 <span class="required">*</span></label>
-              <GoogleSelect
-                v-model="paperSelectValue"
-                :options="paperOptions"
-                placeholder="请选择试卷"
+              <label>计划名称</label>
+              <input
+                v-model="form.name"
+                type="text"
+                class="google-input"
+                required
+                placeholder="例如：期末考试"
               />
             </div>
-            <div class="form-group">
-              <label>考试类型</label>
-              <GoogleSelect
-                v-model="examTypeSelectValue"
-                :options="examTypeOptions"
-                placeholder="请选择考试类型"
-              />
-            </div>
-          </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>开始时间 <span class="required">*</span></label>
-              <input v-model="form.startTime" type="datetime-local" class="google-input" required />
-              <small class="hint">学生只能在开始时间后答题</small>
-            </div>
-            <div class="form-group">
-              <label>结束时间 <span class="required">*</span></label>
-              <input v-model="form.endTime" type="datetime-local" class="google-input" required />
-              <small class="hint">结束后自动提交并判分</small>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>考试时长（分钟）</label>
-              <input v-model.number="form.durationMins" type="number" class="google-input" required min="1" />
-            </div>
-            <div class="form-group">
-              <label>及格分数</label>
-              <input v-model.number="form.passScore" type="number" class="google-input" required min="0" />
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>允许进入答题次数</label>
-              <input v-model.number="form.maxAttempts" type="number" class="google-input" required min="1" />
-              <small class="hint">达到次数上限后不可再次进入考试</small>
-            </div>
-            <div class="form-group">
-              <label>AI 自动阅卷</label>
-              <div class="switch-line">
-                <label class="switch">
-                  <input type="checkbox" v-model="form.aiAutoGradingEnabled" />
-                  <span class="slider"></span>
-                </label>
-                <span class="switch-text">
-                  {{ form.aiAutoGradingEnabled ? '已开启' : '已关闭' }}：发布后主观题自动调用 AI 预评分
-                </span>
+            <div class="form-row">
+              <div class="form-group">
+                <label>关联试卷 <span class="required">*</span></label>
+                <GoogleSelect
+                  v-model="paperSelectValue"
+                  :options="paperOptions"
+                  placeholder="请选择试卷"
+                />
+              </div>
+              <div class="form-group">
+                <label>考试类型</label>
+                <GoogleSelect
+                  v-model="examTypeSelectValue"
+                  :options="examTypeOptions"
+                  placeholder="请选择考试类型"
+                />
               </div>
             </div>
-          </div>
 
-          <div class="form-group">
-            <label>下发班级</label>
-            <div class="class-selector-row">
-              <GoogleSelect
-                v-model="selectedClassToAdd"
-                :options="classOptions"
-                placeholder="请选择下发班级"
-              />
-              <button type="button" class="google-btn secondary-btn" @click="addSelectedClass">
-                添加
+            <div class="form-row">
+              <div class="form-group">
+                <label>开始时间 <span class="required">*</span></label>
+                <input
+                  v-model="form.startTime"
+                  type="datetime-local"
+                  class="google-input"
+                  required
+                />
+                <small class="hint">学生只能在开始时间后答题</small>
+              </div>
+              <div class="form-group">
+                <label>结束时间 <span class="required">*</span></label>
+                <input v-model="form.endTime" type="datetime-local" class="google-input" required />
+                <small class="hint">结束后自动提交并判分</small>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>考试时长（分钟）</label>
+                <input
+                  v-model.number="form.durationMins"
+                  type="number"
+                  class="google-input"
+                  required
+                  min="1"
+                />
+              </div>
+              <div class="form-group">
+                <label>及格分数</label>
+                <input
+                  v-model.number="form.passScore"
+                  type="number"
+                  class="google-input"
+                  required
+                  min="0"
+                />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>允许进入答题次数</label>
+                <input
+                  v-model.number="form.maxAttempts"
+                  type="number"
+                  class="google-input"
+                  required
+                  min="1"
+                />
+                <small class="hint">达到次数上限后不可再次进入考试</small>
+              </div>
+              <div class="form-group">
+                <label>AI 自动阅卷</label>
+                <div class="switch-line">
+                  <label class="switch">
+                    <input type="checkbox" v-model="form.aiAutoGradingEnabled" />
+                    <span class="slider"></span>
+                  </label>
+                  <span class="switch-text">
+                    {{ form.aiAutoGradingEnabled ? '已开启' : '已关闭' }}：发布后主观题自动调用 AI
+                    预评分
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>下发班级</label>
+              <div class="class-selector-row">
+                <GoogleSelect
+                  v-model="selectedClassToAdd"
+                  :options="classOptions"
+                  placeholder="请选择下发班级"
+                />
+                <button type="button" class="google-btn secondary-btn" @click="addSelectedClass">
+                  添加
+                </button>
+              </div>
+              <div v-if="form.classIds.length > 0" class="selected-class-list">
+                <span v-for="classId in form.classIds" :key="classId" class="selected-class-chip">
+                  {{ getClassName(classId) }}
+                  <button type="button" class="remove-chip-btn" @click="removeClass(classId)">
+                    ×
+                  </button>
+                </span>
+              </div>
+              <div v-else class="empty-hint-inline">未选择班级</div>
+              <small class="hint">选择班级后，发布考试时自动将班级学生报名到考试</small>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="google-btn text-btn" @click="showForm = false">
+                取消
               </button>
+              <button type="submit" class="google-btn primary-btn">保存</button>
             </div>
-            <div v-if="form.classIds.length > 0" class="selected-class-list">
-              <span v-for="classId in form.classIds" :key="classId" class="selected-class-chip">
-                {{ getClassName(classId) }}
-                <button type="button" class="remove-chip-btn" @click="removeClass(classId)">×</button>
-              </span>
-            </div>
-            <div v-else class="empty-hint-inline">未选择班级</div>
-            <small class="hint">选择班级后，发布考试时自动将班级学生报名到考试</small>
-          </div>
-
-          <div class="form-actions">
-            <button type="button" class="google-btn text-btn" @click="showForm = false">取消</button>
-            <button type="submit" class="google-btn primary-btn">保存</button>
-          </div>
-        </form>
+          </form>
         </div>
       </div>
 
       <!-- Enroll Modal -->
       <div v-if="showEnrollModal" class="modal-overlay" @click.self="showEnrollModal = false">
         <div class="modal-content enroll-modal">
-        <h2>报名管理 - {{ enrollingPlan?.name }}</h2>
-        
-        <div class="enroll-section">
-          <h3>按班级批量报名</h3>
-          <div class="class-select-group">
-            <div v-if="organizations.length === 0" class="empty-hint">
-              暂无班级，请先在组织管理中创建班级
-            </div>
-            <div v-else class="class-checkboxes">
-              <label v-for="org in organizations" :key="org.id" class="checkbox-label">
-                <input 
-                  type="checkbox" 
-                  :value="org.id" 
-                  v-model="selectedClasses"
-                />
-                {{ org.name }} ({{ org.code }})
-              </label>
-            </div>
-            <button 
-              v-if="organizations.length > 0"
-              class="google-btn primary-btn"
-              :disabled="selectedClasses.length === 0 || enrollLoading"
-              @click="enrollClasses"
-            >
-              {{ enrollLoading ? '报名中...' : '批量报名' }}
-            </button>
-          </div>
-        </div>
+          <h2>报名管理 - {{ enrollingPlan?.name }}</h2>
 
-        <div class="enroll-section">
-          <h3>已报名学生 ({{ enrollments.length }}人)</h3>
-          <div v-if="enrollLoading" class="loading-hint">加载中...</div>
-          <div v-else-if="enrollments.length === 0" class="empty-hint">
-            暂无学生报名
-          </div>
-          <div v-else class="enrollment-list">
-            <div v-for="e in enrollments" :key="e.id" class="enrollment-item">
-              <div class="student-info">
-                <div class="student-avatar" :class="{ 'has-img': e.avatarUrl }">
-                  <img v-if="e.avatarUrl" :src="e.avatarUrl" :alt="e.studentName || ''" @error="($event.target as HTMLImageElement).style.display = 'none'" />
-                  <span v-else>{{ (e.studentName || e.studentId || 'U').charAt(0).toUpperCase() }}</span>
-                </div>
-                <span class="student-name">{{ e.studentName || e.studentId }}</span>
+          <div class="enroll-section">
+            <h3>按班级批量报名</h3>
+            <div class="class-select-group">
+              <div v-if="organizations.length === 0" class="empty-hint">
+                暂无班级，请先在组织管理中创建班级
               </div>
-              <span :class="['enroll-status', e.status.toLowerCase()]">{{ e.statusLabel || e.status }}</span>
+              <div v-else class="class-checkboxes">
+                <label v-for="org in organizations" :key="org.id" class="checkbox-label">
+                  <input type="checkbox" :value="org.id" v-model="selectedClasses" />
+                  {{ org.name }} ({{ org.code }})
+                </label>
+              </div>
+              <button
+                v-if="organizations.length > 0"
+                class="google-btn primary-btn"
+                :disabled="selectedClasses.length === 0 || enrollLoading"
+                @click="enrollClasses"
+              >
+                {{ enrollLoading ? '报名中...' : '批量报名' }}
+              </button>
             </div>
           </div>
-        </div>
+
+          <div class="enroll-section">
+            <h3>已报名学生 ({{ enrollments.length }}人)</h3>
+            <div v-if="enrollLoading" class="loading-hint">加载中...</div>
+            <div v-else-if="enrollments.length === 0" class="empty-hint">暂无学生报名</div>
+            <div v-else class="enrollment-list">
+              <div v-for="e in enrollments" :key="e.id" class="enrollment-item">
+                <div class="student-info">
+                  <div class="student-avatar" :class="{ 'has-img': e.avatarUrl }">
+                    <img
+                      v-if="e.avatarUrl"
+                      :src="e.avatarUrl"
+                      :alt="e.studentName || ''"
+                      @error="($event.target as HTMLImageElement).style.display = 'none'"
+                    />
+                    <span v-else>{{
+                      (e.studentName || e.studentId || 'U').charAt(0).toUpperCase()
+                    }}</span>
+                  </div>
+                  <span class="student-name">{{ e.studentName || e.studentId }}</span>
+                </div>
+                <span :class="['enroll-status', e.status.toLowerCase()]">{{
+                  e.statusLabel || e.status
+                }}</span>
+              </div>
+            </div>
+          </div>
 
           <div class="form-actions">
-            <button type="button" class="google-btn text-btn" @click="showEnrollModal = false">关闭</button>
+            <button type="button" class="google-btn text-btn" @click="showEnrollModal = false">
+              关闭
+            </button>
           </div>
         </div>
       </div>
@@ -713,7 +803,6 @@ const statusLabels: Record<string, string> = {
   margin: 0 auto;
   animation: fadeIn 0.5s ease-out;
 }
-
 
 .page-header {
   margin-bottom: 32px;
@@ -745,7 +834,8 @@ const statusLabels: Record<string, string> = {
   overflow: hidden;
 }
 
-.loading, .empty-state {
+.loading,
+.empty-state {
   text-align: center;
   padding: 64px;
   color: var(--line-text-secondary);
@@ -1161,7 +1251,7 @@ const statusLabels: Record<string, string> = {
   border-color: var(--line-primary);
 }
 
-.checkbox-label input[type="checkbox"]:checked + span,
+.checkbox-label input[type='checkbox']:checked + span,
 .checkbox-label:has(input:checked) {
   color: var(--line-primary);
 }
@@ -1308,13 +1398,22 @@ const statusLabels: Record<string, string> = {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
-

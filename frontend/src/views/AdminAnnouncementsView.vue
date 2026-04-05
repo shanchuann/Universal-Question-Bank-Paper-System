@@ -1,7 +1,20 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, reactive } from 'vue'
 import axios from 'axios'
-import { Plus, Edit, Trash2, Eye, Clock, Send, AlertCircle, Check, FileText, Archive, X, Megaphone } from 'lucide-vue-next'
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Clock,
+  Send,
+  AlertCircle,
+  Check,
+  FileText,
+  Archive,
+  X,
+  Megaphone
+} from 'lucide-vue-next'
 import { useToast } from '@/composables/useToast'
 
 const { showToast } = useToast()
@@ -116,14 +129,14 @@ const fetchAnnouncements = async () => {
 
 const filteredAnnouncements = computed(() => {
   if (currentTab.value === 'ALL') return announcements.value
-  return announcements.value.filter(a => a.status === currentTab.value)
+  return announcements.value.filter((a) => a.status === currentTab.value)
 })
 
 const tabCounts = computed(() => ({
   ALL: announcements.value.length,
-  DRAFT: announcements.value.filter(a => a.status === 'DRAFT').length,
-  PUBLISHED: announcements.value.filter(a => a.status === 'PUBLISHED').length,
-  ARCHIVED: announcements.value.filter(a => a.status === 'ARCHIVED').length
+  DRAFT: announcements.value.filter((a) => a.status === 'DRAFT').length,
+  PUBLISHED: announcements.value.filter((a) => a.status === 'PUBLISHED').length,
+  ARCHIVED: announcements.value.filter((a) => a.status === 'ARCHIVED').length
 }))
 
 const setTab = (tab: string) => {
@@ -175,7 +188,7 @@ const saveAnnouncement = async (publish: boolean = false) => {
       })
       showToast({ message: publish ? '公告已创建并发布' : '公告已保存为草稿', type: 'success' })
     }
-    
+
     closeModal()
     fetchAnnouncements()
   } catch (error) {
@@ -185,7 +198,7 @@ const saveAnnouncement = async (publish: boolean = false) => {
 }
 
 const publishAnnouncement = async (id: string) => {
-  const announcement = announcements.value.find(a => a.id === id)
+  const announcement = announcements.value.find((a) => a.id === id)
   if (!announcement) return
 
   showConfirm({
@@ -196,9 +209,13 @@ const publishAnnouncement = async (id: string) => {
     onConfirm: async () => {
       try {
         const token = localStorage.getItem('token')
-        await axios.put(`/api/admin/announcements/${id}/publish`, {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        await axios.put(
+          `/api/admin/announcements/${id}/publish`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        )
         showToast({ message: '公告已发布', type: 'success' })
         fetchAnnouncements()
       } catch (error) {
@@ -210,7 +227,7 @@ const publishAnnouncement = async (id: string) => {
 }
 
 const archiveAnnouncement = async (id: string) => {
-  const announcement = announcements.value.find(a => a.id === id)
+  const announcement = announcements.value.find((a) => a.id === id)
   if (!announcement) return
 
   showConfirm({
@@ -221,9 +238,13 @@ const archiveAnnouncement = async (id: string) => {
     onConfirm: async () => {
       try {
         const token = localStorage.getItem('token')
-        await axios.put(`/api/admin/announcements/${id}/archive`, {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        await axios.put(
+          `/api/admin/announcements/${id}/archive`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        )
         showToast({ message: '公告已归档', type: 'success' })
         fetchAnnouncements()
       } catch (error) {
@@ -235,7 +256,7 @@ const archiveAnnouncement = async (id: string) => {
 }
 
 const deleteAnnouncement = async (id: string) => {
-  const announcement = announcements.value.find(a => a.id === id)
+  const announcement = announcements.value.find((a) => a.id === id)
   if (!announcement) return
 
   showConfirm({
@@ -261,24 +282,28 @@ const deleteAnnouncement = async (id: string) => {
 
 const getStatusLabel = (status: string) => {
   const map: Record<string, string> = {
-    'DRAFT': '草稿',
-    'PUBLISHED': '已发布',
-    'ARCHIVED': '已归档'
+    DRAFT: '草稿',
+    PUBLISHED: '已发布',
+    ARCHIVED: '已归档'
   }
   return map[status] || status
 }
 
 const getPriorityLabel = (priority: string) => {
-  const option = priorityOptions.find(p => p.value === priority)
+  const option = priorityOptions.find((p) => p.value === priority)
   return option?.label || priority
 }
 
 const getStatusIcon = (status: string) => {
   switch (status) {
-    case 'DRAFT': return FileText
-    case 'PUBLISHED': return Check
-    case 'ARCHIVED': return Archive
-    default: return FileText
+    case 'DRAFT':
+      return FileText
+    case 'PUBLISHED':
+      return Check
+    case 'ARCHIVED':
+      return Archive
+    default:
+      return FileText
   }
 }
 
@@ -294,14 +319,17 @@ onMounted(() => {
       <div v-if="confirmDialog.show" class="confirm-overlay" @click.self="closeConfirm">
         <div class="confirm-dialog">
           <div class="confirm-header">
-            <AlertCircle :size="24" :class="confirmDialog.type === 'danger' ? 'text-danger' : 'text-warning'" />
+            <AlertCircle
+              :size="24"
+              :class="confirmDialog.type === 'danger' ? 'text-danger' : 'text-warning'"
+            />
             <h3>{{ confirmDialog.title }}</h3>
           </div>
           <p class="confirm-message">{{ confirmDialog.message }}</p>
           <div class="confirm-actions">
             <button class="btn-secondary" @click="closeConfirm">取消</button>
-            <button 
-              :class="['btn-primary', confirmDialog.type === 'danger' ? 'btn-danger' : '']" 
+            <button
+              :class="['btn-primary', confirmDialog.type === 'danger' ? 'btn-danger' : '']"
               @click="handleConfirm"
             >
               {{ confirmDialog.confirmText }}
@@ -368,26 +396,23 @@ onMounted(() => {
     <!-- 选项卡 -->
     <div class="tabs-container">
       <div class="tabs">
-        <button 
-          :class="['tab-btn', currentTab === 'ALL' ? 'active' : '']" 
-          @click="setTab('ALL')"
-        >
+        <button :class="['tab-btn', currentTab === 'ALL' ? 'active' : '']" @click="setTab('ALL')">
           全部
         </button>
-        <button 
-          :class="['tab-btn', currentTab === 'DRAFT' ? 'active' : '']" 
+        <button
+          :class="['tab-btn', currentTab === 'DRAFT' ? 'active' : '']"
           @click="setTab('DRAFT')"
         >
           草稿
         </button>
-        <button 
-          :class="['tab-btn', currentTab === 'PUBLISHED' ? 'active' : '']" 
+        <button
+          :class="['tab-btn', currentTab === 'PUBLISHED' ? 'active' : '']"
           @click="setTab('PUBLISHED')"
         >
           已发布
         </button>
-        <button 
-          :class="['tab-btn', currentTab === 'ARCHIVED' ? 'active' : '']" 
+        <button
+          :class="['tab-btn', currentTab === 'ARCHIVED' ? 'active' : '']"
           @click="setTab('ARCHIVED')"
         >
           已归档
@@ -426,17 +451,22 @@ onMounted(() => {
     <!-- 公告列表 -->
     <div v-else class="announcements-list">
       <TransitionGroup name="list">
-        <div 
-          v-for="announcement in filteredAnnouncements" 
-          :key="announcement.id" 
+        <div
+          v-for="announcement in filteredAnnouncements"
+          :key="announcement.id"
           class="announcement-card"
           :class="'status-' + announcement.status.toLowerCase()"
         >
-          <div class="card-left-border" :class="'border-' + announcement.status.toLowerCase()"></div>
+          <div
+            class="card-left-border"
+            :class="'border-' + announcement.status.toLowerCase()"
+          ></div>
           <div class="card-content">
             <div class="card-header">
               <div class="header-left">
-                <span :class="['priority-badge', 'priority-' + announcement.priority.toLowerCase()]">
+                <span
+                  :class="['priority-badge', 'priority-' + announcement.priority.toLowerCase()]"
+                >
                   {{ getPriorityLabel(announcement.priority) }}
                 </span>
                 <h3 class="announcement-title">{{ announcement.title }}</h3>
@@ -462,10 +492,10 @@ onMounted(() => {
                   {{ announcement.viewCount }} 次浏览
                 </span>
               </div>
-              
+
               <div class="card-actions">
-                <button 
-                  v-if="announcement.status === 'DRAFT'" 
+                <button
+                  v-if="announcement.status === 'DRAFT'"
                   class="action-btn success"
                   @click="publishAnnouncement(announcement.id)"
                   title="发布"
@@ -473,8 +503,8 @@ onMounted(() => {
                   <Send :size="16" />
                   <span>发布</span>
                 </button>
-                <button 
-                  v-if="announcement.status === 'PUBLISHED'" 
+                <button
+                  v-if="announcement.status === 'PUBLISHED'"
                   class="action-btn warning"
                   @click="archiveAnnouncement(announcement.id)"
                   title="归档"
@@ -482,14 +512,10 @@ onMounted(() => {
                   <Archive :size="16" />
                   <span>归档</span>
                 </button>
-                <button 
-                  class="action-btn"
-                  @click="openEditModal(announcement)"
-                  title="编辑"
-                >
+                <button class="action-btn" @click="openEditModal(announcement)" title="编辑">
                   <Edit :size="16" />
                 </button>
-                <button 
+                <button
                   class="action-btn danger"
                   @click="deleteAnnouncement(announcement.id)"
                   title="删除"
@@ -513,14 +539,14 @@ onMounted(() => {
               <X :size="20" />
             </button>
           </div>
-          
+
           <div class="modal-body">
             <div class="form-group">
               <label class="field-label">标题</label>
-              <input 
-                v-model="form.title" 
-                type="text" 
-                class="form-input" 
+              <input
+                v-model="form.title"
+                type="text"
+                class="form-input"
                 placeholder="输入公告标题"
               />
             </div>
@@ -528,16 +554,16 @@ onMounted(() => {
             <div class="form-group">
               <label class="field-label">优先级</label>
               <div class="priority-options">
-                <label 
-                  v-for="option in priorityOptions" 
+                <label
+                  v-for="option in priorityOptions"
                   :key="option.value"
-                  :class="['priority-option', option.class, form.priority === option.value ? 'selected' : '']"
+                  :class="[
+                    'priority-option',
+                    option.class,
+                    form.priority === option.value ? 'selected' : ''
+                  ]"
                 >
-                  <input 
-                    type="radio" 
-                    :value="option.value" 
-                    v-model="form.priority"
-                  />
+                  <input type="radio" :value="option.value" v-model="form.priority" />
                   {{ option.label }}
                 </label>
               </div>
@@ -545,9 +571,9 @@ onMounted(() => {
 
             <div class="form-group">
               <label class="field-label">内容</label>
-              <textarea 
-                v-model="form.content" 
-                class="form-input content-input" 
+              <textarea
+                v-model="form.content"
+                class="form-input content-input"
                 placeholder="输入公告内容..."
                 rows="6"
               ></textarea>
@@ -613,8 +639,12 @@ onMounted(() => {
   margin: 0;
 }
 
-.text-warning { color: var(--line-warning); }
-.text-danger { color: var(--line-error); }
+.text-warning {
+  color: var(--line-warning);
+}
+.text-danger {
+  color: var(--line-error);
+}
 
 .confirm-message {
   color: var(--line-text-secondary);
@@ -645,7 +675,11 @@ onMounted(() => {
 .header-icon {
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--line-primary) 14%, white) 0%, color-mix(in srgb, var(--line-primary) 8%, white) 100%);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--line-primary) 14%, white) 0%,
+    color-mix(in srgb, var(--line-primary) 8%, white) 100%
+  );
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -701,17 +735,29 @@ onMounted(() => {
 }
 
 .stat-icon.total {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--line-primary) 14%, white) 0%, color-mix(in srgb, var(--line-primary) 8%, white) 100%);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--line-primary) 14%, white) 0%,
+    color-mix(in srgb, var(--line-primary) 8%, white) 100%
+  );
   color: var(--line-primary);
 }
 
 .stat-icon.draft {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--line-warning) 18%, white) 0%, color-mix(in srgb, var(--line-warning) 10%, white) 100%);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--line-warning) 18%, white) 0%,
+    color-mix(in srgb, var(--line-warning) 10%, white) 100%
+  );
   color: color-mix(in srgb, var(--line-warning) 85%, black);
 }
 
 .stat-icon.published {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--line-success) 16%, white) 0%, color-mix(in srgb, var(--line-success) 10%, white) 100%);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--line-success) 16%, white) 0%,
+    color-mix(in srgb, var(--line-success) 10%, white) 100%
+  );
   color: var(--line-success);
 }
 
@@ -795,7 +841,9 @@ onMounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-state {
@@ -857,9 +905,19 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.border-published { background: linear-gradient(180deg, var(--line-success), color-mix(in srgb, var(--line-success) 80%, white)); }
-.border-draft { background: linear-gradient(180deg, var(--line-primary), var(--line-primary-hover)); }
-.border-archived { background: linear-gradient(180deg, #94a3b8, #cbd5e1); }
+.border-published {
+  background: linear-gradient(
+    180deg,
+    var(--line-success),
+    color-mix(in srgb, var(--line-success) 80%, white)
+  );
+}
+.border-draft {
+  background: linear-gradient(180deg, var(--line-primary), var(--line-primary-hover));
+}
+.border-archived {
+  background: linear-gradient(180deg, #94a3b8, #cbd5e1);
+}
 
 .card-content {
   flex: 1;
@@ -893,10 +951,22 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.priority-low { background: var(--line-bg-hover); color: var(--line-text-secondary); }
-.priority-normal { background: color-mix(in srgb, var(--line-primary) 12%, white); color: var(--line-primary); }
-.priority-high { background: color-mix(in srgb, var(--line-warning) 18%, white); color: color-mix(in srgb, var(--line-warning) 85%, black); }
-.priority-urgent { background: color-mix(in srgb, var(--line-error) 14%, white); color: var(--line-error); }
+.priority-low {
+  background: var(--line-bg-hover);
+  color: var(--line-text-secondary);
+}
+.priority-normal {
+  background: color-mix(in srgb, var(--line-primary) 12%, white);
+  color: var(--line-primary);
+}
+.priority-high {
+  background: color-mix(in srgb, var(--line-warning) 18%, white);
+  color: color-mix(in srgb, var(--line-warning) 85%, black);
+}
+.priority-urgent {
+  background: color-mix(in srgb, var(--line-error) 14%, white);
+  color: var(--line-error);
+}
 
 .status-badge {
   display: inline-flex;
@@ -908,9 +978,18 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.status-badge.status-draft { background: color-mix(in srgb, var(--line-warning) 18%, white); color: color-mix(in srgb, var(--line-warning) 85%, black); }
-.status-badge.status-published { background: color-mix(in srgb, var(--line-success) 16%, white); color: var(--line-success); }
-.status-badge.status-archived { background: var(--line-bg-hover); color: var(--line-text-secondary); }
+.status-badge.status-draft {
+  background: color-mix(in srgb, var(--line-warning) 18%, white);
+  color: color-mix(in srgb, var(--line-warning) 85%, black);
+}
+.status-badge.status-published {
+  background: color-mix(in srgb, var(--line-success) 16%, white);
+  color: var(--line-success);
+}
+.status-badge.status-archived {
+  background: var(--line-bg-hover);
+  color: var(--line-text-secondary);
+}
 
 .announcement-content {
   color: var(--line-text-secondary);
@@ -965,14 +1044,26 @@ onMounted(() => {
   color: var(--line-text);
 }
 
-.action-btn.success { color: var(--line-success); }
-.action-btn.success:hover { background: color-mix(in srgb, var(--line-success) 16%, white); }
+.action-btn.success {
+  color: var(--line-success);
+}
+.action-btn.success:hover {
+  background: color-mix(in srgb, var(--line-success) 16%, white);
+}
 
-.action-btn.warning { color: color-mix(in srgb, var(--line-warning) 85%, black); }
-.action-btn.warning:hover { background: color-mix(in srgb, var(--line-warning) 18%, white); }
+.action-btn.warning {
+  color: color-mix(in srgb, var(--line-warning) 85%, black);
+}
+.action-btn.warning:hover {
+  background: color-mix(in srgb, var(--line-warning) 18%, white);
+}
 
-.action-btn.danger { color: var(--line-error); }
-.action-btn.danger:hover { background: color-mix(in srgb, var(--line-error) 14%, white); }
+.action-btn.danger {
+  color: var(--line-error);
+}
+.action-btn.danger:hover {
+  background: color-mix(in srgb, var(--line-error) 14%, white);
+}
 
 /* 按钮样式 */
 .btn-primary {
@@ -1178,10 +1269,22 @@ onMounted(() => {
   background: color-mix(in srgb, var(--line-primary) 10%, transparent);
 }
 
-.priority-option.priority-low.selected { border-color: #94a3b8; background: var(--line-bg-hover); }
-.priority-option.priority-normal.selected { border-color: var(--line-primary); background: color-mix(in srgb, var(--line-primary) 12%, white); }
-.priority-option.priority-high.selected { border-color: color-mix(in srgb, var(--line-warning) 85%, black); background: color-mix(in srgb, var(--line-warning) 18%, white); }
-.priority-option.priority-urgent.selected { border-color: var(--line-error); background: color-mix(in srgb, var(--line-error) 14%, white); }
+.priority-option.priority-low.selected {
+  border-color: #94a3b8;
+  background: var(--line-bg-hover);
+}
+.priority-option.priority-normal.selected {
+  border-color: var(--line-primary);
+  background: color-mix(in srgb, var(--line-primary) 12%, white);
+}
+.priority-option.priority-high.selected {
+  border-color: color-mix(in srgb, var(--line-warning) 85%, black);
+  background: color-mix(in srgb, var(--line-warning) 18%, white);
+}
+.priority-option.priority-urgent.selected {
+  border-color: var(--line-error);
+  background: color-mix(in srgb, var(--line-error) 14%, white);
+}
 
 /* 动画 */
 .modal-enter-active,
@@ -1280,4 +1383,3 @@ onMounted(() => {
   }
 }
 </style>
-

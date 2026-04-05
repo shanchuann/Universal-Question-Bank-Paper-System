@@ -639,13 +639,18 @@ public class ExamController {
           for (Map<String, Object> map : maps) {
             QuestionOption opt = new QuestionOption();
             // Try to find text content
-            if (map.containsKey("text")) opt.setText(normalizeOptionText(String.valueOf(map.get("text"))));
-            else if (map.containsKey("content")) opt.setText(normalizeOptionText(String.valueOf(map.get("content"))));
-            else if (map.containsKey("value")) opt.setText(normalizeOptionText(String.valueOf(map.get("value"))));
-            else if (map.containsKey("label")) opt.setText(normalizeOptionText(String.valueOf(map.get("label"))));
+            if (map.containsKey("text"))
+              opt.setText(normalizeOptionText(String.valueOf(map.get("text"))));
+            else if (map.containsKey("content"))
+              opt.setText(normalizeOptionText(String.valueOf(map.get("content"))));
+            else if (map.containsKey("value"))
+              opt.setText(normalizeOptionText(String.valueOf(map.get("value"))));
+            else if (map.containsKey("label"))
+              opt.setText(normalizeOptionText(String.valueOf(map.get("label"))));
 
             // Try to find key/label
-            if (map.containsKey("key")) opt.setKey(normalizeOptionText(String.valueOf(map.get("key"))));
+            if (map.containsKey("key"))
+              opt.setKey(normalizeOptionText(String.valueOf(map.get("key"))));
 
             // Try to find isCorrect
             if (map.containsKey("isCorrect"))

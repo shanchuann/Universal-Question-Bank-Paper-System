@@ -83,8 +83,7 @@ public class AiController {
   }
 
   private ResponseEntity<Map<String, Object>> aiDisabled() {
-    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-        .body(Map.of("error", "AI 功能已被管理员关闭"));
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "AI 功能已被管理员关闭"));
   }
 
   private String getUserIdFromToken(String token) {

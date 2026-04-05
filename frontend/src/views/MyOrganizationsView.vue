@@ -36,7 +36,7 @@ async function fetchMyOrganizations() {
     const token = localStorage.getItem('token')
     const response = await fetch('/api/my-organizations', {
       headers: {
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`
       }
     })
     myOrganizations.value = await response.json()
@@ -50,7 +50,7 @@ async function fetchMyOrganizations() {
 async function joinOrganization() {
   joinError.value = ''
   joinSuccess.value = ''
-  
+
   if (!joinCode.value.trim()) {
     joinError.value = '请输入班级识别码'
     return
@@ -60,9 +60,9 @@ async function joinOrganization() {
     const token = localStorage.getItem('token')
     const response = await fetch('/api/organizations/join', {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({ inviteCode: joinCode.value.trim() })
     })
@@ -96,10 +96,10 @@ async function leaveOrganization(orgId: string) {
 
   try {
     const token = localStorage.getItem('token')
-    await fetch(`/api/my-organizations/${orgId}/leave`, { 
+    await fetch(`/api/my-organizations/${orgId}/leave`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`
       }
     })
     fetchMyOrganizations()
@@ -130,7 +130,14 @@ function formatDate(dateStr?: string) {
 
     <div class="toolbar">
       <button class="google-btn primary-btn" @click="showJoinModal = true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
           <line x1="12" y1="5" x2="12" y2="19"></line>
           <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
@@ -142,7 +149,14 @@ function formatDate(dateStr?: string) {
       <div v-if="loading" class="loading">加载中...</div>
 
       <div v-else-if="myOrganizations.length === 0" class="empty-state">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1">
+        <svg
+          width="64"
+          height="64"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#9aa0a6"
+          stroke-width="1"
+        >
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
           <circle cx="9" cy="7" r="4"></circle>
           <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -155,17 +169,41 @@ function formatDate(dateStr?: string) {
       <div v-else class="org-list">
         <div v-for="org in myOrganizations" :key="org.id" class="org-card">
           <div class="org-icon" :class="org.type?.toLowerCase()">
-            <svg v-if="org.type === 'CLASS'" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg
+              v-if="org.type === 'CLASS'"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
               <circle cx="9" cy="7" r="4"></circle>
               <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
               <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
             </svg>
-            <svg v-else-if="org.type === 'DEPARTMENT'" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg
+              v-else-if="org.type === 'DEPARTMENT'"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
               <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
-            <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg
+              v-else
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
               <line x1="12" y1="18" x2="12.01" y2="18"></line>
             </svg>
@@ -173,9 +211,18 @@ function formatDate(dateStr?: string) {
           <div class="org-info">
             <h3>{{ org.name }}</h3>
             <div class="org-meta">
-              <span class="org-type-badge" :class="org.type?.toLowerCase()">{{ orgTypeLabels[org.type] || org.type }}</span>
+              <span class="org-type-badge" :class="org.type?.toLowerCase()">{{
+                orgTypeLabels[org.type] || org.type
+              }}</span>
               <span v-if="org.schoolName" class="org-school">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                 </svg>
                 {{ org.schoolName }}
@@ -186,14 +233,28 @@ function formatDate(dateStr?: string) {
             </div>
             <div class="org-details">
               <span v-if="org.memberCount !== undefined" class="detail-item">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                   <circle cx="9" cy="7" r="4"></circle>
                 </svg>
                 {{ org.memberCount }} 名成员
               </span>
               <span v-if="org.joinedAt" class="detail-item">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                   <line x1="16" y1="2" x2="16" y2="6"></line>
                   <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -202,13 +263,26 @@ function formatDate(dateStr?: string) {
                 {{ formatDate(org.joinedAt) }} 加入
               </span>
               <span v-if="org.memberRole" class="role-badge" :class="org.memberRole?.toLowerCase()">
-                {{ org.memberRole === 'MANAGER' ? '管理员' : org.memberRole === 'OWNER' ? '创建者' : '成员' }}
+                {{
+                  org.memberRole === 'MANAGER'
+                    ? '管理员'
+                    : org.memberRole === 'OWNER'
+                      ? '创建者'
+                      : '成员'
+                }}
               </span>
             </div>
           </div>
           <div class="org-actions">
             <button class="icon-btn danger" @click="leaveOrganization(org.id)" title="退出班级">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                 <polyline points="16 17 21 12 16 7"></polyline>
                 <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -227,10 +301,10 @@ function formatDate(dateStr?: string) {
 
         <div class="form-group">
           <label>班级识别码</label>
-          <input 
-            v-model="joinCode" 
-            type="text" 
-            class="google-input" 
+          <input
+            v-model="joinCode"
+            type="text"
+            class="google-input"
             placeholder="例如：ABC123"
             @keyup.enter="joinOrganization"
           />
@@ -240,8 +314,12 @@ function formatDate(dateStr?: string) {
         <div v-if="joinSuccess" class="success-message">{{ joinSuccess }}</div>
 
         <div class="form-actions">
-          <button type="button" class="google-btn text-btn" @click="showJoinModal = false">取消</button>
-          <button type="button" class="google-btn primary-btn" @click="joinOrganization">加入</button>
+          <button type="button" class="google-btn text-btn" @click="showJoinModal = false">
+            取消
+          </button>
+          <button type="button" class="google-btn primary-btn" @click="joinOrganization">
+            加入
+          </button>
         </div>
       </div>
     </div>
@@ -283,7 +361,8 @@ function formatDate(dateStr?: string) {
   box-shadow: var(--line-shadow-sm);
 }
 
-.loading, .empty-state {
+.loading,
+.empty-state {
   text-align: center;
   padding: 64px;
   color: var(--line-text-secondary);
@@ -330,7 +409,7 @@ function formatDate(dateStr?: string) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 1px solid rgba(0,0,0,0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .org-icon.class {
@@ -393,7 +472,8 @@ function formatDate(dateStr?: string) {
   color: #059669;
 }
 
-.org-school, .org-department {
+.org-school,
+.org-department {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -608,12 +688,22 @@ function formatDate(dateStr?: string) {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

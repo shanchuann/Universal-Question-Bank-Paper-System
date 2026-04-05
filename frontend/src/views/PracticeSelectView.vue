@@ -57,14 +57,14 @@ const toggleFavorite = (paperId: string) => {
 
 const getAuthHeaders = () => ({
   'Content-Type': 'application/json',
-  'Authorization': `Bearer ${localStorage.getItem('token')}`
+  Authorization: `Bearer ${localStorage.getItem('token')}`
 })
 
 // 获取用户做过的考试记录
 const fetchExamHistory = async () => {
   const userId = authState.user?.id
   if (!userId) return
-  
+
   try {
     const response = await axios.get(`/api/exams?userId=${userId}&size=100`, {
       headers: getAuthHeaders()
@@ -94,7 +94,7 @@ const startPractice = (paperId: string) => {
 // 按试卷去重的考试记录
 const uniqueExams = computed(() => {
   const seen = new Set<string>()
-  return examHistory.value.filter(exam => {
+  return examHistory.value.filter((exam) => {
     const paperId = exam.paperVersionId || exam.paperId
     if (paperId && !seen.has(paperId)) {
       seen.add(paperId)
@@ -107,8 +107,8 @@ const uniqueExams = computed(() => {
 const hasExamHistory = computed(() => uniqueExams.value.length > 0)
 
 const favoritePapers = computed(() => {
-  const map = new Map(allPapers.value.map(p => [String(p.id), p]))
-  return favoritePaperIds.value.map(id => map.get(String(id))).filter((p): p is Paper => !!p)
+  const map = new Map(allPapers.value.map((p) => [String(p.id), p]))
+  return favoritePaperIds.value.map((id) => map.get(String(id))).filter((p): p is Paper => !!p)
 })
 
 onMounted(async () => {
@@ -142,7 +142,11 @@ onMounted(async () => {
           <small>快速进入常用练习试卷</small>
         </div>
         <div class="papers-grid">
-          <div v-for="paper in favoritePapers" :key="`fav-${paper.id}`" class="paper-card favorite-card">
+          <div
+            v-for="paper in favoritePapers"
+            :key="`fav-${paper.id}`"
+            class="paper-card favorite-card"
+          >
             <div class="paper-info">
               <div class="paper-title-row">
                 <h3 class="paper-title">{{ paper.title }}</h3>
@@ -150,17 +154,22 @@ onMounted(async () => {
               </div>
               <div class="paper-meta">
                 <span class="meta-item">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 8v4l3 3"/>
-                    <circle cx="12" cy="12" r="10"/>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M12 8v4l3 3" />
+                    <circle cx="12" cy="12" r="10" />
                   </svg>
                   {{ new Date(paper.createdAt).toLocaleDateString('zh-CN') }}
                 </span>
               </div>
             </div>
-            <button class="practice-btn" @click="startPractice(paper.id)">
-              开始练习
-            </button>
+            <button class="practice-btn" @click="startPractice(paper.id)">开始练习</button>
           </div>
         </div>
       </template>
@@ -173,33 +182,40 @@ onMounted(async () => {
         <div v-for="exam in uniqueExams" :key="exam.sessionId" class="paper-card">
           <div class="paper-info">
             <div class="paper-title-row">
-            <h3 class="paper-title">{{ exam.paperTitle || `试卷 #${exam.paperVersionId}` }}</h3>
-              <button class="favorite-btn" :class="{ active: isFavorite(exam.paperVersionId) }" @click="toggleFavorite(exam.paperVersionId)">
+              <h3 class="paper-title">{{ exam.paperTitle || `试卷 #${exam.paperVersionId}` }}</h3>
+              <button
+                class="favorite-btn"
+                :class="{ active: isFavorite(exam.paperVersionId) }"
+                @click="toggleFavorite(exam.paperVersionId)"
+              >
                 {{ isFavorite(exam.paperVersionId) ? '★' : '☆' }}
               </button>
             </div>
             <div class="paper-meta">
               <span class="meta-item">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 8v4l3 3"/>
-                  <circle cx="12" cy="12" r="10"/>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M12 8v4l3 3" />
+                  <circle cx="12" cy="12" r="10" />
                 </svg>
                 {{ new Date(exam.startAt).toLocaleDateString('zh-CN') }}
               </span>
-              <span class="meta-item score">
-                得分: {{ exam.score ?? '-' }}
-              </span>
+              <span class="meta-item score"> 得分: {{ exam.score ?? '-' }} </span>
             </div>
           </div>
-          <button class="practice-btn" @click="startPractice(exam.paperVersionId)">
-            再次练习
-          </button>
+          <button class="practice-btn" @click="startPractice(exam.paperVersionId)">再次练习</button>
         </div>
       </div>
-      
+
       <!-- 同时显示所有可用试卷 -->
       <template v-if="allPapers.length > 0">
-        <div class="section-title" style="margin-top: 40px;">
+        <div class="section-title" style="margin-top: 40px">
           <span>所有可用试卷</span>
           <small>选择试卷开始新的练习</small>
         </div>
@@ -207,24 +223,33 @@ onMounted(async () => {
           <div v-for="paper in allPapers" :key="paper.id" class="paper-card">
             <div class="paper-info">
               <div class="paper-title-row">
-              <h3 class="paper-title">{{ paper.title }}</h3>
-                <button class="favorite-btn" :class="{ active: isFavorite(paper.id) }" @click="toggleFavorite(paper.id)">
+                <h3 class="paper-title">{{ paper.title }}</h3>
+                <button
+                  class="favorite-btn"
+                  :class="{ active: isFavorite(paper.id) }"
+                  @click="toggleFavorite(paper.id)"
+                >
                   {{ isFavorite(paper.id) ? '★' : '☆' }}
                 </button>
               </div>
               <div class="paper-meta">
                 <span class="meta-item">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 8v4l3 3"/>
-                    <circle cx="12" cy="12" r="10"/>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M12 8v4l3 3" />
+                    <circle cx="12" cy="12" r="10" />
                   </svg>
                   {{ new Date(paper.createdAt).toLocaleDateString('zh-CN') }}
                 </span>
               </div>
             </div>
-            <button class="practice-btn" @click="startPractice(paper.id)">
-              开始练习
-            </button>
+            <button class="practice-btn" @click="startPractice(paper.id)">开始练习</button>
           </div>
         </div>
       </template>
@@ -234,10 +259,17 @@ onMounted(async () => {
     <template v-else>
       <div class="empty-state-card">
         <div class="empty-icon">
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
-            <rect x="9" y="3" width="6" height="4" rx="2"/>
-            <path d="M9 14l2 2 4-4"/>
+          <svg
+            width="64"
+            height="64"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+            <rect x="9" y="3" width="6" height="4" rx="2" />
+            <path d="M9 14l2 2 4-4" />
           </svg>
         </div>
         <h3>暂无练习记录</h3>
@@ -253,24 +285,33 @@ onMounted(async () => {
           <div v-for="paper in allPapers" :key="paper.id" class="paper-card">
             <div class="paper-info">
               <div class="paper-title-row">
-              <h3 class="paper-title">{{ paper.title }}</h3>
-                <button class="favorite-btn" :class="{ active: isFavorite(paper.id) }" @click="toggleFavorite(paper.id)">
+                <h3 class="paper-title">{{ paper.title }}</h3>
+                <button
+                  class="favorite-btn"
+                  :class="{ active: isFavorite(paper.id) }"
+                  @click="toggleFavorite(paper.id)"
+                >
                   {{ isFavorite(paper.id) ? '★' : '☆' }}
                 </button>
               </div>
               <div class="paper-meta">
                 <span class="meta-item">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 8v4l3 3"/>
-                    <circle cx="12" cy="12" r="10"/>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M12 8v4l3 3" />
+                    <circle cx="12" cy="12" r="10" />
                   </svg>
                   {{ new Date(paper.createdAt).toLocaleDateString('zh-CN') }}
                 </span>
               </div>
             </div>
-            <button class="practice-btn" @click="startPractice(paper.id)">
-              开始练习
-            </button>
+            <button class="practice-btn" @click="startPractice(paper.id)">开始练习</button>
           </div>
         </div>
       </template>
@@ -326,7 +367,9 @@ onMounted(async () => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .section-title {

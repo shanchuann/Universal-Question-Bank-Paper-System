@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { X, Megaphone, ChevronLeft, ChevronRight, Clock, Eye, AlertCircle, Info } from 'lucide-vue-next'
+import {
+  X,
+  Megaphone,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Eye,
+  AlertCircle,
+  Info
+} from 'lucide-vue-next'
 import axios from 'axios'
 
 interface Announcement {
@@ -91,9 +100,9 @@ const nextAnnouncement = () => {
 const closeModal = () => {
   // 记录所有公告为已读
   const readIds = JSON.parse(localStorage.getItem(getReadAnnouncementsKey()) || '[]')
-  const newReadIds = [...new Set([...readIds, ...announcements.value.map(a => a.id)])]
+  const newReadIds = [...new Set([...readIds, ...announcements.value.map((a) => a.id)])]
   localStorage.setItem(getReadAnnouncementsKey(), JSON.stringify(newReadIds))
-  
+
   visible.value = false
 }
 
@@ -102,19 +111,19 @@ const fetchAnnouncements = async () => {
   try {
     const token = localStorage.getItem('token')
     if (!token) return
-    
+
     const response = await axios.get('/api/announcements', {
       headers: { Authorization: `Bearer ${token}` }
     })
-    
+
     const allAnnouncements = response.data || []
-    
+
     // 过滤出未读的公告
     const readIds = JSON.parse(localStorage.getItem(getReadAnnouncementsKey()) || '[]')
     const unreadAnnouncements = allAnnouncements.filter(
       (a: Announcement) => !readIds.includes(a.id)
     )
-    
+
     if (unreadAnnouncements.length > 0) {
       announcements.value = unreadAnnouncements
       visible.value = true
@@ -161,7 +170,7 @@ defineExpose({ checkAnnouncements })
               {{ getPriorityLabel(currentAnnouncement.priority) }}
             </span>
           </div>
-          
+
           <div class="announcement-meta">
             <span class="meta-item">
               <Clock :size="14" />
@@ -172,23 +181,19 @@ defineExpose({ checkAnnouncements })
               {{ currentAnnouncement.viewCount }} 次浏览
             </span>
           </div>
-          
+
           <div class="announcement-body" v-html="currentAnnouncement.content"></div>
         </div>
 
         <!-- 底部导航 -->
         <div class="modal-footer">
           <div class="nav-buttons" v-if="hasMultiple">
-            <button 
-              class="nav-btn" 
-              :disabled="currentIndex === 0"
-              @click="prevAnnouncement"
-            >
+            <button class="nav-btn" :disabled="currentIndex === 0" @click="prevAnnouncement">
               <ChevronLeft :size="18" />
               上一条
             </button>
-            <button 
-              class="nav-btn" 
+            <button
+              class="nav-btn"
               :disabled="currentIndex === announcements.length - 1"
               @click="nextAnnouncement"
             >
@@ -196,9 +201,7 @@ defineExpose({ checkAnnouncements })
               <ChevronRight :size="18" />
             </button>
           </div>
-          <button class="confirm-btn" @click="closeModal">
-            我知道了
-          </button>
+          <button class="confirm-btn" @click="closeModal">我知道了</button>
         </div>
       </div>
     </div>
@@ -421,4 +424,3 @@ defineExpose({ checkAnnouncements })
   background: #1557b0;
 }
 </style>
-

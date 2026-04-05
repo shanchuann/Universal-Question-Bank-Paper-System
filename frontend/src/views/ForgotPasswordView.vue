@@ -33,10 +33,10 @@ const startCountdown = () => {
 
 const sendCode = async () => {
   if (!canSendCode.value) return
-  
+
   error.value = ''
   loading.value = true
-  
+
   try {
     await axios.post('/api/auth/send-code', {
       email: email.value,
@@ -61,10 +61,10 @@ const verifyAndReset = async () => {
     error.value = '两次输入的密码不一致'
     return
   }
-  
+
   error.value = ''
   loading.value = true
-  
+
   try {
     await axios.post('/api/auth/reset-password', {
       email: email.value,
@@ -95,41 +95,37 @@ const goToLogin = () => {
       <div class="logo-area">
         <span class="app-logo">UQ</span>
       </div>
-      
+
       <!-- Step 1: 输入邮箱 -->
       <template v-if="step === 'email'">
         <h1 class="page-title">找回密码</h1>
         <p class="subtitle">输入您的注册邮箱，我们将发送验证码</p>
-        
+
         <form @submit.prevent="sendCode">
           <div class="form-group">
             <div class="input-with-icon">
               <Mail :size="18" class="input-icon" />
-              <input 
-                v-model="email" 
-                type="email" 
-                required 
-                placeholder="注册邮箱" 
-                class="google-input icon-input" 
+              <input
+                v-model="email"
+                type="email"
+                required
+                placeholder="注册邮箱"
+                class="google-input icon-input"
               />
             </div>
           </div>
-          
+
           <div class="actions">
             <button type="button" class="text-link" @click="goToLogin">
               <ArrowLeft :size="16" />
               返回登录
             </button>
-            <button 
-              type="submit" 
-              class="primary-btn" 
-              :disabled="!canSendCode || loading"
-            >
+            <button type="submit" class="primary-btn" :disabled="!canSendCode || loading">
               <Send :size="16" v-if="!loading" />
               {{ loading ? '发送中...' : '发送验证码' }}
             </button>
           </div>
-          
+
           <p v-if="error" class="error">{{ error }}</p>
         </form>
       </template>
@@ -138,67 +134,62 @@ const goToLogin = () => {
       <template v-else-if="step === 'verify'">
         <h1 class="page-title">重置密码</h1>
         <p class="subtitle">验证码已发送至 {{ email }}</p>
-        
+
         <form @submit.prevent="verifyAndReset">
           <div class="form-group">
-            <input 
-              v-model="verificationCode" 
-              type="text" 
-              required 
-              placeholder="6位验证码" 
+            <input
+              v-model="verificationCode"
+              type="text"
+              required
+              placeholder="6位验证码"
               class="google-input code-input"
               maxlength="6"
             />
-            <button 
-              type="button" 
-              class="resend-btn"
-              :disabled="countdown > 0"
-              @click="sendCode"
-            >
+            <button type="button" class="resend-btn" :disabled="countdown > 0" @click="sendCode">
               {{ countdown > 0 ? `${countdown}s 后重发` : '重新发送' }}
             </button>
           </div>
-          
+
           <div class="form-group">
             <div class="input-with-icon">
               <Lock :size="18" class="input-icon" />
-              <input 
-                v-model="newPassword" 
-                type="password" 
-                required 
-                placeholder="新密码" 
-                class="google-input icon-input" 
+              <input
+                v-model="newPassword"
+                type="password"
+                required
+                placeholder="新密码"
+                class="google-input icon-input"
               />
             </div>
           </div>
-          
+
           <div class="form-group">
             <div class="input-with-icon">
               <Lock :size="18" class="input-icon" />
-              <input 
-                v-model="confirmPassword" 
-                type="password" 
-                required 
-                placeholder="确认新密码" 
-                class="google-input icon-input" 
+              <input
+                v-model="confirmPassword"
+                type="password"
+                required
+                placeholder="确认新密码"
+                class="google-input icon-input"
               />
             </div>
           </div>
-          
+
           <div class="actions">
             <button type="button" class="text-link" @click="step = 'email'">
               <ArrowLeft :size="16" />
               更换邮箱
             </button>
-            <button 
-              type="submit" 
-              class="primary-btn" 
+            <button
+              type="submit"
+              class="primary-btn"
               :disabled="loading || !verificationCode || !newPassword"
             >
               {{ loading ? '提交中...' : '重置密码' }}
             </button>
           </div>
-          
+
           <p v-if="error" class="error">{{ error }}</p>
         </form>
       </template>
@@ -211,9 +202,7 @@ const goToLogin = () => {
           </div>
           <h1 class="page-title">密码重置成功</h1>
           <p class="subtitle">您现在可以使用新密码登录了</p>
-          <button class="primary-btn full-width" @click="goToLogin">
-            返回登录
-          </button>
+          <button class="primary-btn full-width" @click="goToLogin">返回登录</button>
         </div>
       </template>
     </div>

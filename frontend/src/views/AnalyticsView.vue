@@ -59,7 +59,7 @@
             <div class="card-body">
               <h5 class="card-title text-muted">参考人数</h5>
               <!-- Assuming we can infer this or add it later, for now maybe just show something else or omit -->
-              <h2 class="display-4 text-secondary">-</h2> 
+              <h2 class="display-4 text-secondary">-</h2>
             </div>
           </div>
         </div>
@@ -72,7 +72,11 @@
           <div class="card h-100">
             <div class="card-header">成绩分布</div>
             <div class="card-body">
-              <Bar v-if="scoreDistributionData" :data="scoreDistributionData" :options="barOptions" />
+              <Bar
+                v-if="scoreDistributionData"
+                :data="scoreDistributionData"
+                :options="barOptions"
+              />
             </div>
           </div>
         </div>
@@ -81,7 +85,11 @@
           <div class="card h-100">
             <div class="card-header">知识点掌握情况</div>
             <div class="card-body">
-              <Radar v-if="knowledgeMasteryData" :data="knowledgeMasteryData" :options="radarOptions" />
+              <Radar
+                v-if="knowledgeMasteryData"
+                :data="knowledgeMasteryData"
+                :options="radarOptions"
+              />
             </div>
           </div>
         </div>
@@ -104,7 +112,7 @@
               <tbody>
                 <tr v-for="item in analyticsData.errorRates" :key="item.questionId">
                   <td>
-                    <span 
+                    <span
                       class="question-name-link"
                       @click="showQuestionDetail(item.questionId)"
                       :title="getQuestionStem(item.questionId)"
@@ -114,15 +122,15 @@
                   </td>
                   <td>
                     <div class="d-flex align-items-center">
-                      <div class="progress flex-grow-1 me-2" style="height: 10px;">
-                        <div 
-                          class="progress-bar bg-danger" 
-                          role="progressbar" 
-                          :style="{ width: ((item.errorRate ?? 0) * 100) + '%' }"
-                          :aria-valuenow="(item.errorRate ?? 0) * 100" 
-                          aria-valuemin="0" 
-                          aria-valuemax="100">
-                        </div>
+                      <div class="progress flex-grow-1 me-2" style="height: 10px">
+                        <div
+                          class="progress-bar bg-danger"
+                          role="progressbar"
+                          :style="{ width: (item.errorRate ?? 0) * 100 + '%' }"
+                          :aria-valuenow="(item.errorRate ?? 0) * 100"
+                          aria-valuemin="0"
+                          aria-valuemax="100"
+                        ></div>
                       </div>
                       <span>{{ formatPercent(item.errorRate) }}</span>
                     </div>
@@ -143,7 +151,17 @@
         <div class="modal-header">
           <h5 class="modal-title">题目详情</h5>
           <button type="button" class="close-btn" @click="closeDetailModal">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
@@ -166,7 +184,10 @@
               </span>
             </div>
           </div>
-          <div class="detail-section" v-if="selectedQuestion.options && selectedQuestion.options.length > 0">
+          <div
+            class="detail-section"
+            v-if="selectedQuestion.options && selectedQuestion.options.length > 0"
+          >
             <label>选项：</label>
             <div class="options-list">
               <div v-for="(opt, idx) in selectedQuestion.options" :key="idx" class="option-item">
@@ -177,11 +198,16 @@
           </div>
           <div class="detail-section" v-if="selectedQuestion.answerSchema">
             <label>答案：</label>
-            <div class="detail-value answer-content">{{ formatAnswer(selectedQuestion.answerSchema) }}</div>
+            <div class="detail-value answer-content">
+              {{ formatAnswer(selectedQuestion.answerSchema) }}
+            </div>
           </div>
           <div class="detail-section" v-if="selectedQuestion.analysis">
             <label>解析：</label>
-            <div class="detail-value analysis-content" v-html="renderHtml(selectedQuestion.analysis)"></div>
+            <div
+              class="detail-value analysis-content"
+              v-html="renderHtml(selectedQuestion.analysis)"
+            ></div>
           </div>
         </div>
         <div class="modal-body" v-else>
@@ -213,7 +239,7 @@ import {
   RadialLinearScale,
   PointElement,
   LineElement,
-  Filler,
+  Filler
 } from 'chart.js'
 import { Bar, Radar } from 'vue-chartjs'
 
@@ -266,12 +292,12 @@ const getQuestionStem = (questionId?: string) => {
 
 // Type label mapping
 const typeLabels: Record<string, string> = {
-  'SINGLE_CHOICE': '单选题',
-  'MULTI_CHOICE': '多选题',
-  'MULTIPLE_CHOICE': '多选题',
-  'TRUE_FALSE': '判断题',
-  'FILL_BLANK': '填空题',
-  'SHORT_ANSWER': '简答题'
+  SINGLE_CHOICE: '单选题',
+  MULTI_CHOICE: '多选题',
+  MULTIPLE_CHOICE: '多选题',
+  TRUE_FALSE: '判断题',
+  FILL_BLANK: '填空题',
+  SHORT_ANSWER: '简答题'
 }
 
 const getTypeLabel = (type?: string) => {
@@ -280,9 +306,9 @@ const getTypeLabel = (type?: string) => {
 
 // Difficulty label mapping
 const difficultyLabels: Record<string, string> = {
-  'EASY': '简单',
-  'MEDIUM': '中等',
-  'HARD': '困难'
+  EASY: '简单',
+  MEDIUM: '中等',
+  HARD: '困难'
 }
 
 const getDifficultyLabel = (difficulty?: string) => {
@@ -291,10 +317,14 @@ const getDifficultyLabel = (difficulty?: string) => {
 
 const getDifficultyClass = (difficulty?: string) => {
   switch (difficulty) {
-    case 'EASY': return 'difficulty-easy'
-    case 'MEDIUM': return 'difficulty-medium'
-    case 'HARD': return 'difficulty-hard'
-    default: return ''
+    case 'EASY':
+      return 'difficulty-easy'
+    case 'MEDIUM':
+      return 'difficulty-medium'
+    case 'HARD':
+      return 'difficulty-hard'
+    default:
+      return ''
   }
 }
 
@@ -303,7 +333,8 @@ const formatAnswer = (answerSchema: any) => {
   if (!answerSchema) return '无'
   if (typeof answerSchema === 'string') return stripHtml(answerSchema)
   if (answerSchema.correctAnswer) return stripHtml(answerSchema.correctAnswer)
-  if (answerSchema.correctAnswers) return answerSchema.correctAnswers.map((v: string) => stripHtml(v)).join(', ')
+  if (answerSchema.correctAnswers)
+    return answerSchema.correctAnswers.map((v: string) => stripHtml(v)).join(', ')
   if (Array.isArray(answerSchema)) return answerSchema.map((v: string) => stripHtml(v)).join(', ')
   return stripHtml(JSON.stringify(answerSchema))
 }
@@ -324,16 +355,18 @@ const renderHtml = (raw?: string) => {
 
 const stripHtml = (raw?: string) => {
   if (!raw) return ''
-  return decodeEntities(raw).replace(/<[^>]*>/g, '').trim()
+  return decodeEntities(raw)
+    .replace(/<[^>]*>/g, '')
+    .trim()
 }
 
 // Show question detail modal
 const showQuestionDetail = async (questionId?: string) => {
   if (!questionId) return
-  
+
   showDetailModal.value = true
   selectedQuestion.value = questionDetailsMap.value.get(questionId) || null
-  
+
   // If not loaded yet, fetch it
   if (!selectedQuestion.value) {
     try {
@@ -386,11 +419,11 @@ const fetchData = async () => {
     loading.value = true
     const response = await analyticsApi.apiAnalyticsExamsPaperVersionIdSummaryGet(paperId)
     analyticsData.value = response.data
-    
+
     // Fetch question details for error rates
     if (response.data.errorRates && response.data.errorRates.length > 0) {
       const questionIds = response.data.errorRates
-        .map(item => item.questionId)
+        .map((item) => item.questionId)
         .filter((id): id is string => !!id)
       await fetchQuestionDetails(questionIds)
     }
@@ -405,9 +438,9 @@ const fetchData = async () => {
 // Chart Data: Score Distribution
 const scoreDistributionData = computed(() => {
   if (!analyticsData.value?.scoreDistribution) return null
-  
-  const labels = analyticsData.value.scoreDistribution.map(b => b.rangeLabel || b.range || '')
-  const data = analyticsData.value.scoreDistribution.map(b => b.count ?? b.percentage ?? 0)
+
+  const labels = analyticsData.value.scoreDistribution.map((b) => b.rangeLabel || b.range || '')
+  const data = analyticsData.value.scoreDistribution.map((b) => b.count ?? b.percentage ?? 0)
 
   return {
     labels,
@@ -435,8 +468,8 @@ const barOptions = {
 const knowledgeMasteryData = computed(() => {
   if (!analyticsData.value?.knowledgeMastery) return null
 
-  const labels = analyticsData.value.knowledgeMastery.map(k => k.knowledgePointId) // Ideally map to name if available
-  const data = analyticsData.value.knowledgeMastery.map(k => (k.masteryRate || 0) * 100)
+  const labels = analyticsData.value.knowledgeMastery.map((k) => k.knowledgePointId) // Ideally map to name if available
+  const data = analyticsData.value.knowledgeMastery.map((k) => (k.masteryRate || 0) * 100)
 
   return {
     labels,
@@ -667,7 +700,11 @@ onMounted(() => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>

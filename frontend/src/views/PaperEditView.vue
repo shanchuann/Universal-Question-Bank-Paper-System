@@ -3,8 +3,8 @@ import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useToast } from '@/composables/useToast'
-import 'katex/dist/katex.min.css';
-import katex from 'katex';
+import 'katex/dist/katex.min.css'
+import katex from 'katex'
 import { questionApi } from '@/api/client'
 
 interface Question {
@@ -15,12 +15,12 @@ interface Question {
 }
 
 interface PaperItem {
-  uuid: string;
-  type: 'QUESTION' | 'SECTION';
-  id?: string;
-  data?: Question;
-  sectionTitle?: string;
-  score: number;
+  uuid: string
+  type: 'QUESTION' | 'SECTION'
+  id?: string
+  data?: Question
+  sectionTitle?: string
+  score: number
 }
 
 interface Paper {
@@ -28,10 +28,10 @@ interface Paper {
   title: string
   questions: Question[]
   items?: {
-    type: 'QUESTION' | 'SECTION';
-    id?: string;
-    sectionTitle?: string;
-    score?: number;
+    type: 'QUESTION' | 'SECTION'
+    id?: string
+    sectionTitle?: string
+    score?: number
   }[]
 }
 
@@ -57,29 +57,29 @@ const totalScore = computed(() => items.value.reduce((sum, item) => sum + (item.
 
 const renderMath = () => {
   nextTick(() => {
-    const formulas = document.querySelectorAll('.ql-formula');
+    const formulas = document.querySelectorAll('.ql-formula')
     formulas.forEach((el) => {
-      const latex = el.getAttribute('data-value');
+      const latex = el.getAttribute('data-value')
       if (latex && !el.hasAttribute('data-rendered')) {
         try {
-            katex.render(latex, el as HTMLElement, {
+          katex.render(latex, el as HTMLElement, {
             throwOnError: false
-            });
-            el.setAttribute('data-rendered', 'true');
+          })
+          el.setAttribute('data-rendered', 'true')
         } catch (e) {
-            console.error(e);
+          console.error(e)
         }
       }
-    });
-  });
+    })
+  })
 }
 
 onMounted(async () => {
   const id = route.params.id
   if (!id || id === 'undefined' || id === 'null') {
-      error.value = 'Invalid Paper ID'
-      loading.value = false
-      return
+    error.value = 'Invalid Paper ID'
+    loading.value = false
+    return
   }
   try {
     const token = localStorage.getItem('token')
@@ -89,33 +89,36 @@ onMounted(async () => {
       }
     })
     paper.value = response.data
-    
+
     if (paper.value) {
-        if (paper.value.items && paper.value.items.length > 0) {
-            items.value = paper.value.items.map(item => {
-                const q = item.type === 'QUESTION' ? paper.value?.questions.find(q => q.id === item.id) : undefined;
-                return {
-                    uuid: generateUuid(),
-                    type: item.type,
-                    id: item.id,
-                    data: q,
-                    sectionTitle: item.sectionTitle,
-                    score: item.score || 0
-                };
-            });
-        } else {
-            // Legacy fallback
-            items.value = paper.value.questions.map(q => ({
-                uuid: generateUuid(),
-                type: 'QUESTION',
-                id: q.id,
-                data: q,
-                score: 0 
-            }));
-        }
+      if (paper.value.items && paper.value.items.length > 0) {
+        items.value = paper.value.items.map((item) => {
+          const q =
+            item.type === 'QUESTION'
+              ? paper.value?.questions.find((q) => q.id === item.id)
+              : undefined
+          return {
+            uuid: generateUuid(),
+            type: item.type,
+            id: item.id,
+            data: q,
+            sectionTitle: item.sectionTitle,
+            score: item.score || 0
+          }
+        })
+      } else {
+        // Legacy fallback
+        items.value = paper.value.questions.map((q) => ({
+          uuid: generateUuid(),
+          type: 'QUESTION',
+          id: q.id,
+          data: q,
+          score: 0
+        }))
+      }
     }
-    
-    renderMath();
+
+    renderMath()
   } catch (err) {
     error.value = 'Failed to load paper.'
     console.error(err)
@@ -125,8 +128,8 @@ onMounted(async () => {
 })
 
 const removeItem = (index: number) => {
-  items.value.splice(index, 1);
-};
+  items.value.splice(index, 1)
+}
 
 const addSection = () => {
   items.value.push({
@@ -134,60 +137,62 @@ const addSection = () => {
     type: 'SECTION',
     sectionTitle: '新分区',
     score: 0
-  });
-};
+  })
+}
 
 const openQuestionModal = async () => {
-  showQuestionModal.value = true;
-  selectedQuestionIds.value.clear();
-  await fetchAvailableQuestions();
-};
+  showQuestionModal.value = true
+  selectedQuestionIds.value.clear()
+  await fetchAvailableQuestions()
+}
 
 const closeQuestionModal = () => {
-  showQuestionModal.value = false;
-};
+  showQuestionModal.value = false
+}
 
 const fetchAvailableQuestions = async () => {
-  modalLoading.value = true;
+  modalLoading.value = true
   try {
-    const response = await questionApi.apiQuestionsGet(modalPage.value, modalSize.value);
-    availableQuestions.value = response.data.content || [];
-    modalTotalElements.value = response.data.totalElements || 0;
+    const response = await questionApi.apiQuestionsGet(modalPage.value, modalSize.value)
+    availableQuestions.value = response.data.content || []
+    modalTotalElements.value = response.data.totalElements || 0
   } catch (err) {
-    console.error('Failed to load questions', err);
+    console.error('Failed to load questions', err)
   } finally {
-    modalLoading.value = false;
+    modalLoading.value = false
   }
-};
+}
 
 const toggleQuestionSelection = (id: string) => {
   if (selectedQuestionIds.value.has(id)) {
-    selectedQuestionIds.value.delete(id);
+    selectedQuestionIds.value.delete(id)
   } else {
-    selectedQuestionIds.value.add(id);
+    selectedQuestionIds.value.add(id)
   }
-};
+}
 
 const addSelectedQuestions = () => {
-  const selectedQuestions = availableQuestions.value.filter(q => selectedQuestionIds.value.has(q.id));
-  
-  selectedQuestions.forEach(q => {
+  const selectedQuestions = availableQuestions.value.filter((q) =>
+    selectedQuestionIds.value.has(q.id)
+  )
+
+  selectedQuestions.forEach((q) => {
     items.value.push({
       uuid: generateUuid(),
       type: 'QUESTION',
       id: q.id,
       data: q,
       score: 5 // Default score
-    });
-  });
-  
-  closeQuestionModal();
-};
+    })
+  })
+
+  closeQuestionModal()
+}
 
 const changeModalPage = (newPage: number) => {
-  modalPage.value = newPage;
-  fetchAvailableQuestions();
-};
+  modalPage.value = newPage
+  fetchAvailableQuestions()
+}
 
 const stripHtml = (html: string | undefined) => {
   if (!html) return ''
@@ -201,22 +206,26 @@ const savePaper = async () => {
   saving.value = true
   try {
     const token = localStorage.getItem('token')
-    
-    const itemsPayload = items.value.map(item => ({
+
+    const itemsPayload = items.value.map((item) => ({
       type: item.type,
       id: item.id,
       sectionTitle: item.sectionTitle,
       score: item.score
-    }));
+    }))
 
-    await axios.put(`/api/papers/${paper.value.id}`, {
-      title: paper.value.title,
-      items: itemsPayload
-    }, {
-      headers: {
-        Authorization: `Bearer ${token}`
+    await axios.put(
+      `/api/papers/${paper.value.id}`,
+      {
+        title: paper.value.title,
+        items: itemsPayload
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       }
-    })
+    )
     router.push(`/papers/${paper.value.id}/preview`)
   } catch (err) {
     showToast({ message: '保存试卷失败', type: 'error' })
@@ -233,56 +242,56 @@ const cancelEdit = () => {
 }
 
 // Drag and drop logic
-const dragIndex = ref<number | null>(null);
-const dragOverIndex = ref<number | null>(null);
-const dropPosition = ref<'top' | 'bottom' | null>(null);
+const dragIndex = ref<number | null>(null)
+const dragOverIndex = ref<number | null>(null)
+const dropPosition = ref<'top' | 'bottom' | null>(null)
 
 const onDragStart = (event: DragEvent, index: number) => {
-  dragIndex.value = index;
+  dragIndex.value = index
   if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.dropEffect = 'move';
-    const target = event.target as HTMLElement;
-    const row = target.closest('.paper-item');
-    if (row) event.dataTransfer.setDragImage(row, 0, 0);
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.dropEffect = 'move'
+    const target = event.target as HTMLElement
+    const row = target.closest('.paper-item')
+    if (row) event.dataTransfer.setDragImage(row, 0, 0)
   }
-};
+}
 
 const onDragOver = (event: DragEvent, index: number) => {
-  event.preventDefault();
+  event.preventDefault()
   if (dragIndex.value === null || dragIndex.value === index) {
-    dragOverIndex.value = null;
-    dropPosition.value = null;
-    return;
+    dragOverIndex.value = null
+    dropPosition.value = null
+    return
   }
-  const target = event.currentTarget as HTMLElement;
-  const rect = target.getBoundingClientRect();
-  const offset = event.clientY - rect.top;
-  if (offset < rect.height / 2) dropPosition.value = 'top';
-  else dropPosition.value = 'bottom';
-  dragOverIndex.value = index;
-};
+  const target = event.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  const offset = event.clientY - rect.top
+  if (offset < rect.height / 2) dropPosition.value = 'top'
+  else dropPosition.value = 'bottom'
+  dragOverIndex.value = index
+}
 
 const onDrop = (event: DragEvent, index: number) => {
-  event.preventDefault();
-  if (dragIndex.value === null) return;
-  const fromIndex = dragIndex.value;
-  let toIndex = index;
-  if (dropPosition.value === 'bottom') toIndex = index + 1;
-  if (toIndex > fromIndex) toIndex--;
-  const itemToMove = items.value[fromIndex];
-  if (!itemToMove) return;
-  items.value.splice(fromIndex, 1);
-  items.value.splice(toIndex, 0, itemToMove);
-  resetDragState();
-};
+  event.preventDefault()
+  if (dragIndex.value === null) return
+  const fromIndex = dragIndex.value
+  let toIndex = index
+  if (dropPosition.value === 'bottom') toIndex = index + 1
+  if (toIndex > fromIndex) toIndex--
+  const itemToMove = items.value[fromIndex]
+  if (!itemToMove) return
+  items.value.splice(fromIndex, 1)
+  items.value.splice(toIndex, 0, itemToMove)
+  resetDragState()
+}
 
-const onDragEnd = () => resetDragState();
+const onDragEnd = () => resetDragState()
 const resetDragState = () => {
-  dragIndex.value = null;
-  dragOverIndex.value = null;
-  dropPosition.value = null;
-};
+  dragIndex.value = null
+  dragOverIndex.value = null
+  dropPosition.value = null
+}
 </script>
 
 <template>
@@ -291,18 +300,18 @@ const resetDragState = () => {
       <div class="spinner"></div>
       <p>正在加载试卷...</p>
     </div>
-    
+
     <div v-else-if="error" class="error-state google-card">
       <p>{{ error }}</p>
       <button @click="router.go(0)" class="google-btn">重试</button>
     </div>
-    
+
     <div v-else-if="paper" class="google-card edit-card">
       <div class="card-header">
         <h1 class="page-title">编辑试卷</h1>
         <p class="subtitle">修改试卷信息和题目</p>
       </div>
-      
+
       <div class="form-group">
         <label class="field-label">试卷标题</label>
         <input v-model="paper.title" type="text" class="google-input" />
@@ -311,56 +320,60 @@ const resetDragState = () => {
       <div class="toolbar">
         <span class="total-score">总分: {{ totalScore }}</span>
         <div class="toolbar-actions">
-          <button @click="openQuestionModal" class="google-btn text-btn">
-            添加题目
-          </button>
-          <button @click="addSection" class="google-btn text-btn">
-            添加分区标题
-          </button>
+          <button @click="openQuestionModal" class="google-btn text-btn">添加题目</button>
+          <button @click="addSection" class="google-btn text-btn">添加分区标题</button>
         </div>
       </div>
 
       <div class="items-list">
-          <div 
-            v-for="(item, index) in items" 
-            :key="item.uuid" 
-            class="paper-item"
-            :class="{ 
-              'section-item': item.type === 'SECTION', 
-              'dragging': dragIndex === index,
-              'drop-target-top': dragOverIndex === index && dropPosition === 'top',
-              'drop-target-bottom': dragOverIndex === index && dropPosition === 'bottom'
-            }"
-            @dragover="onDragOver($event, index)"
-            @drop="onDrop($event, index)"
-          >
-            <div class="item-controls">
-              <span 
-                class="drag-handle" 
-                title="拖动排序"
-                draggable="true"
-                @dragstart="onDragStart($event, index)"
-                @dragend="onDragEnd"
-              >⋮⋮</span>
-              <button @click="removeItem(index)" class="control-btn delete-btn" title="移除">×</button>
-            </div>
+        <div
+          v-for="(item, index) in items"
+          :key="item.uuid"
+          class="paper-item"
+          :class="{
+            'section-item': item.type === 'SECTION',
+            dragging: dragIndex === index,
+            'drop-target-top': dragOverIndex === index && dropPosition === 'top',
+            'drop-target-bottom': dragOverIndex === index && dropPosition === 'bottom'
+          }"
+          @dragover="onDragOver($event, index)"
+          @drop="onDrop($event, index)"
+        >
+          <div class="item-controls">
+            <span
+              class="drag-handle"
+              title="拖动排序"
+              draggable="true"
+              @dragstart="onDragStart($event, index)"
+              @dragend="onDragEnd"
+              >⋮⋮</span
+            >
+            <button @click="removeItem(index)" class="control-btn delete-btn" title="移除">
+              ×
+            </button>
+          </div>
 
-            <div v-if="item.type === 'SECTION'" class="item-body section-body">
-              <input v-model="item.sectionTitle" type="text" class="section-input" placeholder="分区标题（如：第一部分）" />
-            </div>
+          <div v-if="item.type === 'SECTION'" class="item-body section-body">
+            <input
+              v-model="item.sectionTitle"
+              type="text"
+              class="section-input"
+              placeholder="分区标题（如：第一部分）"
+            />
+          </div>
 
-            <div v-else class="item-body question-body">
-              <div class="question-preview" v-html="item.data?.stem"></div>
-              <div class="item-meta">
-                <span class="chip">{{ item.data?.type }}</span>
-                <span class="chip">{{ item.data?.difficulty }}</span>
-              </div>
-              <div class="score-input-wrapper">
-                <label>分数:</label>
-                <input v-model.number="item.score" type="number" class="score-input" min="0" />
-              </div>
+          <div v-else class="item-body question-body">
+            <div class="question-preview" v-html="item.data?.stem"></div>
+            <div class="item-meta">
+              <span class="chip">{{ item.data?.type }}</span>
+              <span class="chip">{{ item.data?.difficulty }}</span>
+            </div>
+            <div class="score-input-wrapper">
+              <label>分数:</label>
+              <input v-model.number="item.score" type="number" class="score-input" min="0" />
             </div>
           </div>
+        </div>
       </div>
 
       <div class="form-actions">
@@ -378,28 +391,28 @@ const resetDragState = () => {
           <h2>选择题目</h2>
           <button @click="closeQuestionModal" class="close-btn">×</button>
         </div>
-        
+
         <div class="modal-content">
           <div class="search-bar">
             <input type="text" placeholder="搜索题目..." class="google-input" />
           </div>
-          
+
           <div v-if="modalLoading" class="loading-state">
             <div class="spinner"></div>
             <p>正在加载题目...</p>
           </div>
-          
+
           <div v-else-if="availableQuestions.length === 0" class="no-results">
             <p>未找到题目。</p>
           </div>
-          
+
           <div v-else class="questions-list">
-            <div 
-              v-for="question in availableQuestions" 
-              :key="question.id" 
+            <div
+              v-for="question in availableQuestions"
+              :key="question.id"
               class="question-item"
               @click="toggleQuestionSelection(question.id)"
-              :class="{ 'selected': selectedQuestionIds.has(question.id) }"
+              :class="{ selected: selectedQuestionIds.has(question.id) }"
             >
               <div class="question-info">
                 <div class="question-stem" v-html="question.stem"></div>
@@ -408,12 +421,12 @@ const resetDragState = () => {
                   <span class="chip">{{ question.difficulty }}</span>
                 </div>
               </div>
-              
+
               <div class="question-actions">
-                <button 
-                  @click.stop="toggleQuestionSelection(question.id)" 
+                <button
+                  @click.stop="toggleQuestionSelection(question.id)"
                   class="select-btn"
-                  :class="{ 'active': selectedQuestionIds.has(question.id) }"
+                  :class="{ active: selectedQuestionIds.has(question.id) }"
                 >
                   {{ selectedQuestionIds.has(question.id) ? '已选择' : '选择' }}
                 </button>
@@ -421,16 +434,14 @@ const resetDragState = () => {
             </div>
           </div>
         </div>
-        
+
         <div class="modal-footer">
-          <button @click="addSelectedQuestions" class="google-btn primary-btn">
-            添加选中题目
-          </button>
+          <button @click="addSelectedQuestions" class="google-btn primary-btn">添加选中题目</button>
         </div>
 
         <div class="pagination-controls">
-          <button 
-            @click="changeModalPage(modalPage - 1)" 
+          <button
+            @click="changeModalPage(modalPage - 1)"
             class="pagination-btn"
             :disabled="modalPage === 0 || modalLoading"
           >
@@ -439,8 +450,8 @@ const resetDragState = () => {
           <span class="page-info">
             第 {{ modalPage + 1 }} 页 / 共 {{ Math.ceil(modalTotalElements / modalSize) }} 页
           </span>
-          <button 
-            @click="changeModalPage(modalPage + 1)" 
+          <button
+            @click="changeModalPage(modalPage + 1)"
             class="pagination-btn"
             :disabled="modalLoading || modalPage >= Math.ceil(modalTotalElements / modalSize) - 1"
           >
@@ -455,12 +466,17 @@ const resetDragState = () => {
           <h2>选择题目</h2>
           <button @click="closeQuestionModal" class="close-btn">×</button>
         </div>
-        
+
         <div class="modal-body">
           <div v-if="modalLoading" class="loading-state">正在加载题目...</div>
           <div v-else-if="availableQuestions.length === 0" class="empty-state">未找到题目。</div>
           <div v-else class="question-selection-list">
-            <div v-for="q in availableQuestions" :key="q.id" class="question-select-item" @click="toggleQuestionSelection(q.id)">
+            <div
+              v-for="q in availableQuestions"
+              :key="q.id"
+              class="question-select-item"
+              @click="toggleQuestionSelection(q.id)"
+            >
               <div class="checkbox-wrapper">
                 <input type="checkbox" :checked="selectedQuestionIds.has(q.id)" readonly />
               </div>
@@ -473,17 +489,33 @@ const resetDragState = () => {
               </div>
             </div>
           </div>
-          
+
           <div class="pagination-controls" v-if="modalTotalElements > modalSize">
-            <button :disabled="modalPage === 0" @click="changeModalPage(modalPage - 1)" class="google-btn text-btn">上一页</button>
+            <button
+              :disabled="modalPage === 0"
+              @click="changeModalPage(modalPage - 1)"
+              class="google-btn text-btn"
+            >
+              上一页
+            </button>
             <span>第 {{ modalPage + 1 }} 页</span>
-            <button :disabled="(modalPage + 1) * modalSize >= modalTotalElements" @click="changeModalPage(modalPage + 1)" class="google-btn text-btn">下一页</button>
+            <button
+              :disabled="(modalPage + 1) * modalSize >= modalTotalElements"
+              @click="changeModalPage(modalPage + 1)"
+              class="google-btn text-btn"
+            >
+              下一页
+            </button>
           </div>
         </div>
-        
+
         <div class="modal-actions">
           <button @click="closeQuestionModal" class="google-btn text-btn">取消</button>
-          <button @click="addSelectedQuestions" class="google-btn primary-btn" :disabled="selectedQuestionIds.size === 0">
+          <button
+            @click="addSelectedQuestions"
+            class="google-btn primary-btn"
+            :disabled="selectedQuestionIds.size === 0"
+          >
             添加 {{ selectedQuestionIds.size }} 道题目
           </button>
         </div>
@@ -578,7 +610,9 @@ const resetDragState = () => {
 }
 
 .paper-item:hover {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.24);
 }
 
 .section-item {
@@ -680,7 +714,8 @@ const resetDragState = () => {
   border-top: none;
 }
 
-.loading-state, .error-state {
+.loading-state,
+.error-state {
   text-align: center;
   padding: 40px;
   color: var(--line-text-secondary);
@@ -704,7 +739,9 @@ const resetDragState = () => {
 
 .primary-btn:hover {
   background-color: #1557b0;
-  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+  box-shadow:
+    0 1px 2px 0 rgba(60, 64, 67, 0.3),
+    0 1px 3px 1px rgba(60, 64, 67, 0.15);
 }
 
 .text-btn {
@@ -1000,8 +1037,11 @@ const resetDragState = () => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 </style>
-

@@ -6,7 +6,14 @@ import java.util.UUID;
 
 /** 导出任务实体 */
 @Entity
-@Table(name = "export_tasks")
+@Table(
+    name = "export_tasks",
+    indexes = {
+      @Index(name = "idx_export_task_creator_created", columnList = "createdBy, createdAt"),
+      @Index(name = "idx_export_task_status_created", columnList = "status, createdAt"),
+      @Index(name = "idx_export_task_paper", columnList = "paperId"),
+      @Index(name = "idx_export_task_exam_plan", columnList = "examPlanId")
+    })
 public class ExportTaskEntity {
 
   @Id private String id;

@@ -23,20 +23,21 @@ const containerRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 
 const selectedOptions = computed(() => {
-  return props.options.filter(opt => props.modelValue.includes(opt.value))
+  return props.options.filter((opt) => props.modelValue.includes(opt.value))
 })
 
 const filteredOptions = computed(() => {
   const query = searchQuery.value.toLowerCase()
-  return props.options.filter(opt => 
-    opt.label.toLowerCase().includes(query) && 
-    !props.modelValue.includes(opt.value)
+  return props.options.filter(
+    (opt) => opt.label.toLowerCase().includes(query) && !props.modelValue.includes(opt.value)
   )
 })
 
 const showCreateOption = computed(() => {
   if (!props.allowCreate || !searchQuery.value) return false
-  const exists = props.options.some(opt => opt.label.toLowerCase() === searchQuery.value.toLowerCase())
+  const exists = props.options.some(
+    (opt) => opt.label.toLowerCase() === searchQuery.value.toLowerCase()
+  )
   return !exists
 })
 
@@ -57,7 +58,7 @@ const selectOption = (option: Option) => {
 }
 
 const removeOption = (value: string | number) => {
-  const newValue = props.modelValue.filter(v => v !== value)
+  const newValue = props.modelValue.filter((v) => v !== value)
   emit('update:modelValue', newValue)
 }
 
@@ -85,7 +86,7 @@ onUnmounted(() => {
 <template>
   <div class="google-combobox-container" ref="containerRef">
     <label v-if="label" class="combo-label">{{ label }}</label>
-    
+
     <div class="combo-wrapper" :class="{ 'is-focused': isOpen }" @click="toggleDropdown">
       <div class="chips-area">
         <div v-for="opt in selectedOptions" :key="opt.value" class="chip">
@@ -94,12 +95,12 @@ onUnmounted(() => {
             <X :size="14" />
           </span>
         </div>
-        <input 
+        <input
           ref="inputRef"
           v-model="searchQuery"
-          type="text" 
+          type="text"
           class="combo-input"
-          :placeholder="selectedOptions.length === 0 ? (placeholder || 'Select...') : ''"
+          :placeholder="selectedOptions.length === 0 ? placeholder || 'Select...' : ''"
           @focus="isOpen = true"
         />
       </div>
@@ -110,20 +111,16 @@ onUnmounted(() => {
 
     <transition name="fade">
       <div v-if="isOpen" class="options-dropdown">
-        <div 
-          v-for="option in filteredOptions" 
+        <div
+          v-for="option in filteredOptions"
           :key="option.value"
           class="dropdown-item"
           @click.stop="selectOption(option)"
         >
           {{ option.label }}
         </div>
-        
-        <div 
-          v-if="showCreateOption" 
-          class="dropdown-item create-item"
-          @click.stop="handleCreate"
-        >
+
+        <div v-if="showCreateOption" class="dropdown-item create-item" @click.stop="handleCreate">
           <Plus :size="16" class="create-icon" />
           创建 "{{ searchQuery }}"
         </div>
@@ -241,7 +238,9 @@ onUnmounted(() => {
   color: var(--line-text-secondary);
   margin-left: 8px;
   cursor: pointer;
-  transition: transform 0.2s ease, color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease;
   flex-shrink: 0;
 }
 
@@ -313,8 +312,14 @@ onUnmounted(() => {
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .fade-enter-active,
@@ -327,4 +332,3 @@ onUnmounted(() => {
   opacity: 0;
 }
 </style>
-

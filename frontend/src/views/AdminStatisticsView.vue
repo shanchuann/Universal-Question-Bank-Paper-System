@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
-import { Users, FileText, BookOpen, GraduationCap, TrendingUp, TrendingDown, Activity } from 'lucide-vue-next'
+import {
+  Users,
+  FileText,
+  BookOpen,
+  GraduationCap,
+  TrendingUp,
+  TrendingDown,
+  Activity
+} from 'lucide-vue-next'
 import GoogleSelect from '@/components/GoogleSelect.vue'
 
 interface StatsOverview {
@@ -60,14 +68,14 @@ const fetchStatistics = async () => {
   try {
     const token = localStorage.getItem('token')
     const params = { range: selectedRange.value }
-    
+
     // 获取概览统计
     const statsResponse = await axios.get('/api/admin/statistics', {
       headers: { Authorization: `Bearer ${token}` },
       params
     })
     stats.value = statsResponse.data
-    
+
     // 获取趋势数据
     try {
       const trendsResponse = await axios.get('/api/admin/statistics/trends', {
@@ -91,9 +99,15 @@ const fetchStatistics = async () => {
   }
 }
 
-const maxUserTrend = computed(() => userTrend.value.length > 0 ? Math.max(...userTrend.value.map(d => d.value)) : 0)
-const maxQuestionTrend = computed(() => questionTrend.value.length > 0 ? Math.max(...questionTrend.value.map(d => d.value)) : 0)
-const maxExamTrend = computed(() => examTrend.value.length > 0 ? Math.max(...examTrend.value.map(d => d.value)) : 0)
+const maxUserTrend = computed(() =>
+  userTrend.value.length > 0 ? Math.max(...userTrend.value.map((d) => d.value)) : 0
+)
+const maxQuestionTrend = computed(() =>
+  questionTrend.value.length > 0 ? Math.max(...questionTrend.value.map((d) => d.value)) : 0
+)
+const maxExamTrend = computed(() =>
+  examTrend.value.length > 0 ? Math.max(...examTrend.value.map((d) => d.value)) : 0
+)
 const rangeLabel = computed(() => rangeLabelMap[selectedRange.value])
 
 type TrendDirection = 'up' | 'down' | 'flat'
@@ -154,11 +168,7 @@ watch(selectedRange, () => {
         <p class="page-subtitle">全局数据分析概览</p>
       </div>
       <div class="header-actions">
-        <GoogleSelect
-          v-model="selectedRange"
-          :options="rangeOptions"
-          placeholder="选择时间范围"
-        />
+        <GoogleSelect v-model="selectedRange" :options="rangeOptions" placeholder="选择时间范围" />
       </div>
     </div>
 
@@ -264,11 +274,7 @@ watch(selectedRange, () => {
         <div class="google-card chart-card">
           <h3 class="chart-title">用户活跃趋势 ({{ rangeLabel }})</h3>
           <div v-if="userTrend.length > 0" class="bar-chart">
-            <div 
-              v-for="item in userTrend" 
-              :key="item.label" 
-              class="bar-item"
-            >
+            <div v-for="item in userTrend" :key="item.label" class="bar-item">
               <div class="bar" :style="{ height: calcBarHeight(item.value, maxUserTrend) }">
                 <span class="bar-value">{{ item.value }}</span>
               </div>
@@ -281,12 +287,11 @@ watch(selectedRange, () => {
         <div class="google-card chart-card">
           <h3 class="chart-title">题目增长趋势 ({{ rangeLabel }})</h3>
           <div v-if="questionTrend.length > 0" class="bar-chart">
-            <div 
-              v-for="item in questionTrend" 
-              :key="item.label" 
-              class="bar-item"
-            >
-              <div class="bar success" :style="{ height: calcBarHeight(item.value, maxQuestionTrend) }">
+            <div v-for="item in questionTrend" :key="item.label" class="bar-item">
+              <div
+                class="bar success"
+                :style="{ height: calcBarHeight(item.value, maxQuestionTrend) }"
+              >
                 <span class="bar-value">{{ item.value }}</span>
               </div>
               <span class="bar-label">{{ item.label }}</span>
@@ -298,11 +303,7 @@ watch(selectedRange, () => {
         <div class="google-card chart-card">
           <h3 class="chart-title">考试场次趋势 ({{ rangeLabel }})</h3>
           <div v-if="examTrend.length > 0" class="bar-chart">
-            <div 
-              v-for="item in examTrend" 
-              :key="item.label" 
-              class="bar-item"
-            >
+            <div v-for="item in examTrend" :key="item.label" class="bar-item">
               <div class="bar warning" :style="{ height: calcBarHeight(item.value, maxExamTrend) }">
                 <span class="bar-value">{{ item.value }}</span>
               </div>
@@ -391,7 +392,9 @@ watch(selectedRange, () => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Stats Grid */
@@ -422,7 +425,9 @@ watch(selectedRange, () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .stat-card:hover {
@@ -448,12 +453,30 @@ watch(selectedRange, () => {
   justify-content: center;
 }
 
-.users-icon { background: color-mix(in srgb, var(--line-accent) 14%, white); color: var(--line-accent); }
-.questions-icon { background: color-mix(in srgb, var(--line-success) 14%, white); color: var(--line-success); }
-.papers-icon { background: color-mix(in srgb, var(--line-warning) 18%, white); color: color-mix(in srgb, var(--line-warning) 85%, black); }
-.exams-icon { background: color-mix(in srgb, var(--line-error) 14%, white); color: var(--line-error); }
-.active-icon { background: rgba(255, 255, 255, 0.2); color: white; }
-.new-icon { background: color-mix(in srgb, var(--line-primary) 12%, white); color: var(--line-primary); }
+.users-icon {
+  background: color-mix(in srgb, var(--line-accent) 14%, white);
+  color: var(--line-accent);
+}
+.questions-icon {
+  background: color-mix(in srgb, var(--line-success) 14%, white);
+  color: var(--line-success);
+}
+.papers-icon {
+  background: color-mix(in srgb, var(--line-warning) 18%, white);
+  color: color-mix(in srgb, var(--line-warning) 85%, black);
+}
+.exams-icon {
+  background: color-mix(in srgb, var(--line-error) 14%, white);
+  color: var(--line-error);
+}
+.active-icon {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+.new-icon {
+  background: color-mix(in srgb, var(--line-primary) 12%, white);
+  color: var(--line-primary);
+}
 
 .stat-content {
   display: flex;
@@ -583,11 +606,19 @@ watch(selectedRange, () => {
 }
 
 .bar.success {
-  background: linear-gradient(180deg, var(--line-success) 0%, color-mix(in srgb, var(--line-success) 78%, white) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--line-success) 0%,
+    color-mix(in srgb, var(--line-success) 78%, white) 100%
+  );
 }
 
 .bar.warning {
-  background: linear-gradient(180deg, var(--line-warning) 0%, color-mix(in srgb, var(--line-warning) 80%, white) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--line-warning) 0%,
+    color-mix(in srgb, var(--line-warning) 80%, white) 100%
+  );
 }
 
 .bar-value {
@@ -618,4 +649,3 @@ watch(selectedRange, () => {
   background: color-mix(in srgb, var(--line-bg-soft) 60%, white);
 }
 </style>
-

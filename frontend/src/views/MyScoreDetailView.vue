@@ -40,7 +40,7 @@ const error = ref('')
 
 const getAuthHeaders = () => ({
   'Content-Type': 'application/json',
-  'Authorization': `Bearer ${localStorage.getItem('token')}`
+  Authorization: `Bearer ${localStorage.getItem('token')}`
 })
 
 const fetchDetail = async () => {
@@ -53,10 +53,9 @@ const fetchDetail = async () => {
   loading.value = true
   error.value = ''
   try {
-    const response = await axios.get(
-      `/api/exams/${examId}/my-score?userId=${authState.user.id}`,
-      { headers: getAuthHeaders() }
-    )
+    const response = await axios.get(`/api/exams/${examId}/my-score?userId=${authState.user.id}`, {
+      headers: getAuthHeaders()
+    })
     detail.value = response.data
   } catch (err: any) {
     if (err.response?.status === 403) {
@@ -90,13 +89,13 @@ const getScoreClass = (score?: number) => {
 }
 
 const typeLabels: Record<string, string> = {
-  'SINGLE_CHOICE': '单选题',
-  'MULTIPLE_CHOICE': '多选题',
-  'MULTI_CHOICE': '多选题',
-  'TRUE_FALSE': '判断题',
-  'FILL_BLANK': '填空题',
-  'SHORT_ANSWER': '简答题',
-  'ESSAY': '论述题'
+  SINGLE_CHOICE: '单选题',
+  MULTIPLE_CHOICE: '多选题',
+  MULTI_CHOICE: '多选题',
+  TRUE_FALSE: '判断题',
+  FILL_BLANK: '填空题',
+  SHORT_ANSWER: '简答题',
+  ESSAY: '论述题'
 }
 
 const totalMaxScore = computed(() => {
@@ -182,11 +181,18 @@ onMounted(() => {
         <div class="overview-left">
           <h2 class="paper-title">{{ detail.paperTitle || `试卷 #${detail.paperId}` }}</h2>
           <div class="meta-info">
-            <span class="meta-item">考试时间：{{ formatDateTime(detail.startTime) }} - {{ formatDateTime(detail.endTime) }}</span>
+            <span class="meta-item"
+              >考试时间：{{ formatDateTime(detail.startTime) }} -
+              {{ formatDateTime(detail.endTime) }}</span
+            >
           </div>
         </div>
         <div class="overview-right">
-          <div v-if="detail.gradingStatus === 'GRADED'" class="score-circle" :class="getScoreClass(detail.score)">
+          <div
+            v-if="detail.gradingStatus === 'GRADED'"
+            class="score-circle"
+            :class="getScoreClass(detail.score)"
+          >
             <span class="score-number">{{ detail.score }}</span>
             <span class="score-label">分</span>
           </div>
@@ -204,7 +210,9 @@ onMounted(() => {
         </div>
         <div class="stat-item">
           <span class="stat-label">得分</span>
-          <span class="stat-value">{{ totalGotScore.toFixed(1) }} / {{ totalMaxScore.toFixed(1) }}</span>
+          <span class="stat-value"
+            >{{ totalGotScore.toFixed(1) }} / {{ totalMaxScore.toFixed(1) }}</span
+          >
         </div>
         <div class="stat-item">
           <span class="stat-label">正确率</span>
@@ -217,12 +225,16 @@ onMounted(() => {
       <!-- 题目详情 -->
       <div class="questions-section">
         <h3 class="section-title">答题详情</h3>
-        
-        <div 
-          v-for="(q, index) in detail.questionScores" 
-          :key="q.questionId" 
+
+        <div
+          v-for="(q, index) in detail.questionScores"
+          :key="q.questionId"
           class="question-card"
-          :class="{ correct: isQuestionCorrect(q), incorrect: isQuestionIncorrect(q), pending: isQuestionPending(q) }"
+          :class="{
+            correct: isQuestionCorrect(q),
+            incorrect: isQuestionIncorrect(q),
+            pending: isQuestionPending(q)
+          }"
         >
           <div class="question-header">
             <div class="question-info">
@@ -231,7 +243,9 @@ onMounted(() => {
             </div>
             <div class="question-score">
               <template v-if="q.score !== null && q.score !== undefined">
-                <span class="got-score" :class="{ full: q.score === q.maxScore }">{{ q.score }}</span>
+                <span class="got-score" :class="{ full: q.score === q.maxScore }">{{
+                  q.score
+                }}</span>
                 <span class="max-score">/ {{ q.maxScore || 0 }} 分</span>
               </template>
               <span v-else class="pending-score">待评分</span>
@@ -240,7 +254,7 @@ onMounted(() => {
 
           <div class="question-body">
             <div class="question-stem" v-html="q.stem || '(题目内容缺失)'"></div>
-            
+
             <div class="answer-section">
               <div class="answer-row">
                 <span class="answer-label">您的答案：</span>
@@ -257,7 +271,17 @@ onMounted(() => {
               </template>
               <template v-else>
                 <span class="pending-badge-inline">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
                     <circle cx="12" cy="12" r="10"></circle>
                     <polyline points="12 6 12 12 16 14"></polyline>
                   </svg>
@@ -338,7 +362,9 @@ onMounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .primary-btn {
@@ -399,10 +425,18 @@ onMounted(() => {
   border: 4px solid;
 }
 
-.score-circle.excellent { border-color: #34a853; }
-.score-circle.good { border-color: #1a73e8; }
-.score-circle.pass { border-color: #fbbc04; }
-.score-circle.fail { border-color: #ea4335; }
+.score-circle.excellent {
+  border-color: #34a853;
+}
+.score-circle.good {
+  border-color: #1a73e8;
+}
+.score-circle.pass {
+  border-color: #fbbc04;
+}
+.score-circle.fail {
+  border-color: #ea4335;
+}
 
 .score-number {
   font-size: 32px;
@@ -410,10 +444,18 @@ onMounted(() => {
   line-height: 1;
 }
 
-.score-circle.excellent .score-number { color: #34a853; }
-.score-circle.good .score-number { color: #1a73e8; }
-.score-circle.pass .score-number { color: #fbbc04; }
-.score-circle.fail .score-number { color: #ea4335; }
+.score-circle.excellent .score-number {
+  color: #34a853;
+}
+.score-circle.good .score-number {
+  color: #1a73e8;
+}
+.score-circle.pass .score-number {
+  color: #fbbc04;
+}
+.score-circle.fail .score-number {
+  color: #ea4335;
+}
 
 .score-label {
   font-size: 14px;
@@ -443,7 +485,7 @@ onMounted(() => {
   border-radius: 12px;
   padding: 20px;
   text-align: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   border: 1px solid var(--line-border);
 }
 
@@ -464,7 +506,7 @@ onMounted(() => {
   background: var(--line-bg);
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   border: 1px solid var(--line-border);
 }
 
@@ -662,13 +704,13 @@ onMounted(() => {
   .stats-row {
     grid-template-columns: 1fr;
   }
-  
+
   .page-header {
     flex-direction: column;
     gap: 12px;
     align-items: flex-start;
   }
-  
+
   .breadcrumb {
     font-size: 13px;
   }

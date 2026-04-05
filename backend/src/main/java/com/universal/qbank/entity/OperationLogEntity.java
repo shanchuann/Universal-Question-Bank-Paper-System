@@ -4,7 +4,13 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "operation_logs")
+@Table(
+    name = "operation_logs",
+    indexes = {
+      @Index(name = "idx_operation_log_timestamp", columnList = "timestamp"),
+      @Index(name = "idx_operation_log_action_timestamp", columnList = "action, timestamp"),
+      @Index(name = "idx_operation_log_user_timestamp", columnList = "userId, timestamp")
+    })
 public class OperationLogEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)

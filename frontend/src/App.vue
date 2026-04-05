@@ -87,19 +87,22 @@ onMounted(() => {
 })
 
 // 监听登录状态变化，登录后显示公告
-watch(() => authState.isAuthenticated, (isAuth) => {
-  if (isAuth) {
-    // 延迟一点点确保路由跳转完成
-    setTimeout(() => {
-      checkAnnouncements()
-      refreshUnreadCount()
-      startNotificationPolling()
-    }, 500)
-  } else {
-    unreadCount.value = 0
-    stopNotificationPolling()
+watch(
+  () => authState.isAuthenticated,
+  (isAuth) => {
+    if (isAuth) {
+      // 延迟一点点确保路由跳转完成
+      setTimeout(() => {
+        checkAnnouncements()
+        refreshUnreadCount()
+        startNotificationPolling()
+      }, 500)
+    } else {
+      unreadCount.value = 0
+      stopNotificationPolling()
+    }
   }
-})
+)
 
 type NavChild = { to: string; label: string }
 type NavGroup = {
@@ -127,7 +130,7 @@ const navGroups = computed<NavGroup[]>(() => {
       children: [
         { to: '/questions', label: '题目列表' },
         { to: '/questions/add', label: '添加题目' },
-        { to: '/import', label: '批量导入' },
+        { to: '/import', label: '导入题目' },
         { to: '/questions/review', label: '题目审核' },
         { to: '/knowledge-point-manage', label: '知识点管理' }
       ]
@@ -152,32 +155,40 @@ const navGroups = computed<NavGroup[]>(() => {
       roles: ['TEACHER']
     },
     // 学生专属菜单
-    ...(isStudent ? [
-      { to: '/exams/list', label: '我的考试' },
-      { to: '/my-scores', label: '我的成绩' },
-      { to: '/practice', label: '练习模式' },
-      { to: '/leaderboard', label: '排行榜' },
-      { to: '/questions/add', label: '我要出题' },
-      { to: '/my-organizations', label: '我的班级' }
-    ] : []),
+    ...(isStudent
+      ? [
+          { to: '/exams/list', label: '我的考试' },
+          { to: '/my-scores', label: '我的成绩' },
+          { to: '/practice', label: '练习模式' },
+          { to: '/leaderboard', label: '排行榜' },
+          { to: '/questions/add', label: '我要出题' },
+          { to: '/my-organizations', label: '我的班级' }
+        ]
+      : []),
     // 教师的班级管理
-    ...(isTeacher ? [{
-      label: '班级管理',
-      children: [
-        { to: '/admin/organizations', label: '我的班级' },
-        { to: '/leaderboard', label: '排行榜' }
-      ]
-    }] : []),
+    ...(isTeacher
+      ? [
+          {
+            label: '班级管理',
+            children: [
+              { to: '/admin/organizations', label: '我的班级' },
+              { to: '/leaderboard', label: '排行榜' }
+            ]
+          }
+        ]
+      : []),
     // 管理员的系统管理 - 直接展示在导航栏
-    ...(isAdmin ? [
-      { to: '/admin/users', label: '用户管理' },
-      { to: '/admin/organizations', label: '组织架构' },
-      { to: '/admin/statistics', label: '数据统计' },
-      { to: '/admin/system', label: '系统设置' },
-      { to: '/admin/logs', label: '操作日志' },
-      { to: '/admin/monitor', label: '系统监控' },
-      { to: '/admin/announcements', label: '公告管理' }
-    ] : [])
+    ...(isAdmin
+      ? [
+          { to: '/admin/users', label: '用户管理' },
+          { to: '/admin/organizations', label: '组织架构' },
+          { to: '/admin/statistics', label: '数据统计' },
+          { to: '/admin/system', label: '系统设置' },
+          { to: '/admin/logs', label: '操作日志' },
+          { to: '/admin/monitor', label: '系统监控' },
+          { to: '/admin/announcements', label: '公告管理' }
+        ]
+      : [])
   ]
 
   return groups
@@ -276,6 +287,7 @@ const floatingAiMode = computed<'teacher' | 'student'>(() => {
 
 const showFloatingAi = computed(() => {
   if (!authState.isAuthenticated) return false
+  if (!authState.user.role) return false
   if (authState.user.role === 'ADMIN') return false
   return aiEnabled.value && aiAssistantEnabled.value
 })
@@ -298,9 +310,20 @@ const showFloatingAi = computed(() => {
       <!-- Navigation Links -->
       <nav class="nav-links" v-if="authState.isAuthenticated">
         <template v-for="group in navGroups" :key="group.label">
-          <template v-if="!group.roles || (authState.user.role && group.roles.includes(authState.user.role as Exclude<UserRole, ''>))">
+          <template
+            v-if="
+              !group.roles ||
+              (authState.user.role &&
+                group.roles.includes(authState.user.role as Exclude<UserRole, ''>))
+            "
+          >
             <!-- 单个链接 -->
-            <div v-if="group.to" class="nav-item" :class="{ 'active-nav': isRouteActive(group.to) }" @click="navigateTo(group.to)">
+            <div
+              v-if="group.to"
+              class="nav-item"
+              :class="{ 'active-nav': isRouteActive(group.to) }"
+              @click="navigateTo(group.to)"
+            >
               {{ group.label }}
               <span
                 v-if="group.to === '/messages' && unreadCount > 0"
@@ -308,16 +331,16 @@ const showFloatingAi = computed(() => {
                 aria-label="有未读消息"
               ></span>
             </div>
-            
+
             <!-- 下拉菜单 -->
-            <div 
-              v-else-if="group.children" 
-              class="nav-dropdown" 
+            <div
+              v-else-if="group.children"
+              class="nav-dropdown"
               @mouseleave="closeDropdown"
               @mouseenter="openDropdown(group.label)"
             >
-              <div 
-                class="nav-item dropdown-trigger" 
+              <div
+                class="nav-item dropdown-trigger"
                 :class="{ active: activeDropdown === group.label }"
                 @click="toggleDropdown(group.label)"
                 @mouseenter="openDropdown(group.label)"
@@ -326,9 +349,9 @@ const showFloatingAi = computed(() => {
                 <ChevronDown class="dropdown-arrow" :size="16" />
               </div>
               <div v-show="activeDropdown === group.label" class="dropdown-menu">
-                <div 
-                  v-for="child in group.children" 
-                  :key="child.to" 
+                <div
+                  v-for="child in group.children"
+                  :key="child.to"
                   class="dropdown-item"
                   :class="{ 'active-nav': isExactActive(child.to) }"
                   @click="navigateTo(child.to)"
@@ -351,7 +374,9 @@ const showFloatingAi = computed(() => {
           <div class="user-profile">
             <div
               class="avatar"
-              :style="{ backgroundColor: avatarUrl && !avatarError ? 'transparent' : 'var(--line-primary)' }"
+              :style="{
+                backgroundColor: avatarUrl && !avatarError ? 'transparent' : 'var(--line-primary)'
+              }"
               @click="goProfile"
               title="个人设置"
             >
@@ -364,8 +389,8 @@ const showFloatingAi = computed(() => {
               <span v-else>{{ initial }}</span>
             </div>
             <button @click="handleLogout" class="logout-btn" title="退出登录">
-               <LogOut :size="16" />
-               <span>退出</span>
+              <LogOut :size="16" />
+              <span>退出</span>
             </button>
           </div>
         </template>
@@ -384,14 +409,11 @@ const showFloatingAi = computed(() => {
 
   <!-- 全局 Toast 通知 -->
   <GlobalToast />
-  
+
   <!-- 公告弹窗 -->
   <AnnouncementModal ref="announcementModalRef" />
 
-  <AiFloatingAssistant
-    v-if="showFloatingAi"
-    :mode="floatingAiMode"
-  />
+  <AiFloatingAssistant v-if="showFloatingAi" :mode="floatingAiMode" />
 </template>
 
 <style scoped>
@@ -420,7 +442,11 @@ const showFloatingAi = computed(() => {
 .circle-1 {
   width: 700px;
   height: 700px;
-  background: radial-gradient(circle at 30% 30%, rgba(14, 165, 233, 0.4), rgba(14, 165, 233, 0)); /* Much lighter */
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(14, 165, 233, 0.4),
+    rgba(14, 165, 233, 0)
+  ); /* Much lighter */
   top: -100px;
   left: -100px;
   animation: float-1 30s infinite ease-in-out;
@@ -429,24 +455,46 @@ const showFloatingAi = computed(() => {
 .circle-2 {
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle at 70% 70%, rgba(139, 92, 246, 0.4), rgba(139, 92, 246, 0)); /* Much lighter */
+  background: radial-gradient(
+    circle at 70% 70%,
+    rgba(139, 92, 246, 0.4),
+    rgba(139, 92, 246, 0)
+  ); /* Much lighter */
   bottom: -100px;
   right: -100px;
   animation: float-2 35s infinite ease-in-out reverse;
 }
 
 @keyframes float-1 {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(40vw, 10vh) rotate(10deg); }
-  50% { transform: translate(20vw, 40vh) rotate(-5deg); }
-  75% { transform: translate(-10vw, 20vh) rotate(5deg); }
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(40vw, 10vh) rotate(10deg);
+  }
+  50% {
+    transform: translate(20vw, 40vh) rotate(-5deg);
+  }
+  75% {
+    transform: translate(-10vw, 20vh) rotate(5deg);
+  }
 }
 
 @keyframes float-2 {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(-30vw, -20vh) rotate(-10deg); }
-  50% { transform: translate(-10vw, -40vh) rotate(5deg); }
-  75% { transform: translate(20vw, -10vh) rotate(10deg); }
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(-30vw, -20vh) rotate(-10deg);
+  }
+  50% {
+    transform: translate(-10vw, -40vh) rotate(5deg);
+  }
+  75% {
+    transform: translate(20vw, -10vh) rotate(10deg);
+  }
 }
 
 .line-header {
@@ -465,7 +513,9 @@ const showFloatingAi = computed(() => {
 
 .line-header:hover {
   background-color: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
 .header-content {
@@ -498,8 +548,8 @@ const showFloatingAi = computed(() => {
   background: #fff;
 }
 
-.logo-text { 
-  color: var(--line-primary); 
+.logo-text {
+  color: var(--line-primary);
   background: linear-gradient(135deg, var(--line-primary) 0%, #4a90d9 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -598,8 +648,14 @@ const showFloatingAi = computed(() => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .dropdown-item {
@@ -648,7 +704,9 @@ const showFloatingAi = computed(() => {
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 2px 5px rgba(0,0,0,0.1);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 2px 5px rgba(0, 0, 0, 0.1);
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -662,7 +720,9 @@ const showFloatingAi = computed(() => {
 
 .avatar:hover {
   transform: scale(1.1);
-  box-shadow: 0 0 0 2px var(--line-primary-20), 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow:
+    0 0 0 2px var(--line-primary-20),
+    0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .logout-btn {
@@ -682,9 +742,9 @@ const showFloatingAi = computed(() => {
 }
 
 .logout-btn:hover {
-  background: #FFF1F2; /* Rose 50 */
-  color: #E11D48; /* Rose 600 */
-  border-color: #FECDD3; /* Rose 200 */
+  background: #fff1f2; /* Rose 50 */
+  color: #e11d48; /* Rose 600 */
+  border-color: #fecdd3; /* Rose 200 */
   box-shadow: 0 2px 4px rgba(225, 29, 72, 0.1);
 }
 
@@ -715,11 +775,17 @@ const showFloatingAi = computed(() => {
 }
 
 @media (max-width: 1024px) {
-  .nav-links { gap: 4px; }
-  .header-content { padding: 0 16px; }
+  .nav-links {
+    gap: 4px;
+  }
+  .header-content {
+    padding: 0 16px;
+  }
 }
 
 @media (max-width: 768px) {
-  .nav-links { display: none; }
+  .nav-links {
+    display: none;
+  }
 }
 </style>

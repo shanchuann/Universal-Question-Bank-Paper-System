@@ -117,12 +117,12 @@ const exportLogs = async () => {
 
 const getActionBadgeClass = (action: string) => {
   const classMap: Record<string, string> = {
-    'LOGIN': 'badge-info',
-    'LOGOUT': 'badge-secondary',
-    'CREATE': 'badge-success',
-    'UPDATE': 'badge-warning',
-    'DELETE': 'badge-danger',
-    'EXPORT': 'badge-primary'
+    LOGIN: 'badge-info',
+    LOGOUT: 'badge-secondary',
+    CREATE: 'badge-success',
+    UPDATE: 'badge-warning',
+    DELETE: 'badge-danger',
+    EXPORT: 'badge-primary'
   }
   return classMap[action] || 'badge-default'
 }
@@ -156,21 +156,17 @@ onMounted(() => {
     <div class="toolbar">
       <div class="search-box">
         <Search :size="18" class="search-icon" />
-        <input 
-          v-model="searchKeyword" 
-          type="text" 
-          placeholder="搜索用户名或操作内容..." 
+        <input
+          v-model="searchKeyword"
+          type="text"
+          placeholder="搜索用户名或操作内容..."
           class="google-input search-input"
           @keyup.enter="handleSearch"
         />
       </div>
       <div class="filter-box">
         <Filter :size="18" class="filter-icon" />
-        <GoogleSelect
-          v-model="actionFilter"
-          :options="actionTypes"
-          placeholder="全部操作"
-        />
+        <GoogleSelect v-model="actionFilter" :options="actionTypes" placeholder="全部操作" />
       </div>
       <button class="google-btn text-btn" @click="exportLogs">
         <Download :size="18" />
@@ -183,12 +179,12 @@ onMounted(() => {
         <div class="spinner"></div>
         <p>加载中...</p>
       </div>
-      
+
       <div v-else-if="errorMessage" class="empty-state">
         <p>{{ errorMessage }}</p>
         <button class="google-btn text-btn" @click="fetchLogs">重试</button>
       </div>
-      
+
       <table v-else-if="logs.length > 0" class="google-table">
         <thead>
           <tr>
@@ -215,7 +211,7 @@ onMounted(() => {
           </tr>
         </tbody>
       </table>
-      
+
       <div v-else class="empty-state">
         <p>暂无操作日志</p>
       </div>
@@ -223,7 +219,9 @@ onMounted(() => {
       <div class="pagination" v-if="logs.length > 0">
         <button class="google-btn text-btn" :disabled="page === 0" @click="prevPage">上一页</button>
         <span>第 {{ page + 1 }} 页 / 共 {{ totalPages }} 页 (共 {{ totalElements }} 条)</span>
-        <button class="google-btn text-btn" :disabled="page >= totalPages - 1" @click="nextPage">下一页</button>
+        <button class="google-btn text-btn" :disabled="page >= totalPages - 1" @click="nextPage">
+          下一页
+        </button>
       </div>
     </div>
   </div>
@@ -253,13 +251,15 @@ onMounted(() => {
   align-items: center;
 }
 
-.search-box, .filter-box {
+.search-box,
+.filter-box {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-.search-icon, .filter-icon {
+.search-icon,
+.filter-icon {
   position: absolute;
   left: 12px;
   color: var(--line-text-secondary);
@@ -333,13 +333,34 @@ onMounted(() => {
   font-weight: 500;
 }
 
-.badge-info { background: color-mix(in srgb, var(--line-accent) 14%, white); color: var(--line-accent); }
-.badge-secondary { background: var(--line-bg-hover); color: var(--line-text-secondary); }
-.badge-success { background: color-mix(in srgb, var(--line-success) 14%, white); color: var(--line-success); }
-.badge-warning { background: color-mix(in srgb, var(--line-warning) 18%, white); color: color-mix(in srgb, var(--line-warning) 85%, black); }
-.badge-danger { background: color-mix(in srgb, var(--line-error) 14%, white); color: var(--line-error); }
-.badge-primary { background: color-mix(in srgb, var(--line-primary) 10%, white); color: var(--line-primary); }
-.badge-default { background: var(--line-bg-hover); color: var(--line-text-secondary); }
+.badge-info {
+  background: color-mix(in srgb, var(--line-accent) 14%, white);
+  color: var(--line-accent);
+}
+.badge-secondary {
+  background: var(--line-bg-hover);
+  color: var(--line-text-secondary);
+}
+.badge-success {
+  background: color-mix(in srgb, var(--line-success) 14%, white);
+  color: var(--line-success);
+}
+.badge-warning {
+  background: color-mix(in srgb, var(--line-warning) 18%, white);
+  color: color-mix(in srgb, var(--line-warning) 85%, black);
+}
+.badge-danger {
+  background: color-mix(in srgb, var(--line-error) 14%, white);
+  color: var(--line-error);
+}
+.badge-primary {
+  background: color-mix(in srgb, var(--line-primary) 10%, white);
+  color: var(--line-primary);
+}
+.badge-default {
+  background: var(--line-bg-hover);
+  color: var(--line-text-secondary);
+}
 
 .loading-state {
   display: flex;
@@ -360,7 +381,9 @@ onMounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .empty-state {
@@ -420,4 +443,3 @@ onMounted(() => {
   border-color: var(--line-primary);
 }
 </style>
-
