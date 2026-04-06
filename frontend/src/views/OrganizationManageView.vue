@@ -346,9 +346,48 @@ function updateOrgInviteCode(orgs: Organization[], orgId: string, newCode: strin
   return false
 }
 
-function copyInviteCode(code: string) {
-  navigator.clipboard.writeText(code)
-  showToast({ message: '邀请码已复制到剪贴板', type: 'success' })
+function fallbackCopyText(text: string): boolean {
+  try {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.setAttribute('readonly', 'true')
+    textarea.style.position = 'fixed'
+    textarea.style.top = '-9999px'
+    textarea.style.left = '-9999px'
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+    const copied = document.execCommand('copy')
+    document.body.removeChild(textarea)
+    return copied
+  } catch {
+    return false
+  }
+}
+
+async function copyInviteCode(code: string) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(code)
+      showToast({ message: '邀请码已复制到剪贴板', type: 'success' })
+      return
+    }
+
+    const copied = fallbackCopyText(code)
+    if (copied) {
+      showToast({ message: '邀请码已复制到剪贴板', type: 'success' })
+      return
+    }
+
+    showToast({ message: '复制失败，请手动选择邀请码复制', type: 'warning' })
+  } catch {
+    const copied = fallbackCopyText(code)
+    if (copied) {
+      showToast({ message: '邀请码已复制到剪贴板', type: 'success' })
+      return
+    }
+    showToast({ message: '复制失败，请手动选择邀请码复制', type: 'warning' })
+  }
 }
 </script>
 

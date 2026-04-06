@@ -1,4 +1,12 @@
 services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: uqbank-ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - /root/.ollama:/root/.ollama
   uqbank-backend:
     image: ghcr.io/${GHCR_OWNER}/uqbank-backend:${BACKEND_TAG:-prod}
     container_name: uqbank-backend
@@ -7,6 +15,8 @@ services:
       - "8080:8080"
     volumes:
       - ./uploads:/app/uploads
+    depends_on:
+      - ollama
     environment:
       DB_URL: ${DB_URL}
       DB_USERNAME: ${DB_USERNAME}
@@ -19,6 +29,9 @@ services:
       SMTP_USER: ${SMTP_USER}
       SMTP_PASS: ${SMTP_PASS}
       AI_OLLAMA_ENABLED: ${AI_OLLAMA_ENABLED:-false}
+      AI_OLLAMA_BASE_URL: ${AI_OLLAMA_BASE_URL:-http://ollama:11434}
+      AI_OLLAMA_MODEL: ${AI_OLLAMA_MODEL}
+      AI_OLLAMA_TIMEOUT_MS: ${AI_OLLAMA_TIMEOUT_MS:-180000}
       APP_CLEANUP_DROP_LEGACY_QUESTION_OPTIONS: ${APP_CLEANUP_DROP_LEGACY_QUESTION_OPTIONS:-false}
       TZ: ${TZ:-Asia/Shanghai}
     extra_hosts:
@@ -34,6 +47,7 @@ services:
       - "80:80"
     depends_on:
       - uqbank-backend
+      - ollama
     environment:
       TZ: ${TZ:-Asia/Shanghai}
     volumes:

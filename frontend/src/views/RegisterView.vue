@@ -259,7 +259,7 @@ const passwordHint = computed(() => {
   justify-content: center;
   align-items: center;
   min-height: 80vh;
-  background-color: var(--line-bg);
+  background-color: transparent;
 }
 
 .register-container {
@@ -267,8 +267,11 @@ const passwordHint = computed(() => {
   max-width: 450px;
   padding: 48px 40px 36px;
   text-align: center;
-  border: 1px solid var(--line-border);
+  /* Make the container transparent to remove white card background */
+  background: transparent;
+  border: none;
   border-radius: 8px;
+  box-shadow: none;
 }
 
 .logo-area {
