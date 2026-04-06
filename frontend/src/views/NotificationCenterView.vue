@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import axios from 'axios'
 import { useToast } from '@/composables/useToast'
 import { useNotifications } from '@/composables/useNotifications'
+import { authState } from '@/states/authState'
 
 interface ConversationItem {
   peerId: string
@@ -19,6 +20,7 @@ interface ChatMessage {
   senderId?: string
   senderName?: string
   senderRole?: string
+  senderAvatarUrl?: string
   receiverId: string
   type: string
   content: string
@@ -135,6 +137,20 @@ const isMyMessage = (item: ChatMessage) => {
   const token = localStorage.getItem('token') || ''
   const myUserId = token.startsWith('dummy-jwt-token-') ? token.replace('dummy-jwt-token-', '') : ''
   return item.senderId === myUserId
+}
+
+const myAvatarUrl = computed(() => authState.user.avatarUrl || '')
+
+const getAvatarUrl = (item: ChatMessage) => {
+  if (isMyMessage(item)) return myAvatarUrl.value || ''
+  // prefer message-level avatar if provided, otherwise fallback to active conversation avatar
+  // @ts-ignore - may not exist on backend message
+  return (item as any).senderAvatarUrl || activeConversation.value?.peerAvatarUrl || ''
+}
+
+const getInitial = (item: ChatMessage) => {
+  if (isMyMessage(item)) return '你'
+  return (item.senderName || activeConversation.value?.peerName || '?').charAt(0).toUpperCase()
 }
 
 const ensureActivePeer = () => {
@@ -340,7 +356,6 @@ onMounted(async () => {
         <div class="chat-head">
           <div>
             <div class="title">{{ activeConversation?.peerName || '请选择左侧联系人' }}</div>
-            <div class="subtitle">左侧选人即可开始聊天</div>
           </div>
         </div>
 
@@ -357,7 +372,10 @@ onMounted(async () => {
               class="bubble-row"
               :class="{ mine: isMyMessage(item) }"
             >
-              <div class="sender-dot">{{ isMyMessage(item) ? '你' : '对方' }}</div>
+              <div class="message-avatar">
+                <img v-if="getAvatarUrl(item)" :src="getAvatarUrl(item)" alt="avatar" />
+                <span v-else>{{ getInitial(item) }}</span>
+              </div>
               <div class="bubble">
                 <p>{{ item.content }}</p>
                 <span class="meta">{{ formatTime(item.createdAt) }}</span>
@@ -370,7 +388,7 @@ onMounted(async () => {
           <textarea
             v-model="messageContent"
             class="line-input"
-            rows="4"
+            rows="2"
             placeholder="输入普通消息内容"
           ></textarea>
           <button class="line-btn primary-btn send-btn" :disabled="sending" @click="sendMessage">
@@ -612,13 +630,43 @@ onMounted(async () => {
   background: #64748b;
 }
 
+.message-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--line-primary) 14%, white);
+  color: var(--line-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.message-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bubble-row.mine .message-avatar {
+  order: 2;
+  margin-left: 8px;
+}
+
+.bubble-row .message-avatar {
+  margin-right: 6px;
+}
+
 .bubble {
   max-width: 62%;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #10a37f;
   border: 1px solid #10a37f;
   color: #ffffff;
-  padding: 10px 12px;
+  padding: 6px 10px;
 }
 
 .bubble-row.mine .bubble {
@@ -630,12 +678,12 @@ onMounted(async () => {
 .bubble p {
   margin: 0;
   white-space: pre-wrap;
-  line-height: 1.45;
+  line-height: 1.3;
 }
 
 .meta {
   display: inline-block;
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.85);
 }
@@ -660,6 +708,12 @@ onMounted(async () => {
 .empty {
   color: var(--line-text-secondary);
   padding: 14px;
+}
+
+.chat-composer .line-input {
+  min-height: 40px;
+  max-height: 160px;
+  resize: vertical;
 }
 
 @media (max-width: 1024px) {

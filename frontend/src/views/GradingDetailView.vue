@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { ArrowLeft, Check, X, User } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { examApi } from '@/api/client'
 import type { ExamSessionResponse, ManualGradeRequest } from '@/api/generated'
@@ -297,21 +298,22 @@ onMounted(fetchExam)
 <template>
   <div class="grading-container">
     <div class="header-row">
-      <button @click="router.back()" class="google-btn secondary-btn">
-        <span class="icon">←</span> 返回
+      <button @click="router.back()" class="line-btn outline-btn back-btn">
+        <ArrowLeft :size="16" aria-hidden="true" />
+        返回
       </button>
       <h1 class="page-title">阅卷: 考试 #{{ examId }}</h1>
       <div class="top-actions">
         <button
           @click="batchAiSuggest"
-          class="google-btn secondary-btn"
+          class="line-btn outline-btn sm"
           :disabled="aiBatchSuggesting || !exam?.questions?.length"
         >
           {{ aiBatchSuggesting ? 'AI批量建议中...' : 'AI批量预评分' }}
         </button>
         <button
           @click="submitGrades"
-          class="google-btn primary-btn"
+          class="line-btn primary-btn"
           :disabled="saving || !exam?.questions?.length"
         >
           {{ saving ? '保存中...' : '提交评分' }}
@@ -401,9 +403,19 @@ onMounted(fetchExam)
           <span class="q-num">第{{ index + 1 }}题</span>
           <span class="q-type" :class="q.type?.toLowerCase()">{{ getTypeName(q.type) }}</span>
           <span class="q-score-badge">满分: {{ q.score }} 分</span>
-          <span v-if="q.isCorrect === true" class="q-result correct">✓ 正确</span>
-          <span v-else-if="q.isCorrect === false" class="q-result wrong">✗ 错误</span>
-          <span v-else class="q-result pending">待评分</span>
+          <!-- 对于需人工评分的题目，优先根据本地 grades 显示是否已评分 -->
+          <template v-if="needsManualGrading(q.type)">
+            <span v-if="grades[q.questionId] && grades[q.questionId].score !== null && grades[q.questionId].score !== undefined" class="q-result scored">
+              <Check :size="14" /> 已评分
+            </span>
+            <span v-else class="q-result pending">待评分</span>
+          </template>
+          <!-- 自动判分题仍按 q.isCorrect 展示 -->
+          <template v-else>
+            <span v-if="q.isCorrect === true" class="q-result correct"><Check :size="14" /> 正确</span>
+            <span v-else-if="q.isCorrect === false" class="q-result wrong"><X :size="14" /> 错误</span>
+            <span v-else class="q-result pending">待评分</span>
+          </template>
         </div>
 
         <div class="q-stem" v-html="q.stem"></div>
@@ -423,10 +435,10 @@ onMounted(fetchExam)
           >
             <span class="option-key" v-if="opt.key">{{ opt.key }}.</span>
             <span class="option-text" v-html="sanitizeRichText(String(opt.text || ''))"></span>
-            <span v-if="opt.isCorrect" class="badge-correct">✓ 正确答案</span>
-            <span v-if="q.userAnswer === opt.text || q.userAnswer === opt.key" class="badge-user"
-              >用户选择</span
-            >
+            <span v-if="opt.isCorrect" class="badge-correct"><Check :size="14" /> 正确答案</span>
+            <span v-if="q.userAnswer === opt.text || q.userAnswer === opt.key" class="badge-user">
+              <User :size="14" /> 用户选择
+            </span>
           </div>
         </div>
 
@@ -446,40 +458,43 @@ onMounted(fetchExam)
         <!-- 评分区域 -->
         <div class="grading-section" v-if="q.questionId && grades[q.questionId]">
           <div class="grading-header">
-            <span>评分</span>
+            <span class="grading-title">评分</span>
             <div class="quick-actions" v-if="needsManualGrading(q.type)">
               <button
                 @click="askAiSuggestion(q)"
-                class="quick-btn ai"
                 :disabled="!!aiSuggesting[q.questionId!]"
+                class="line-btn outline-btn sm ai-btn action-btn"
               >
                 {{ aiSuggesting[q.questionId!] ? 'AI建议中...' : 'AI建议' }}
               </button>
-              <button @click="giveFullScore(q.questionId!)" class="quick-btn full">满分</button>
-              <button @click="giveZeroScore(q.questionId!)" class="quick-btn zero">零分</button>
+              <button @click="giveFullScore(q.questionId!)" class="line-btn outline-btn sm full-btn action-btn">满分</button>
+              <button @click="giveZeroScore(q.questionId!)" class="line-btn outline-btn sm zero-btn action-btn">零分</button>
             </div>
           </div>
-          <div class="grading-controls">
-            <div class="control-group score-input">
-              <label>得分</label>
-              <div class="score-wrapper">
+
+          <div class="grading-layout">
+            <div class="score-column">
+              <label class="score-label">得分</label>
+              <div class="score-box">
                 <input
                   type="number"
                   v-model.number="grades[q.questionId!]!.score"
-                  class="google-input"
+                  class="score-input google-input"
                   step="0.5"
                   :min="0"
                   :max="grades[q.questionId!]?.maxScore"
                 />
-                <span class="score-max">/ {{ grades[q.questionId!]?.maxScore }}</span>
+                <div class="score-max">/ {{ grades[q.questionId!]?.maxScore }}</div>
               </div>
             </div>
-            <div class="control-group notes-input">
-              <label>评语 (可选)</label>
+
+            <div class="notes-column">
+              <label class="notes-label">评语 (可选)</label>
               <textarea
                 v-model="grades[q.questionId!]!.notes"
-                class="google-input"
-                rows="2"
+                class="notes-textarea google-input"
+                rows="1"
+                wrap="off"
                 placeholder="输入评语或批注..."
               ></textarea>
             </div>
@@ -632,24 +647,42 @@ onMounted(fetchExam)
   color: var(--line-text-secondary);
 }
 
+/* Result badge - themed and compact */
 .q-result {
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 0.85em;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.9em;
+  font-weight: 600;
+  border: 1px solid transparent;
+  min-width: 76px;
 }
 
 .q-result.correct {
-  background: #e6f4ea;
-  color: #34a853;
+  background: color-mix(in srgb, var(--line-success) 10%, white);
+  color: var(--line-success);
+  border-color: color-mix(in srgb, var(--line-success) 16%, transparent);
 }
+
 .q-result.wrong {
-  background: #fce8e6;
-  color: #d93025;
+  background: color-mix(in srgb, var(--line-error) 10%, white);
+  color: var(--line-error);
+  border-color: color-mix(in srgb, var(--line-error) 16%, transparent);
 }
+
 .q-result.pending {
-  background: #fef7e0;
-  color: #f9ab00;
+  background: color-mix(in srgb, var(--line-warning) 12%, white);
+  color: var(--line-warning);
+  border-color: color-mix(in srgb, var(--line-warning) 16%, transparent);
+}
+
+.q-result.scored {
+  background: color-mix(in srgb, var(--line-primary) 8%, white);
+  color: var(--line-primary);
+  border-color: color-mix(in srgb, var(--line-primary) 16%, transparent);
 }
 
 .q-stem {
@@ -760,54 +793,53 @@ onMounted(fetchExam)
 
 .quick-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
+  align-items: center;
 }
 
-.quick-btn {
-  padding: 4px 12px;
-  border-radius: 4px;
-  border: 1px solid;
-  cursor: pointer;
-  font-size: 0.85em;
-  transition: all 0.2s;
+/* Small outline action buttons (reuse global outline-btn behavior) */
+.line-btn.outline-btn.sm {
+  padding: 6px 12px;
+  font-size: 13px;
 }
 
-.quick-btn.full {
-  background: #e6f4ea;
-  border-color: #34a853;
-  color: #34a853;
+.back-btn {
+  padding: 8px 12px;
 }
 
-.quick-btn.full:hover {
-  background: #34a853;
-  color: white;
+.back-btn .icon {
+  font-weight: 700;
+  display: inline-block;
+  line-height: 1;
 }
 
-.quick-btn.ai {
-  background: color-mix(in srgb, var(--line-primary) 10%, white);
-  border-color: var(--line-primary);
-  color: var(--line-primary);
+.ai-btn {
+  border-color: var(--line-primary) !important;
+  color: var(--line-primary) !important;
+}
+.ai-btn:hover:not(:disabled) {
+  background: var(--line-primary) !important;
+  color: #fff !important;
 }
 
-.quick-btn.ai:hover {
-  background: var(--line-primary);
-  color: white;
+.full-btn {
+  border-color: var(--line-success) !important;
+  color: var(--line-success) !important;
+  background: color-mix(in srgb, var(--line-success) 6%, white);
+}
+.full-btn:hover:not(:disabled) {
+  background: var(--line-success) !important;
+  color: #fff !important;
 }
 
-.quick-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.zero-btn {
+  border-color: var(--line-error) !important;
+  color: var(--line-error) !important;
+  background: color-mix(in srgb, var(--line-error) 6%, white);
 }
-
-.quick-btn.zero {
-  background: #fce8e6;
-  border-color: #d93025;
-  color: #d93025;
-}
-
-.quick-btn.zero:hover {
-  background: #d93025;
-  color: white;
+.zero-btn:hover:not(:disabled) {
+  background: var(--line-error) !important;
+  color: #fff !important;
 }
 
 .grading-controls {
@@ -865,6 +897,110 @@ onMounted(fetchExam)
 .google-input:focus {
   outline: none;
   border-color: var(--line-primary);
+}
+
+/* Grading layout improvements */
+.grading-section {
+  margin-top: 15px;
+  padding: 14px;
+  background: var(--line-bg);
+  border-radius: 8px;
+  border: 1px solid var(--line-border);
+}
+
+.grading-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.grading-title {
+  font-weight: 600;
+  color: var(--line-text);
+}
+
+.grading-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.score-column {
+  width: 170px;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.score-label {
+  font-size: 0.9em;
+  color: var(--line-text-secondary);
+}
+
+.score-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.score-input {
+  width: 92px;
+  padding: 8px 10px;
+  height: 40px;
+  box-sizing: border-box;
+}
+
+.score-max {
+  color: var(--line-text-secondary);
+  font-size: 0.95em;
+}
+
+.notes-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notes-label {
+  font-size: 0.9em;
+  color: var(--line-text-secondary);
+}
+
+.notes-textarea {
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  resize: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: pre;
+}
+
+.action-btn {
+  min-height: 36px;
+  padding: 6px 12px;
+}
+
+@media (max-width: 700px) {
+  .grading-layout {
+    flex-direction: column;
+  }
+  .score-column {
+    width: 100%;
+    min-width: 0;
+    flex-direction: row;
+    align-items: center;
+  }
+  .score-label {
+    width: 80px;
+  }
+  .score-box {
+    flex: 1;
+  }
 }
 
 .google-btn {

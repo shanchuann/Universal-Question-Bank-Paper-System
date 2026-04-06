@@ -10,6 +10,7 @@ import katex from 'katex'
 import GoogleSelect from '@/components/GoogleSelect.vue'
 import GoogleCombobox from '@/components/GoogleCombobox.vue'
 import KnowledgePointDialog from '@/components/KnowledgePointDialog.vue'
+// PhotoImport 已移除：OCR/拍照导入功能被禁用
 
 // Expose katex to window for Quill's formula module
 ;(window as any).katex = katex
@@ -233,6 +234,42 @@ onMounted(() => {
   }
 })
 
+// 应用候选题到当前表单（从 PhotoImport 发来）
+function applyCandidateToForm(candidate: any) {
+  if (!candidate) return
+  // 基本字段映射
+  form.value.stem = candidate.stem || form.value.stem
+  form.value.type = (candidate.type || form.value.type || 'SINGLE_CHOICE')
+  form.value.difficulty = candidate.difficulty || form.value.difficulty || 'EASY'
+  // 处理选项
+  if (Array.isArray(candidate.options) && candidate.options.length > 0) {
+    form.value.options = candidate.options.map((opt: any) => opt.text || '')
+    // ensure at least 4 options
+    while (form.value.options.length < 4) form.value.options.push('')
+    // set single/multiple answer
+    if (form.value.type === 'SINGLE_CHOICE') {
+      const idx = candidate.options.findIndex((o: any) => o.isCorrect)
+      form.value.answer = idx >= 0 ? String.fromCharCode(65 + idx) : ''
+    } else if (form.value.type === 'MULTIPLE_CHOICE' || form.value.type === 'MULTI_CHOICE') {
+      const letters = candidate.options
+        .map((o: any, i: number) => (o.isCorrect ? String.fromCharCode(65 + i) : null))
+        .filter((x: any) => x)
+      multiAnswer.value = letters
+      form.value.answer = letters.join(',')
+    }
+  }
+  // analysis / answerSchema
+  if (candidate.answerSchema) {
+    try {
+      form.value.answer = typeof candidate.answerSchema === 'string' ? candidate.answerSchema : candidate.answerSchema.correctAnswer || form.value.answer
+    } catch (e) {}
+  }
+  // notify user
+  globalToast({ message: '已将候选题应用到表单，请核对并保存', type: 'success' })
+  // scroll to form area
+  window.scrollTo({ top: 200, behavior: 'smooth' })
+}
+
 const loading = ref(false)
 const message = ref('')
 const error = ref('')
@@ -441,7 +478,9 @@ const handleSubmit = async () => {
         <p class="subtitle">{{ isEditMode ? '修改题目信息' : '创建新题目加入题库' }}</p>
       </div>
 
-      <form @submit.prevent="handleSubmit">
+          <!-- 拍照导入已移除（OCR 功能被禁用） -->
+
+          <form @submit.prevent="handleSubmit">
         <div class="form-grid">
           <div class="form-group">
             <label>科目</label>
@@ -859,17 +898,30 @@ label {
 .form-actions {
   margin-top: 32px;
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
   gap: 12px;
   padding: 16px 0 0;
   border-top: none;
+  width: 100%;
+  box-sizing: border-box;
+  /* 按钮整体与上方输入保持同宽（父容器宽度一致） */
 }
 
 .form-actions .google-btn {
-  width: 100%;
-  height: 44px;
-  padding: 0 20px;
+  /* 两个按钮等分容器宽度，保持与全局按钮一致的垂直尺寸 */
+  flex: 1 1 0;
+  min-width: 0; /* 允许在小宽度下缩小 */
+  min-height: 44px;
+  padding: 10px 20px;
+}
+
+@media (max-width: 480px) {
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .form-actions .google-btn {
+    width: 100%;
+  }
 }
 
 /* Toast 提示样式 */

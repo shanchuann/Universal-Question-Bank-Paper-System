@@ -966,19 +966,22 @@ async function copyInviteCode(code: string) {
 .children-block {
   display: flex;
   flex-direction: column;
+  position: relative; /* 用于绘制层级连线 */
 }
 
 .dept-row .row-content {
-  padding-left: 48px;
-  background: #fafafa;
+  padding-left: 56px;
+  background: #fbfdff;
+  border-left: 3px solid rgba(14, 165, 233, 0.06);
 }
 :root[class~='dark'] .dept-row .row-content {
   background: rgba(255, 255, 255, 0.02);
 }
 
 .class-row .row-content {
-  padding-left: 72px;
+  padding-left: 92px;
   background: #fcfcfc;
+  border-left: 3px solid rgba(245, 158, 11, 0.04);
 }
 :root[class~='dark'] .class-row .row-content {
   background: rgba(255, 255, 255, 0.01);
@@ -989,6 +992,19 @@ async function copyInviteCode(code: string) {
   height: 1px;
   background: var(--line-border);
   margin-right: -8px;
+}
+
+/* 垂直层级连线，增强层级感 */
+.children-block::before {
+  content: '';
+  position: absolute;
+  left: 40px; /* 线靠近图标位置 */
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: linear-gradient(to bottom, rgba(15,23,42,0.06), rgba(15,23,42,0.02));
+  border-radius: 2px;
+  pointer-events: none;
 }
 
 /* Icons */
@@ -1054,19 +1070,28 @@ async function copyInviteCode(code: string) {
 }
 
 .invite-code-pill {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   background: var(--line-bg-soft);
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
   font-family: monospace;
   color: var(--line-text-secondary);
   border: 1px solid var(--line-border);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.18s;
   margin-right: 16px;
+  /* 固定宽度区域，避免邀请码长度不一导致布局错乱 */
+  min-width: 140px;
+  max-width: 220px;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .invite-code-pill svg {
   width: 12px;

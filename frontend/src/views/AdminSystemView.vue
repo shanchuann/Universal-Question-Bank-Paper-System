@@ -530,8 +530,8 @@ onUnmounted(() => {
           :class="['nav-item', { active: activeSection === section.id }]"
           @click="activeSection = section.id"
         >
-          <component :is="section.icon" :size="18" />
-          {{ section.label }}
+          <component :is="section.icon" :size="18" class="nav-icon" />
+          <span class="nav-label">{{ section.label }}</span>
         </button>
       </div>
 
@@ -1108,6 +1108,24 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+
+.nav-icon {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-label {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0; /* allow ellipsis */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 }
 
 .model-summary-progress {

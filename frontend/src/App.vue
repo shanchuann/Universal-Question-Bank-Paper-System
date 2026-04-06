@@ -2,7 +2,7 @@
 import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { RouterView, useRouter, useRoute } from 'vue-router'
 import { authState, type UserRole } from '@/states/authState'
-import { ChevronDown, LogOut } from 'lucide-vue-next'
+import { ChevronDown, LogOut, Menu, X } from 'lucide-vue-next'
 import { useNotifications } from '@/composables/useNotifications'
 import GlobalToast from '@/components/GlobalToast.vue'
 import AnnouncementModal from '@/components/AnnouncementModal.vue'
@@ -86,6 +86,21 @@ onMounted(() => {
   }
 })
 
+// 当窗口尺寸变化时，关闭移动导航（避免移动菜单在放大窗口后残留）
+onMounted(() => {
+  const handleResize = () => {
+    if (typeof window === 'undefined') return
+    if (window.innerWidth > 1200 && mobileNavOpen.value) {
+      mobileNavOpen.value = false
+      mobileActiveGroup.value = null
+    }
+  }
+  window.addEventListener('resize', handleResize)
+  // 初始化检查一次
+  handleResize()
+  onUnmounted(() => window.removeEventListener('resize', handleResize))
+})
+
 // 监听登录状态变化，登录后显示公告
 watch(
   () => authState.isAuthenticated,
@@ -113,6 +128,16 @@ type NavGroup = {
 }
 
 const activeDropdown = ref<string | null>(null)
+const mobileNavOpen = ref(false)
+const mobileActiveGroup = ref<string | null>(null)
+
+const mobileToggleGroup = (label: string) => {
+  if (mobileActiveGroup.value === label) {
+    mobileActiveGroup.value = null
+  } else {
+    mobileActiveGroup.value = label
+  }
+}
 
 const navGroups = computed<NavGroup[]>(() => {
   const role = authState.user.role
@@ -248,6 +273,8 @@ const closeDropdown = () => {
 const navigateTo = (to: string) => {
   router.push(to)
   activeDropdown.value = null // 即时关闭无需延迟
+  mobileNavOpen.value = false
+  mobileActiveGroup.value = null
   if (closeTimer) clearTimeout(closeTimer)
 }
 
@@ -291,6 +318,18 @@ const showFloatingAi = computed(() => {
   if (authState.user.role === 'ADMIN') return false
   return aiEnabled.value && aiAssistantEnabled.value
 })
+
+// 当路由切换到登录/注册/找回密码页面时，确保移动导航关闭，避免侧栏残留
+watch(
+  () => route.path,
+  (p) => {
+    if (authEntryRoutes.includes(p)) {
+      mobileNavOpen.value = false
+      mobileActiveGroup.value = null
+      activeDropdown.value = null
+    }
+  }
+)
 </script>
 
 <template>
@@ -308,7 +347,7 @@ const showFloatingAi = computed(() => {
       </div>
 
       <!-- Navigation Links -->
-      <nav class="nav-links" v-if="authState.isAuthenticated">
+      <nav class="nav-links" v-if="authState.isAuthenticated && !authEntryRoutes.includes(route.path)">
         <template v-for="group in navGroups" :key="group.label">
           <template
             v-if="
@@ -364,6 +403,18 @@ const showFloatingAi = computed(() => {
         </template>
       </nav>
 
+      <!-- Mobile menu button (visible on tablet/phone via CSS) -->
+      <button
+        v-if="!authEntryRoutes.includes(route.path)"
+        class="mobile-menu-button"
+        @click="mobileNavOpen = !mobileNavOpen"
+        aria-label="打开菜单"
+        type="button"
+      >
+        <Menu v-if="!mobileNavOpen" :size="18" />
+        <X v-else :size="18" />
+      </button>
+
       <!-- User Actions -->
       <div v-if="showHeaderActions" class="user-actions">
         <template v-if="showGuestActions">
@@ -397,6 +448,41 @@ const showFloatingAi = computed(() => {
       </div>
     </div>
   </header>
+
+  <!-- Mobile navigation dropdown (for tablet/phone) -->
+  <div class="mobile-nav-dropdown" v-if="mobileNavOpen && !authEntryRoutes.includes(route.path)">
+    <div class="mobile-nav-inner">
+      <template v-for="group in navGroups" :key="group.label">
+        <template
+          v-if="
+            !group.roles ||
+            (authState.user.role && group.roles.includes(authState.user.role as Exclude<UserRole, ' '>))
+          "
+        >
+          <div v-if="group.to" class="mobile-nav-link" @click="navigateTo(group.to)">
+            {{ group.label }}
+          </div>
+
+          <div v-else class="mobile-nav-accordion">
+            <div class="mobile-nav-link" @click="mobileToggleGroup(group.label)">
+              <span>{{ group.label }}</span>
+              <ChevronDown :size="14" />
+            </div>
+            <div v-show="mobileActiveGroup === group.label" class="mobile-children">
+              <div
+                v-for="child in group.children"
+                :key="child.to"
+                class="mobile-child"
+                @click="navigateTo(child.to)"
+              >
+                {{ child.label }}
+              </div>
+            </div>
+          </div>
+        </template>
+      </template>
+    </div>
+  </div>
 
   <!-- 面包屑导航 -->
   <Breadcrumb v-if="showBreadcrumb" />
@@ -603,6 +689,94 @@ const showFloatingAi = computed(() => {
   border-radius: 999px;
   background: #ef4444;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
+}
+
+/* Mobile / Tablet navigation styles */
+.mobile-menu-button {
+  display: none;
+  border: none;
+  background: transparent;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  margin-left: 12px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.mobile-nav-dropdown {
+  display: none;
+}
+
+@media (max-width: 1200px) {
+  .nav-links {
+    display: none;
+  }
+  .mobile-menu-button {
+    display: inline-flex;
+    color: var(--line-text-secondary);
+    margin-left: auto; /* push button to the right */
+  }
+  .mobile-nav-dropdown {
+    display: block;
+    /* 固定在视口右侧，作为更窄侧栏显示，内部可滚动并允许文字换行显示完整 */
+    position: fixed;
+    top: 64px;
+    bottom: 0;
+    right: 0;
+    width: min(300px, calc(100% - 24px));
+    max-width: 340px;
+    background: var(--line-bg);
+    border-left: 1px solid var(--line-border);
+    box-shadow: -4px 0 16px rgba(15, 23, 42, 0.06);
+    z-index: 1100;
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+    margin-right: 8px;
+  }
+  .mobile-nav-inner {
+    padding: 12px 12px 20px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .mobile-nav-link {
+    padding: 10px 14px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--line-text);
+    background: transparent;
+    white-space: normal;
+    word-break: break-word;
+  }
+  .mobile-nav-link:hover {
+    background: var(--line-bg-soft);
+  }
+  .mobile-child {
+    padding: 8px 18px;
+    border-radius: 6px;
+    color: var(--line-text-secondary);
+    cursor: pointer;
+    white-space: normal;
+    word-break: break-word;
+  }
+  .mobile-child:hover {
+    color: var(--line-text);
+    background: color-mix(in srgb, var(--line-primary) 6%, transparent);
+  }
+  .mobile-children {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-left: 6px;
+  }
 }
 
 .nav-dropdown {

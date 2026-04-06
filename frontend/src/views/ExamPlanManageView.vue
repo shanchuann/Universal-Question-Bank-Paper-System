@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useConfirm } from '@/composables/useConfirm'
 import { useToast } from '@/composables/useToast'
 import GoogleSelect from '@/components/GoogleSelect.vue'
@@ -422,6 +422,67 @@ const statusLabels: Record<string, string> = {
   FINISHED: '已完成',
   CANCELLED: '已取消'
 }
+
+// 鼠标/触控拖拽以左右滚动表格（提升桌面端的拖动体验）
+const tableWrapRef = ref<HTMLElement | null>(null)
+let isDragging = false
+let dragStartX = 0
+let dragStartScroll = 0
+
+const onPointerDownTable = (e: PointerEvent) => {
+  const el = tableWrapRef.value
+  if (!el) return
+  // 如果点击的是交互元素（按钮/链接/输入），不要触发拖拽，保留默认交互
+  const target = e.target as HTMLElement | null
+  if (target && target.closest && target.closest('button, a, input, select, textarea, .icon-btn, .status-badge')) {
+    return
+  }
+  isDragging = true
+  dragStartX = e.clientX
+  dragStartScroll = el.scrollLeft
+  // 捕获指针，保证在拖拽过程中依然能接收 move/up
+  try {
+    el.setPointerCapture?.(e.pointerId)
+  } catch (err) {}
+  el.classList.add('dragging')
+  // 防止选中文本
+  e.preventDefault()
+}
+
+const onPointerMoveTable = (e: PointerEvent) => {
+  const el = tableWrapRef.value
+  if (!el || !isDragging) return
+  const walk = e.clientX - dragStartX
+  el.scrollLeft = dragStartScroll - walk
+}
+
+const onPointerUpTable = (e: PointerEvent) => {
+  const el = tableWrapRef.value
+  if (!el) return
+  isDragging = false
+  try {
+    el.releasePointerCapture?.(e.pointerId)
+  } catch (err) {}
+  el.classList.remove('dragging')
+}
+
+onMounted(() => {
+  const el = tableWrapRef.value
+  if (!el) return
+  el.addEventListener('pointerdown', onPointerDownTable)
+  el.addEventListener('pointermove', onPointerMoveTable)
+  el.addEventListener('pointerup', onPointerUpTable)
+  el.addEventListener('pointerleave', onPointerUpTable)
+})
+
+onUnmounted(() => {
+  const el = tableWrapRef.value
+  if (!el) return
+  el.removeEventListener('pointerdown', onPointerDownTable)
+  el.removeEventListener('pointermove', onPointerMoveTable)
+  el.removeEventListener('pointerup', onPointerUpTable)
+  el.removeEventListener('pointerleave', onPointerUpTable)
+})
 </script>
 
 <template>
@@ -453,7 +514,8 @@ const statusLabels: Record<string, string> = {
         <p>暂无考试计划</p>
       </div>
 
-      <table v-else class="plan-table">
+      <div class="table-responsive" v-else ref="tableWrapRef">
+        <table class="plan-table">
         <thead>
           <tr>
             <th>计划名称</th>
@@ -557,7 +619,8 @@ const statusLabels: Record<string, string> = {
             </td>
           </tr>
         </tbody>
-      </table>
+        </table>
+      </div>
 
       <div v-if="total > size" class="pagination">
         <button :disabled="page === 0" class="icon-btn" @click="goToPage(page - 1)">
@@ -834,6 +897,18 @@ const statusLabels: Record<string, string> = {
   overflow: hidden;
 }
 
+/* 可横向滚动容器，窄屏时允许左右拖动表格 */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive.dragging {
+  cursor: grabbing;
+  -webkit-cursor: grabbing;
+  user-select: none;
+}
+
 .loading,
 .empty-state {
   text-align: center;
@@ -851,6 +926,7 @@ const statusLabels: Record<string, string> = {
   border-collapse: separate;
   border-spacing: 0;
   font-size: 14px;
+  min-width: 1200px; /* 保证在窄屏出现横向滚动 */
 }
 
 .plan-table thead {
@@ -872,6 +948,9 @@ const statusLabels: Record<string, string> = {
   color: var(--line-text-secondary);
   vertical-align: middle;
   text-align: center;
+  white-space: nowrap; /* 禁止单元格内换行 */
+  overflow: hidden;
+  text-overflow: ellipsis; /* 超出部分显示省略号 */
 }
 
 .plan-table tr:last-child td {
@@ -884,11 +963,15 @@ const statusLabels: Record<string, string> = {
 
 .status-badge {
   font-size: 12px;
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: var(--line-radius-full);
   font-weight: 600;
   letter-spacing: 0.5px;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap; /* 禁止换行，确保状态文本在同一行显示 */
+  word-break: keep-all;
 }
 
 .status-badge.draft {

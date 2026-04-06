@@ -608,7 +608,8 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
     </div>
 
     <div v-else class="google-card table-card">
-      <table class="question-table">
+      <div class="table-responsive">
+        <table class="question-table">
         <thead>
           <tr>
             <th class="checkbox-col">
@@ -683,7 +684,8 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
             </td>
           </tr>
         </tbody>
-      </table>
+        </table>
+      </div>
 
       <div class="pagination">
         <button
@@ -1101,6 +1103,123 @@ watch([filterKnowledgePoint, filterType, filterDifficulty], () => {
 @media (max-width: 1100px) {
   .compact-group {
     max-width: none;
+  }
+}
+
+/* Responsive fixes for smaller screens - prefer horizontal scroll over layout break */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: -ms-autohiding-scrollbar;
+}
+.table-responsive .question-table {
+  /* keep a reasonable minimum width so table becomes scrollable instead of wrapping */
+  min-width: 1100px;
+  table-layout: fixed;
+  border-collapse: separate;
+}
+
+/* Prevent cells from wrapping; use ellipsis to indicate overflow so layout stays stable */
+.table-responsive .question-table th,
+.table-responsive .question-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+/* Column sizing to keep layout stable when scrolling */
+.table-responsive .question-table th.checkbox-col,
+.table-responsive .question-table td.checkbox-col {
+  width: 48px;
+}
+.table-responsive .question-table th:nth-child(2),
+.table-responsive .question-table td:nth-child(2) { width: 120px; } /* 科目 */
+.table-responsive .question-table th:nth-child(3),
+.table-responsive .question-table td:nth-child(3) { width: 420px; } /* 题目 */
+.table-responsive .question-table th:nth-child(4),
+.table-responsive .question-table td:nth-child(4) { width: 120px; } /* 题型 */
+.table-responsive .question-table th:nth-child(5),
+.table-responsive .question-table td:nth-child(5) { width: 100px; } /* 难度 */
+.table-responsive .question-table th:nth-child(6),
+.table-responsive .question-table td:nth-child(6) { width: 120px; } /* 状态 */
+.table-responsive .question-table th:nth-child(7),
+.table-responsive .question-table td:nth-child(7) { width: 200px; } /* 操作 */
+
+@media (max-width: 900px) {
+  .header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .header-actions {
+    align-self: stretch;
+    display: flex;
+    justify-content: flex-start;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .header-title-section {
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .page-title {
+    font-size: 20px;
+  }
+  .restore-dialog {
+    width: auto;
+    max-width: calc(100% - 40px);
+    padding: 20px;
+  }
+  .node-name-btn {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+  .basket-float {
+    right: 12px;
+    bottom: 12px;
+    padding: 12px 16px;
+    left: auto;
+    transform: none;
+  }
+  .category-tab {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .question-table th,
+  .question-table td {
+    padding: 10px;
+    font-size: 13px;
+  }
+  .filter-bar {
+    padding: 16px;
+  }
+  .tree-list {
+    max-height: 200px;
+  }
+}
+
+@media (max-width: 520px) {
+  .table-responsive .question-table {
+    min-width: 600px;
+  }
+  .basket-float {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    bottom: 14px;
+  }
+  .container {
+    margin: 16px auto;
+    padding: 0 12px;
+  }
+  .page-title {
+    font-size: 18px;
+  }
+  .google-card.table-card {
+    padding: 12px;
   }
 }
 </style>

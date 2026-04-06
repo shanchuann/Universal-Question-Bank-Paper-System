@@ -119,7 +119,8 @@ onMounted(fetchExams)
     </div>
 
     <div v-else class="line-card table-card">
-      <table class="line-table">
+      <div class="table-responsive">
+        <table class="line-table">
         <thead>
           <tr>
             <th class="col-id">考试ID</th>
@@ -182,7 +183,8 @@ onMounted(fetchExams)
             </td>
           </tr>
         </tbody>
-      </table>
+        </table>
+      </div>
 
       <div class="pagination-bar">
         <button
@@ -262,6 +264,7 @@ onMounted(fetchExams)
 .line-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 920px; /* ensure horizontal scroll when container is narrower */
 }
 
 .line-table th {
@@ -283,6 +286,9 @@ onMounted(fetchExams)
   border-bottom: 1px solid var(--line-border);
   vertical-align: middle;
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .line-table tr:hover td {
@@ -317,7 +323,7 @@ onMounted(fetchExams)
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .avatar-sm {
@@ -379,6 +385,19 @@ onMounted(fetchExams)
   gap: 16px;
   border-top: none;
   background: var(--line-bg);
+}
+
+/* Responsive horizontal scroll wrapper */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table-responsive::-webkit-scrollbar {
+  height: 8px;
+}
+.table-responsive::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.08);
+  border-radius: 8px;
 }
 
 .page-info {

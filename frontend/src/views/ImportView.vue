@@ -21,20 +21,17 @@ interface Question {
   analysis?: string
 }
 
-type ImportMode = 'batch' | 'photo'
-type PhotoParseMode = 'PAGE' | 'SINGLE'
+/* Import mode fixed to batch; UI no longer has a mode toggle */
 
 const router = useRouter()
 const batchFileInput = ref<HTMLInputElement | null>(null)
-const photoFileInput = ref<HTMLInputElement | null>(null)
 const parsedQuestions = ref<Question[]>([])
 const loading = ref(false)
 const importing = ref(false)
 const error = ref('')
 const successMessage = ref('')
 const dragOver = ref(false)
-const importMode = ref<ImportMode>('batch')
-const photoParseMode = ref<PhotoParseMode>('PAGE')
+// importMode 已移除，界面始终显示批量导入
 
 const questionTypeOptions = [
   { value: 'SINGLE_CHOICE', label: '单选题' },
@@ -86,9 +83,7 @@ const triggerBatchFileInput = () => {
   batchFileInput.value?.click()
 }
 
-const triggerPhotoFileInput = () => {
-  photoFileInput.value?.click()
-}
+// 拍照导入功能已移除；不再需要触发拍照文件输入
 
 const parseWordFile = async (file: File) => {
   loading.value = true
@@ -120,47 +115,11 @@ const parseWordFile = async (file: File) => {
   }
 }
 
-const parsePhotoFile = async (file: File) => {
-  loading.value = true
-  clearStateForNewParse()
-
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('mode', photoParseMode.value)
-
-  try {
-    const token = localStorage.getItem('token')
-    const response = await axios.post('/api/import/photo', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        Authorization: `Bearer ${token}`
-      }
-    })
-    parsedQuestions.value = normalizeQuestions(response.data)
-    if (parsedQuestions.value.length === 0) {
-      error.value = '图片已上传，但 AI 未识别出题目。建议切换识别模式或使用更清晰图片。'
-    }
-  } catch (err: any) {
-    if (err.response) {
-      error.value = `拍照导入失败: ${err.response.status} ${err.response.statusText}。请确认 AI 服务与后端已启动。`
-    } else {
-      error.value = '拍照解析失败。请稍后重试。'
-    }
-  } finally {
-    loading.value = false
-  }
-}
-
+// 拍照导入相关功能已移除：只保留批量（Word）导入
 const handleBatchFileUpload = async () => {
   const file = batchFileInput.value?.files?.[0]
   if (!file) return
   await parseWordFile(file)
-}
-
-const handlePhotoFileUpload = async () => {
-  const file = photoFileInput.value?.files?.[0]
-  if (!file) return
-  await parsePhotoFile(file)
 }
 
 const handleDrop = (e: DragEvent) => {
@@ -171,20 +130,11 @@ const handleDrop = (e: DragEvent) => {
   const firstFile = files.item(0)
   if (!firstFile) return
 
-  if (importMode.value === 'batch') {
-    if (!batchFileInput.value) return
-    const dataTransfer = new DataTransfer()
-    dataTransfer.items.add(firstFile)
-    batchFileInput.value.files = dataTransfer.files
-    void handleBatchFileUpload()
-    return
-  }
-
-  if (!photoFileInput.value) return
+  if (!batchFileInput.value) return
   const dataTransfer = new DataTransfer()
   dataTransfer.items.add(firstFile)
-  photoFileInput.value.files = dataTransfer.files
-  void handlePhotoFileUpload()
+  batchFileInput.value.files = dataTransfer.files
+  void handleBatchFileUpload()
 }
 
 const removeQuestion = (index: number) => {
@@ -225,11 +175,7 @@ const importAll = async () => {
   }
 }
 
-const switchImportMode = (mode: ImportMode) => {
-  importMode.value = mode
-  dragOver.value = false
-  clearStateForNewParse()
-}
+// 切换导入模式已移除
 
 const goQuestionList = () => {
   router.push('/questions')
@@ -241,27 +187,10 @@ const goQuestionList = () => {
     <div class="google-card import-card">
       <div class="card-header">
         <h1 class="page-title">导入题目</h1>
-        <p class="subtitle">支持批量导入（Word）和拍照导入（AI 解析），确认后再添加到题目列表。</p>
+        <p class="subtitle">支持批量导入（Word），确认后再添加到题目列表。</p>
       </div>
 
-      <div class="import-mode-switch">
-        <button
-          class="mode-btn"
-          :class="{ active: importMode === 'batch' }"
-          @click="switchImportMode('batch')"
-        >
-          批量导入
-        </button>
-        <button
-          class="mode-btn"
-          :class="{ active: importMode === 'photo' }"
-          @click="switchImportMode('photo')"
-        >
-          拍照导入
-        </button>
-      </div>
-
-      <div v-if="importMode === 'batch'" class="mode-card">
+      <div class="mode-card">
         <p class="mode-title">上传 Word 文档（.docx）</p>
         <div
           class="upload-section"
@@ -301,65 +230,7 @@ const goQuestionList = () => {
         </div>
       </div>
 
-      <div v-else class="mode-card">
-        <div class="photo-mode-row">
-          <p class="mode-title">上传题目照片（AI 解析）</p>
-          <div class="photo-parse-mode">
-            <button
-              class="small-mode-btn"
-              :class="{ active: photoParseMode === 'PAGE' }"
-              @click="photoParseMode = 'PAGE'"
-            >
-              整页导入
-            </button>
-            <button
-              class="small-mode-btn"
-              :class="{ active: photoParseMode === 'SINGLE' }"
-              @click="photoParseMode = 'SINGLE'"
-            >
-              单题导入
-            </button>
-          </div>
-        </div>
-
-        <div
-          class="upload-section"
-          @click="triggerPhotoFileInput"
-          @dragover.prevent="dragOver = true"
-          @dragleave="dragOver = false"
-          @drop.prevent="handleDrop"
-          :class="{ 'drag-over': dragOver }"
-        >
-          <input
-            type="file"
-            ref="photoFileInput"
-            accept="image/*"
-            @change="handlePhotoFileUpload"
-            class="file-input-hidden"
-          />
-          <div class="upload-content">
-            <svg
-              class="upload-icon"
-              width="48"
-              height="48"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                d="M3 7a2 2 0 0 1 2-2h2l1.2-1.5A2 2 0 0 1 9.8 3h4.4a2 2 0 0 1 1.6.8L17 5h2a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"
-              />
-              <circle cx="12" cy="13" r="4" />
-            </svg>
-            <p class="upload-text">点击或拖拽题目图片到此处上传</p>
-            <p class="upload-hint">支持 jpg / jpeg / png / webp；上传后 AI 自动解析</p>
-          </div>
-          <div v-if="loading" class="loading-spinner">AI 正在解析图片题目...</div>
-        </div>
-      </div>
+      <!-- 拍照导入已移除，界面仅保留批量 Word 导入 -->
 
       <div v-if="error" class="message error">{{ error }}</div>
       <div v-if="successMessage" class="message success">

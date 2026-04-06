@@ -361,13 +361,21 @@ const editPaper = () => {
   justify-content: center;
   padding: 0 24px;
   font-size: 16px;
+  box-sizing: border-box;
+  display: inline-flex;
 }
 
 .form-actions {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  /* 使用块级布局，让按钮与上方表单内容保持相同的宽度 */
+  display: block;
   margin-top: 12px;
+  padding: 0; /* 取消全局 .form-actions 的左右 padding，使按钮与上方输入对齐 */
+}
+
+.form-actions .google-btn.full-width {
+  display: block;
+  width: 100%;
+  max-width: 100%;
 }
 
 .message {

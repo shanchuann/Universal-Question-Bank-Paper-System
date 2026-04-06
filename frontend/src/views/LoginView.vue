@@ -43,7 +43,7 @@ const handleLogin = async () => {
 
 <template>
   <div class="login-wrapper">
-    <div class="login-container line-card">
+    <div class="login-container line-card auth-card">
       <div class="logo-area">
         <span class="app-logo">UQ</span>
       </div>
@@ -101,11 +101,7 @@ const handleLogin = async () => {
   max-width: 400px;
   padding: 48px 40px;
   text-align: center;
-  background: rgba(255, 255, 255, 0.56);
-  backdrop-filter: blur(12px) saturate(150%);
-  -webkit-backdrop-filter: blur(12px) saturate(150%);
-  border: 1px solid rgba(226, 232, 240, 0.85);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  /* visual card styles provided by shared .auth-card */
 }
 
 .login-container:hover {

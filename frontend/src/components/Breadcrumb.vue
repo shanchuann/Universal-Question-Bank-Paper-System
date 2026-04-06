@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { authState } from '@/states/authState'
 
 const route = useRoute()
 const router = useRouter()
@@ -114,6 +115,44 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => {
   while (currentPath) {
     const config = breadcrumbConfig[currentPath] || getDynamicConfig(currentPath)
     if (config) {
+      // Special case: student-facing "我要出题" should show 首页 / 我要出题
+      if (currentPath === '/questions/add') {
+        const role = (authState.user?.role || '').toString().toUpperCase();
+        if (role !== 'TEACHER' && role !== 'ADMIN') {
+          // override parent to homepage for students
+          config.parent = '/'
+          config.label = '我要出题'
+        }
+      }
+      // 基于路由定义和用户角色进行权限检查，避免面包屑泄露不可见页面
+      const resolved = router.resolve(currentPath)
+      let allowed = true
+      if (resolved && resolved.matched && resolved.matched.length > 0) {
+        for (const record of resolved.matched) {
+          const requiredRoles = (record.meta as any)?.roles as string[] | undefined
+          if (requiredRoles && requiredRoles.length > 0) {
+            const role = (authState.user.role || '').toUpperCase()
+            const req = requiredRoles.map((r) => String(r).toUpperCase())
+            const roleMatches = (r: string) => {
+              if (req.includes(r)) return true
+              if (r === 'USER' && req.includes('STUDENT')) return true
+              if (r === 'STUDENT' && req.includes('USER')) return true
+              return false
+            }
+            // 管理员始终可见
+            if (role !== 'ADMIN' && !roleMatches(role)) {
+              allowed = false
+              break
+            }
+          }
+        }
+      }
+
+      if (!allowed) {
+        // 当前路径或其上级被权限限制，停止构建（不展示受限项）
+        break
+      }
+
       items.unshift({
         path: currentPath,
         label: config.label,

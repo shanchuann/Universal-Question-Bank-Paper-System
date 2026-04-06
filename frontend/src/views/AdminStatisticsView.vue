@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted, nextTick } from 'vue'
 import axios from 'axios'
 import {
   Users,
@@ -158,6 +158,100 @@ onMounted(() => {
 watch(selectedRange, () => {
   fetchStatistics()
 })
+
+// 图表横向拖拽展示支持（可左右滑动查看完整数据）
+const userChartWrap = ref<HTMLElement | null>(null)
+const questionChartWrap = ref<HTMLElement | null>(null)
+const examChartWrap = ref<HTMLElement | null>(null)
+
+const createScrollDrag = (containerRef: typeof userChartWrap) => {
+  let dragging = false
+  let startX = 0
+  let startScroll = 0
+
+  const onPointerDown = (e: PointerEvent) => {
+    const el = containerRef.value
+    if (!el) return
+    const target = e.target as HTMLElement | null
+    if (target && target.closest && target.closest('button, a, input, select, textarea, .icon-btn, .bar')) {
+      return
+    }
+    dragging = true
+    startX = e.clientX
+    startScroll = el.scrollLeft
+    try {
+      el.setPointerCapture?.(e.pointerId)
+    } catch (err) {}
+    el.classList.add('dragging')
+    e.preventDefault()
+  }
+
+  const onPointerMove = (e: PointerEvent) => {
+    const el = containerRef.value
+    if (!el || !dragging) return
+    const walk = e.clientX - startX
+    el.scrollLeft = startScroll - walk
+  }
+
+  const onPointerUp = (e: PointerEvent) => {
+    const el = containerRef.value
+    if (!el) return
+    dragging = false
+    try {
+      el.releasePointerCapture?.(e.pointerId)
+    } catch (err) {}
+    el.classList.remove('dragging')
+  }
+
+  const attach = () => {
+    const el = containerRef.value
+    if (!el) return
+    el.addEventListener('pointerdown', onPointerDown)
+    el.addEventListener('pointermove', onPointerMove)
+    el.addEventListener('pointerup', onPointerUp)
+    el.addEventListener('pointerleave', onPointerUp)
+  }
+
+  const detach = () => {
+    const el = containerRef.value
+    if (!el) return
+    el.removeEventListener('pointerdown', onPointerDown)
+    el.removeEventListener('pointermove', onPointerMove)
+    el.removeEventListener('pointerup', onPointerUp)
+    el.removeEventListener('pointerleave', onPointerUp)
+  }
+
+  return { attach, detach }
+}
+
+const userDrag = createScrollDrag(userChartWrap)
+const questionDrag = createScrollDrag(questionChartWrap)
+const examDrag = createScrollDrag(examChartWrap)
+
+onMounted(() => {
+  nextTick(() => {
+    userDrag.attach()
+    questionDrag.attach()
+    examDrag.attach()
+  })
+})
+
+onUnmounted(() => {
+  userDrag.detach()
+  questionDrag.detach()
+  examDrag.detach()
+})
+
+// 当数据加载完成后（尤其是远端返回的多点数据），尝试重新绑定以保证容器存在
+watch(userTrend, (v) => {
+  if (v && v.length > 0) nextTick(() => userDrag.attach())
+})
+watch(questionTrend, (v) => {
+  if (v && v.length > 0) nextTick(() => questionDrag.attach())
+})
+watch(examTrend, (v) => {
+  if (v && v.length > 0) nextTick(() => examDrag.attach())
+})
 </script>
 
 <template>
@@ -273,12 +367,14 @@ watch(selectedRange, () => {
       <div class="charts-grid">
         <div class="google-card chart-card">
           <h3 class="chart-title">用户活跃趋势 ({{ rangeLabel }})</h3>
-          <div v-if="userTrend.length > 0" class="bar-chart">
-            <div v-for="item in userTrend" :key="item.label" class="bar-item">
-              <div class="bar" :style="{ height: calcBarHeight(item.value, maxUserTrend) }">
-                <span class="bar-value">{{ item.value }}</span>
+          <div v-if="userTrend.length > 0" class="chart-scroll" ref="userChartWrap">
+            <div class="bar-chart">
+              <div v-for="item in userTrend" :key="item.label" class="bar-item">
+                <div class="bar" :style="{ height: calcBarHeight(item.value, maxUserTrend) }">
+                  <span class="bar-value">{{ item.value }}</span>
+                </div>
+                <span class="bar-label">{{ item.label }}</span>
               </div>
-              <span class="bar-label">{{ item.label }}</span>
             </div>
           </div>
           <div v-else class="chart-empty">暂无用户趋势数据</div>
@@ -286,15 +382,17 @@ watch(selectedRange, () => {
 
         <div class="google-card chart-card">
           <h3 class="chart-title">题目增长趋势 ({{ rangeLabel }})</h3>
-          <div v-if="questionTrend.length > 0" class="bar-chart">
-            <div v-for="item in questionTrend" :key="item.label" class="bar-item">
-              <div
-                class="bar success"
-                :style="{ height: calcBarHeight(item.value, maxQuestionTrend) }"
-              >
-                <span class="bar-value">{{ item.value }}</span>
+          <div v-if="questionTrend.length > 0" class="chart-scroll" ref="questionChartWrap">
+            <div class="bar-chart">
+              <div v-for="item in questionTrend" :key="item.label" class="bar-item">
+                <div
+                  class="bar success"
+                  :style="{ height: calcBarHeight(item.value, maxQuestionTrend) }"
+                >
+                  <span class="bar-value">{{ item.value }}</span>
+                </div>
+                <span class="bar-label">{{ item.label }}</span>
               </div>
-              <span class="bar-label">{{ item.label }}</span>
             </div>
           </div>
           <div v-else class="chart-empty">暂无题目趋势数据</div>
@@ -302,12 +400,14 @@ watch(selectedRange, () => {
 
         <div class="google-card chart-card">
           <h3 class="chart-title">考试场次趋势 ({{ rangeLabel }})</h3>
-          <div v-if="examTrend.length > 0" class="bar-chart">
-            <div v-for="item in examTrend" :key="item.label" class="bar-item">
-              <div class="bar warning" :style="{ height: calcBarHeight(item.value, maxExamTrend) }">
-                <span class="bar-value">{{ item.value }}</span>
+          <div v-if="examTrend.length > 0" class="chart-scroll" ref="examChartWrap">
+            <div class="bar-chart">
+              <div v-for="item in examTrend" :key="item.label" class="bar-item">
+                <div class="bar warning" :style="{ height: calcBarHeight(item.value, maxExamTrend) }">
+                  <span class="bar-value">{{ item.value }}</span>
+                </div>
+                <span class="bar-label">{{ item.label }}</span>
               </div>
-              <span class="bar-label">{{ item.label }}</span>
             </div>
           </div>
           <div v-else class="chart-empty">暂无考试趋势数据</div>
@@ -573,19 +673,27 @@ watch(selectedRange, () => {
   color: var(--line-text);
 }
 
+.chart-scroll {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  cursor: grab;
+}
+.chart-scroll.dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
 .bar-chart {
   display: flex;
-  justify-content: space-between;
   align-items: flex-end;
   height: 200px;
-  gap: 6px;
-  width: 100%;
-  overflow: hidden;
+  gap: 8px;
+  width: max-content; /* allow it to grow horizontally */
 }
 
 .bar-item {
-  flex: 1;
-  min-width: 0;
+  flex: 0 0 var(--bar-width, 44px);
+  width: var(--bar-width, 44px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -594,14 +702,13 @@ watch(selectedRange, () => {
 
 .bar {
   width: 100%;
-  max-width: 40px;
   background: linear-gradient(180deg, var(--line-primary) 0%, var(--line-primary-hover) 100%);
   border-radius: 6px 6px 0 0;
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 8px;
-  min-height: 20px;
+  padding-top: 6px;
+  min-height: 18px;
   transition: height 0.3s ease;
 }
 

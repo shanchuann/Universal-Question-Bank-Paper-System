@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import axios from 'axios'
 import {
   Users,
@@ -226,6 +226,82 @@ onMounted(() => {
   fetchRoleCounts()
   fetchUsers()
 })
+
+// 鼠标/触控拖拽以左右滚动表格（与试题列表一致的交互）
+const tableWrapRef = ref<HTMLElement | null>(null)
+let isDragging = false
+let dragStartX = 0
+let dragStartScroll = 0
+let tableListenersAttached = false
+
+const attachTableListeners = () => {
+  const el = tableWrapRef.value
+  if (!el || tableListenersAttached) return
+  el.addEventListener('pointerdown', onPointerDownTable)
+  el.addEventListener('pointermove', onPointerMoveTable)
+  el.addEventListener('pointerup', onPointerUpTable)
+  el.addEventListener('pointerleave', onPointerUpTable)
+  tableListenersAttached = true
+}
+
+const detachTableListeners = () => {
+  const el = tableWrapRef.value
+  if (!el || !tableListenersAttached) return
+  el.removeEventListener('pointerdown', onPointerDownTable)
+  el.removeEventListener('pointermove', onPointerMoveTable)
+  el.removeEventListener('pointerup', onPointerUpTable)
+  el.removeEventListener('pointerleave', onPointerUpTable)
+  tableListenersAttached = false
+}
+
+const onPointerDownTable = (e: PointerEvent) => {
+  const el = tableWrapRef.value
+  if (!el) return
+  const target = e.target as HTMLElement | null
+  if (target && target.closest && target.closest('button, a, input, select, textarea, .icon-btn, .status-badge')) {
+    return
+  }
+  isDragging = true
+  dragStartX = e.clientX
+  dragStartScroll = el.scrollLeft
+  try {
+    el.setPointerCapture?.(e.pointerId)
+  } catch (err) {}
+  el.classList.add('dragging')
+  e.preventDefault()
+}
+
+const onPointerMoveTable = (e: PointerEvent) => {
+  const el = tableWrapRef.value
+  if (!el || !isDragging) return
+  const walk = e.clientX - dragStartX
+  el.scrollLeft = dragStartScroll - walk
+}
+
+const onPointerUpTable = (e: PointerEvent) => {
+  const el = tableWrapRef.value
+  if (!el) return
+  isDragging = false
+  try {
+    el.releasePointerCapture?.(e.pointerId)
+  } catch (err) {}
+  el.classList.remove('dragging')
+}
+
+onMounted(() => {
+  nextTick(() => attachTableListeners())
+})
+
+onUnmounted(() => {
+  detachTableListeners()
+})
+
+// 当用户数据加载后（或变更）尝试绑定容器事件
+watch(users, (val) => {
+  if (val && val.length > 0) {
+    nextTick(() => attachTableListeners())
+  }
+})
 </script>
 
 <template>
@@ -285,7 +361,8 @@ onMounted(() => {
         <div class="spinner"></div>
         <p>加载中...</p>
       </div>
-      <table v-else-if="users.length > 0" class="google-table">
+      <div v-else-if="users.length > 0" class="table-responsive" ref="tableWrapRef">
+        <table class="google-table">
         <thead>
           <tr>
             <th class="col-user">用户信息</th>
@@ -362,7 +439,8 @@ onMounted(() => {
             </td>
           </tr>
         </tbody>
-      </table>
+        </table>
+      </div>
       <div v-else class="empty-state">
         <Users :size="48" class="empty-icon" />
         <p>未找到用户</p>
@@ -867,6 +945,26 @@ onMounted(() => {
 .empty-hint {
   font-size: 14px;
   color: var(--line-text-secondary);
+}
+
+/* Table responsive wrapper for horizontal scroll and drag-to-pan */
+.table-responsive {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  cursor: grab;
+}
+.table-responsive.dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.google-table {
+  min-width: 920px;
+}
+
+.google-table th,
+.google-table td {
+  white-space: nowrap;
 }
 
 /* Responsive */

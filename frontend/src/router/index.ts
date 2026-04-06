@@ -28,53 +28,64 @@ const router = createRouter({
     {
       path: '/questions',
       name: 'questions',
-      component: () => import('../views/QuestionListView.vue')
+      component: () => import('../views/QuestionListView.vue'),
+      meta: { roles: ['TEACHER', 'ADMIN'] }
     },
     {
       path: '/questions/add',
       name: 'add-question',
-      component: () => import('../views/QuestionAddView.vue')
+      component: () => import('../views/QuestionAddView.vue'),
+      // 学生也可以提交题目（待审核），允许 STUDENT 访问
+      meta: { roles: ['TEACHER', 'ADMIN', 'STUDENT'] }
     },
     {
       path: '/questions/:id/edit',
       name: 'edit-question',
       component: () => import('../views/QuestionAddView.vue'),
+      meta: { roles: ['TEACHER', 'ADMIN'] },
       props: true
     },
     {
       path: '/import',
       name: 'import',
-      component: () => import('../views/ImportView.vue')
+      component: () => import('../views/ImportView.vue'),
+      meta: { roles: ['TEACHER', 'ADMIN'] }
     },
     {
       path: '/paper-generation',
       name: 'paper-generation',
-      component: () => import('../views/PaperGenerationView.vue')
+      component: () => import('../views/PaperGenerationView.vue'),
+      meta: { roles: ['TEACHER', 'ADMIN'] }
     },
     {
       path: '/papers/manual',
       name: 'paper-manual',
-      component: () => import('../views/PaperCreateManualView.vue')
+      component: () => import('../views/PaperCreateManualView.vue'),
+      meta: { roles: ['TEACHER', 'ADMIN'] }
     },
     {
       path: '/papers',
       name: 'paper-list',
-      component: () => import('../views/PaperListView.vue')
+      component: () => import('../views/PaperListView.vue'),
+      meta: { roles: ['TEACHER', 'ADMIN'] }
     },
     {
       path: '/analytics/:paperId',
       name: 'analytics',
-      component: () => import('../views/AnalyticsView.vue')
+      component: () => import('../views/AnalyticsView.vue'),
+      meta: { roles: ['TEACHER', 'ADMIN'] }
     },
     {
       path: '/papers/:id/preview',
       name: 'paper-preview',
-      component: () => import('../views/PaperPreviewView.vue')
+      component: () => import('../views/PaperPreviewView.vue'),
+      meta: { roles: ['TEACHER', 'ADMIN'] }
     },
     {
       path: '/papers/:id/edit',
       name: 'paper-edit',
-      component: () => import('../views/PaperEditView.vue')
+      component: () => import('../views/PaperEditView.vue'),
+      meta: { roles: ['TEACHER', 'ADMIN'] }
     },
     {
       path: '/exam',
@@ -90,12 +101,14 @@ const router = createRouter({
     {
       path: '/grading',
       name: 'grading-list',
-      component: () => import('../views/GradingListView.vue')
+      component: () => import('../views/GradingListView.vue'),
+      meta: { roles: ['TEACHER', 'ADMIN'] }
     },
     {
       path: '/grading/:id',
       name: 'grading-detail',
-      component: () => import('../views/GradingDetailView.vue')
+      component: () => import('../views/GradingDetailView.vue'),
+      meta: { roles: ['TEACHER', 'ADMIN'] }
     },
     {
       path: '/profile',
@@ -223,7 +236,18 @@ router.beforeEach(async (to, _from, next) => {
     await authState.fetchUser()
   }
 
-  if (!requiredRoles.includes(authState.user.role)) {
+  const userRole = (authState.user.role || '').toUpperCase()
+
+  const roleMatches = (required: string[], role: string) => {
+    const req = required.map((r) => String(r).toUpperCase())
+    if (req.includes(role)) return true
+    // 兼容老数据/命名：把 'USER' 与 'STUDENT' 视为等价
+    if (role === 'USER' && req.includes('STUDENT')) return true
+    if (role === 'STUDENT' && req.includes('USER')) return true
+    return false
+  }
+
+  if (!roleMatches(requiredRoles, userRole)) {
     return next({ name: 'home' })
   }
 

@@ -28,7 +28,11 @@ const { showToast } = useToast()
 const route = useRoute()
 
 const expanded = ref(false)
-const dragging = ref(false)
+// iconDragging: when user drags the floating icon itself
+const iconDragging = ref(false)
+// draggingQuestion: when a question is being dragged from the practice page onto the AI panel
+const draggingQuestion = ref(false)
+let dragEnterCounter = 0
 const moved = ref(false)
 const showHistoryMenu = ref(false)
 const renamingTitle = ref(false)
@@ -56,6 +60,8 @@ const panelX = ref(0)
 const panelY = ref(0)
 const dragOffsetX = ref(0)
 const dragOffsetY = ref(0)
+const floatingEl = ref<HTMLElement | null>(null)
+const pointerIdRef = ref<number | null>(null)
 
 const endpoint = computed(() =>
   props.mode === 'teacher' ? '/api/ai/teacher/ask' : '/api/ai/student/ask'
@@ -275,7 +281,7 @@ const clampPanelPosition = (x: number, y: number) => {
 }
 
 const startDrag = (clientX: number, clientY: number) => {
-  dragging.value = true
+  iconDragging.value = true
   moved.value = false
   dragOffsetX.value = clientX - iconX.value
   dragOffsetY.value = clientY - iconY.value
@@ -283,21 +289,40 @@ const startDrag = (clientX: number, clientY: number) => {
 
 const onPointerDown = (event: PointerEvent) => {
   startDrag(event.clientX, event.clientY)
+  // try to capture pointer to avoid event loss and make movement more immediate
+  try {
+    if (floatingEl.value && typeof floatingEl.value.setPointerCapture === 'function') {
+      floatingEl.value.setPointerCapture(event.pointerId)
+      pointerIdRef.value = event.pointerId
+    }
+  } catch (e) {
+    // ignore if not supported
+  }
+
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('pointerup', onPointerUp)
 }
 
 const onPointerMove = (event: PointerEvent) => {
-  if (!dragging.value) return
+  if (!iconDragging.value) return
   moved.value = true
   clampPosition(event.clientX - dragOffsetX.value, event.clientY - dragOffsetY.value)
 }
 
-const onPointerUp = () => {
-  if (!dragging.value) return
-  dragging.value = false
+const onPointerUp = (event?: PointerEvent) => {
+  if (!iconDragging.value) return
+  iconDragging.value = false
   window.removeEventListener('pointermove', onPointerMove)
   window.removeEventListener('pointerup', onPointerUp)
+  // release pointer capture if set
+  try {
+    if (floatingEl.value && pointerIdRef.value !== null && typeof floatingEl.value.releasePointerCapture === 'function') {
+      floatingEl.value.releasePointerCapture(pointerIdRef.value)
+    }
+  } catch (e) {
+    // ignore
+  }
+  pointerIdRef.value = null
   savePosition()
 }
 
@@ -315,6 +340,10 @@ const toggleExpanded = () => {
     }
     scrollBottom()
   }
+}
+
+const closePanel = () => {
+  expanded.value = false
 }
 
 const startPanelDrag = (event: PointerEvent) => {
@@ -486,10 +515,14 @@ onMounted(() => {
 <template>
   <div class="ai-floating">
     <button
+      ref="floatingEl"
+      :class="{ dragging: dragging }"
       class="floating-icon"
       :style="iconStyle"
       @pointerdown="onPointerDown"
       @click="toggleExpanded"
+      @dragenter.prevent="onDragEnter"
+      @dragleave.prevent="onDragLeave"
       @dragover="handleDragOver"
       @drop="handleDropPayload"
       :aria-label="title"
@@ -502,6 +535,8 @@ onMounted(() => {
       v-if="expanded"
       class="chat-panel ds-panel"
       :style="panelStyle"
+      @dragenter.prevent="onDragEnter"
+      @dragleave.prevent="onDragLeave"
       @dragover="handleDragOver"
       @drop="handleDropPayload"
     >
@@ -538,22 +573,27 @@ onMounted(() => {
             <button class="history-item clear-all" @click="clearMessages">清空当前对话</button>
           </div>
         </div>
-        <button class="ds-icon-btn" @pointerdown.stop @click="createSession" title="新建对话">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M5 12h14" />
-            <path d="M12 5v14" />
-          </svg>
-        </button>
+        <div class="ds-header-actions">
+          <button class="ds-icon-btn" @pointerdown.stop @click="createSession" title="新建对话">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M5 12h14" />
+              <path d="M12 5v14" />
+            </svg>
+          </button>
+          <button class="ds-icon-btn" @pointerdown.stop @click="closePanel" title="关闭" aria-label="关闭">
+            <X :size="18" />
+          </button>
+        </div>
       </div>
 
       <div v-if="expireNotice" class="expire-tip">{{ expireNotice }}</div>
@@ -585,7 +625,7 @@ onMounted(() => {
 
       <div class="ds-composer-wrapper">
         <div class="ds-composer">
-          <div class="ds-context-box" v-if="contextText || dragging">
+          <div class="ds-context-box" v-if="contextText || draggingQuestion">
             <textarea
               v-model="contextText"
               rows="1"
@@ -635,6 +675,7 @@ onMounted(() => {
   background: transparent;
   color: #fff;
   cursor: grab;
+  transition: none; /* ensure immediate position updates without CSS smoothing */
   z-index: 3000;
   padding: 0;
   overflow: hidden;
@@ -642,6 +683,9 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+.floating-icon.dragging {
+  cursor: grabbing;
 }
 .floating-icon-image {
   width: 100%;
@@ -670,6 +714,11 @@ onMounted(() => {
   padding: 14px 16px;
   background: transparent;
   cursor: default;
+}
+.ds-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 .ds-icon-btn {
   border: none;

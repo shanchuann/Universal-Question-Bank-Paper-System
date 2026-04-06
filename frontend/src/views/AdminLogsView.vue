@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, onUnmounted, nextTick } from 'vue'
 import axios from 'axios'
 import { Search, Download, Filter } from 'lucide-vue-next'
 import { useToast } from '@/composables/useToast'
@@ -144,6 +144,76 @@ const prevPage = () => {
 onMounted(() => {
   fetchLogs()
 })
+
+// 表格容器：支持横向拖拽平移（与试题列表、用户列表一致的交互）
+const tableWrapRef = ref<HTMLElement | null>(null)
+let isDragging = false
+let dragStartX = 0
+let dragStartScroll = 0
+let tableListenersAttached = false
+
+const onPointerDownTable = (e: PointerEvent) => {
+  const el = tableWrapRef.value
+  if (!el) return
+  const target = e.target as HTMLElement | null
+  if (target && target.closest && target.closest('button, a, input, select, textarea, .icon-btn, .badge')) {
+    return
+  }
+  isDragging = true
+  dragStartX = e.clientX
+  dragStartScroll = el.scrollLeft
+  try {
+    el.setPointerCapture?.(e.pointerId)
+  } catch (err) {}
+  el.classList.add('dragging')
+  e.preventDefault()
+}
+
+const onPointerMoveTable = (e: PointerEvent) => {
+  const el = tableWrapRef.value
+  if (!el || !isDragging) return
+  const walk = e.clientX - dragStartX
+  el.scrollLeft = dragStartScroll - walk
+}
+
+const onPointerUpTable = (e: PointerEvent) => {
+  const el = tableWrapRef.value
+  if (!el) return
+  isDragging = false
+  try {
+    el.releasePointerCapture?.(e.pointerId)
+  } catch (err) {}
+  el.classList.remove('dragging')
+}
+
+const attachTableListeners = () => {
+  const el = tableWrapRef.value
+  if (!el || tableListenersAttached) return
+  el.addEventListener('pointerdown', onPointerDownTable)
+  el.addEventListener('pointermove', onPointerMoveTable)
+  el.addEventListener('pointerup', onPointerUpTable)
+  el.addEventListener('pointerleave', onPointerUpTable)
+  tableListenersAttached = true
+}
+
+const detachTableListeners = () => {
+  const el = tableWrapRef.value
+  if (!el || !tableListenersAttached) return
+  el.removeEventListener('pointerdown', onPointerDownTable)
+  el.removeEventListener('pointermove', onPointerMoveTable)
+  el.removeEventListener('pointerup', onPointerUpTable)
+  el.removeEventListener('pointerleave', onPointerUpTable)
+  tableListenersAttached = false
+}
+
+onMounted(() => nextTick(() => attachTableListeners()))
+onUnmounted(() => detachTableListeners())
+
+watch(logs, (val) => {
+  if (val && val.length > 0) {
+    nextTick(() => attachTableListeners())
+  }
+})
 </script>
 
 <template>
@@ -185,32 +255,34 @@ onMounted(() => {
         <button class="google-btn text-btn" @click="fetchLogs">重试</button>
       </div>
 
-      <table v-else-if="logs.length > 0" class="google-table">
-        <thead>
-          <tr>
-            <th>时间</th>
-            <th>用户</th>
-            <th>操作类型</th>
-            <th>目标</th>
-            <th>IP地址</th>
-            <th>详情</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="log in logs" :key="log.id">
-            <td class="time-cell">{{ formatLogTime(log.timestamp) }}</td>
-            <td>{{ log.username }}</td>
-            <td>
-              <span :class="['badge', getActionBadgeClass(log.action)]">
-                {{ log.action }}
-              </span>
-            </td>
-            <td>{{ log.target }}</td>
-            <td class="ip-cell">{{ log.ip }}</td>
-            <td class="details-cell">{{ log.details }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else-if="logs.length > 0" ref="tableWrapRef" class="table-responsive">
+        <table class="google-table">
+          <thead>
+            <tr>
+              <th>时间</th>
+              <th>用户</th>
+              <th>操作类型</th>
+              <th>目标</th>
+              <th>IP地址</th>
+              <th>详情</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="log in logs" :key="log.id">
+              <td class="time-cell">{{ formatLogTime(log.timestamp) }}</td>
+              <td>{{ log.username }}</td>
+              <td>
+                <span :class="['badge', getActionBadgeClass(log.action)]">
+                  {{ log.action }}
+                </span>
+              </td>
+              <td>{{ log.target }}</td>
+              <td class="ip-cell">{{ log.ip }}</td>
+              <td class="details-cell">{{ log.details }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <div v-else class="empty-state">
         <p>暂无操作日志</p>
@@ -286,6 +358,7 @@ onMounted(() => {
 .google-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 920px;
 }
 
 .google-table th {
@@ -300,6 +373,13 @@ onMounted(() => {
 .google-table td {
   padding: 14px 16px;
   border-bottom: 1px solid var(--line-border);
+}
+
+.google-table th,
+.google-table td {
+  white-space: nowrap;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .google-table tbody tr:hover {
@@ -319,10 +399,17 @@ onMounted(() => {
 }
 
 .details-cell {
-  max-width: 300px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.table-responsive {
+  overflow: auto;
+  cursor: grab;
+}
+
+.table-responsive.dragging {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .badge {

@@ -118,6 +118,17 @@
             <li v-for="chapter in treeData" :key="chapter.id" class="tree-node-item">
               <div class="node-row chapter-row">
                 <div class="node-info">
+                  <button
+                    v-if="chapter.children?.length"
+                    class="toggle-btn"
+                    :class="{ expanded: isExpanded(chapter.id) }"
+                    @click.stop="toggleExpand(chapter.id)"
+                    aria-label="展开/折叠"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
                   <span class="node-icon">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -176,10 +187,21 @@
                 </div>
               </div>
 
-              <ul v-if="chapter.children?.length" class="tree-children">
+              <ul v-if="chapter.children?.length && isExpanded(chapter.id)" class="tree-children">
                 <li v-for="section in chapter.children" :key="section.id" class="tree-node-item">
                   <div class="node-row section-row">
                     <div class="node-info">
+                      <button
+                        v-if="section.children?.length"
+                        class="toggle-btn"
+                        :class="{ expanded: isExpanded(section.id) }"
+                        @click.stop="toggleExpand(section.id)"
+                        aria-label="展开/折叠"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                      </button>
                       <span class="node-icon">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -241,7 +263,7 @@
                     </div>
                   </div>
 
-                  <ul v-if="section.children?.length" class="tree-children">
+                  <ul v-if="section.children?.length && isExpanded(section.id)" class="tree-children">
                     <li v-for="point in section.children" :key="point.id" class="tree-node-item">
                       <div class="node-row point-row">
                         <div class="node-info">
@@ -323,7 +345,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import axios from 'axios'
 import GoogleSelect from '@/components/GoogleSelect.vue'
 import { useConfirm } from '@/composables/useConfirm'
@@ -344,6 +366,14 @@ const points = ref<KnowledgePoint[]>([])
 const loading = ref(false)
 const error = ref('')
 const message = ref('')
+
+// 折叠/展开状态映射（key = node id）
+const expanded = reactive<Record<string, boolean>>({})
+
+const isExpanded = (id: string) => !!expanded[id]
+const toggleExpand = (id: string) => {
+  expanded[id] = !expanded[id]
+}
 
 const newPoint = ref<{
   id?: string
@@ -369,6 +399,10 @@ const fetchPoints = async () => {
       headers: { Authorization: `Bearer ${token}` }
     })
     points.value = res.data
+    // 默认展开顶级节点，方便查看结构
+    points.value.forEach((p: KnowledgePoint) => {
+      if (!p.parentId) expanded[p.id] = true
+    })
   } catch (e: any) {
     error.value = e?.response?.data || 'Failed to load knowledge points'
   } finally {
@@ -520,7 +554,7 @@ const handleDelete = async (id: string) => {
   display: grid;
   grid-template-columns: 350px 1fr;
   gap: 24px;
-  align-items: start;
+  align-items: stretch;
 }
 
 @media (max-width: 900px) {
@@ -543,6 +577,21 @@ const handleDelete = async (id: string) => {
   font-weight: 500;
   color: var(--line-text);
   margin: 0;
+}
+
+/* 让左右两侧等高，右侧内部滚动处理（在 flex 布局下使用 min-height:0 允许内部溢出滚动） */
+.form-card,
+.tree-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tree-card .tree-container {
+  flex: 1 1 auto;
+  min-height: 0; /* 关键：允许 flex 子项收缩并启用内部滚动 */
+  overflow: auto;
+  padding-right: 6px;
 }
 
 .form-group {
@@ -601,6 +650,22 @@ const handleDelete = async (id: string) => {
   justify-content: center;
 }
 
+/* 确保表单内的输入与按钮等宽对齐 */
+.form-card .form-group .google-input,
+.form-card .form-actions .google-btn {
+  width: 100%;
+  box-sizing: border-box;
+  display: block;
+}
+.form-card .form-actions {
+  padding-left: 0;
+  padding-right: 0;
+}
+.form-card .form-actions .google-btn {
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
 .error-text {
   color: #d93025;
   margin-top: 12px;
@@ -624,9 +689,9 @@ const handleDelete = async (id: string) => {
 }
 
 .tree-children {
-  padding-left: 24px;
-  border-left: 1px solid var(--line-bg-soft);
-  margin-left: 12px;
+  padding-left: 28px;
+  border-left: 2px solid var(--line-bg-soft);
+  margin-left: 8px;
 }
 
 /* Connectors for tree */
@@ -637,25 +702,27 @@ const handleDelete = async (id: string) => {
 .tree-children li::before {
   content: '';
   position: absolute;
-  top: 14px;
-  left: -24px;
-  width: 20px;
-  height: 1px;
+  top: 18px;
+  left: -30px;
+  width: 26px;
+  height: 2px;
   background: var(--line-bg-soft);
+  border-radius: 2px;
 }
 
 .tree-node-item {
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .node-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  border-radius: 6px;
-  transition: background-color 0.2s;
+  padding: 10px 14px;
+  border-radius: 8px;
+  transition: background-color 0.18s, transform 0.12s;
   border: 1px solid transparent;
+  min-height: 44px;
 }
 
 .node-row:hover {
@@ -674,24 +741,26 @@ const handleDelete = async (id: string) => {
 .node-info {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 14px;
+  gap: 12px;
+  font-size: 15px;
   color: var(--line-text);
-  height: 28px;
+  height: 36px;
 }
 
 .node-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   color: var(--line-text-secondary);
+  background: var(--line-bg-soft);
+  border-radius: 6px;
 }
 
 .node-name {
-  font-weight: 500;
-  line-height: 1;
+  font-weight: 600;
+  line-height: 1.1;
   padding-top: 1px;
 }
 
@@ -705,7 +774,7 @@ const handleDelete = async (id: string) => {
 
 .node-actions {
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.18s ease;
 }
 
 .node-row:hover .node-actions {
@@ -725,9 +794,52 @@ const handleDelete = async (id: string) => {
 }
 
 .icon-action:hover {
-  background-color: rgba(26, 115, 232, 0.1);
+  background-color: rgba(26, 115, 232, 0.12);
   color: var(--line-primary);
   opacity: 1;
+}
+
+/* 更明显的父节点样式（例如章） */
+.chapter-row {
+  background: linear-gradient(180deg, rgba(246,249,255,0.6), transparent 60%);
+  border-left: 3px solid rgba(15,23,42,0.04);
+}
+
+/* 鼠标悬停的轻量浮起效果，提升可读性 */
+.node-row:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--line-shadow-sm);
+}
+
+/* 更清晰的元信息样式 */
+.node-meta {
+  font-size: 12px;
+  color: var(--line-text-secondary);
+  background: rgba(15,23,42,0.03);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+/* 折叠/展开 按钮样式 */
+.toggle-btn {
+  background: transparent;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 6px;
+  padding: 0;
+  color: var(--line-text-secondary);
+  cursor: pointer;
+}
+.toggle-btn svg {
+  transition: transform 0.18s ease;
+}
+.toggle-btn.expanded svg {
+  transform: rotate(180deg);
+  color: var(--line-primary);
 }
 
 .loading-state {

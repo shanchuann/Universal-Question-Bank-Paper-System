@@ -153,7 +153,7 @@ const passwordHint = computed(() => {
 
 <template>
   <div class="register-wrapper">
-    <div class="register-container google-card">
+    <div class="register-container google-card auth-card">
       <div class="logo-area">
         <span class="google-logo">UQ</span>
       </div>
@@ -267,11 +267,8 @@ const passwordHint = computed(() => {
   max-width: 450px;
   padding: 48px 40px 36px;
   text-align: center;
-  /* Make the container transparent to remove white card background */
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  box-shadow: none;
+  /* 视觉样式由全局 .auth-card 提供，避免在组件内覆盖 */
+  border-radius: var(--line-radius-md);
 }
 
 .logo-area {
