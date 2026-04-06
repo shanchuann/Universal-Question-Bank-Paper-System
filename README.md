@@ -82,7 +82,7 @@ npm run build
 2. Pull a model, for example:
 
 ```bash
-ollama pull gemma4
+ollama pull gemma2
 ```
 
 3. Configure project root env values:
