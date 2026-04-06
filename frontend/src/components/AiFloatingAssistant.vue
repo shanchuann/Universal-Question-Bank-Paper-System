@@ -411,6 +411,18 @@ const handleDragOver = (event: DragEvent) => {
   event.preventDefault()
 }
 
+const onDragEnter = (event?: DragEvent) => {
+  dragEnterCounter++
+  draggingQuestion.value = true
+}
+
+const onDragLeave = (event?: DragEvent) => {
+  dragEnterCounter = Math.max(0, dragEnterCounter - 1)
+  if (dragEnterCounter === 0) {
+    draggingQuestion.value = false
+  }
+}
+
 const clearMessages = () => {
   if (!currentSession.value) return
   messages.value = []
@@ -516,7 +528,7 @@ onMounted(() => {
   <div class="ai-floating">
     <button
       ref="floatingEl"
-      :class="{ dragging: dragging }"
+      :class="{ dragging: iconDragging || draggingQuestion }"
       class="floating-icon"
       :style="iconStyle"
       @pointerdown="onPointerDown"

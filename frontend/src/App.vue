@@ -139,6 +139,14 @@ const mobileToggleGroup = (label: string) => {
   }
 }
 
+// determine whether the nav group should be visible for current user
+const groupVisible = (group: NavGroup) => {
+  if (!group.roles) return true
+  const role = authState.user.role
+  if (!role) return false
+  return group.roles.includes(role as Exclude<UserRole, ''>)
+}
+
 const navGroups = computed<NavGroup[]>(() => {
   const role = authState.user.role
   const isStudent = role !== 'TEACHER' && role !== 'ADMIN'
@@ -349,13 +357,7 @@ watch(
       <!-- Navigation Links -->
       <nav class="nav-links" v-if="authState.isAuthenticated && !authEntryRoutes.includes(route.path)">
         <template v-for="group in navGroups" :key="group.label">
-          <template
-            v-if="
-              !group.roles ||
-              (authState.user.role &&
-                group.roles.includes(authState.user.role as Exclude<UserRole, ''>))
-            "
-          >
+          <template v-if="groupVisible(group)">
             <!-- 单个链接 -->
             <div
               v-if="group.to"
@@ -453,12 +455,7 @@ watch(
   <div class="mobile-nav-dropdown" v-if="mobileNavOpen && !authEntryRoutes.includes(route.path)">
     <div class="mobile-nav-inner">
       <template v-for="group in navGroups" :key="group.label">
-        <template
-          v-if="
-            !group.roles ||
-            (authState.user.role && group.roles.includes(authState.user.role as Exclude<UserRole, ' '>))
-          "
-        >
+        <template v-if="groupVisible(group)">
           <div v-if="group.to" class="mobile-nav-link" @click="navigateTo(group.to)">
             {{ group.label }}
           </div>

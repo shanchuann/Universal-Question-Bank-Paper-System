@@ -23,6 +23,12 @@ const aiBatchSuggesting = ref(false)
 // Local state for grades to allow editing
 const grades = ref<Record<string, { score: number | null; notes: string; maxScore: number }>>({})
 
+// helper to safely get grade by questionId (coerces id to string)
+const gradeOf = (questionId?: string | number) => {
+  if (questionId === undefined || questionId === null) return undefined
+  return grades.value[String(questionId)]
+}
+
 // 计算总得分
 const totalScore = computed(() => {
   if (!exam.value?.questions) return 0
@@ -405,7 +411,7 @@ onMounted(fetchExam)
           <span class="q-score-badge">满分: {{ q.score }} 分</span>
           <!-- 对于需人工评分的题目，优先根据本地 grades 显示是否已评分 -->
           <template v-if="needsManualGrading(q.type)">
-            <span v-if="grades[q.questionId] && grades[q.questionId].score !== null && grades[q.questionId].score !== undefined" class="q-result scored">
+            <span v-if="gradeOf(q.questionId)?.score !== null && gradeOf(q.questionId)?.score !== undefined" class="q-result scored">
               <Check :size="14" /> 已评分
             </span>
             <span v-else class="q-result pending">待评分</span>
@@ -456,7 +462,7 @@ onMounted(fetchExam)
         </div>
 
         <!-- 评分区域 -->
-        <div class="grading-section" v-if="q.questionId && grades[q.questionId]">
+        <div class="grading-section" v-if="gradeOf(q.questionId)">
           <div class="grading-header">
             <span class="grading-title">评分</span>
             <div class="quick-actions" v-if="needsManualGrading(q.type)">
