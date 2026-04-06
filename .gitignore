@@ -29,6 +29,7 @@ backend/.gradle/
 .env
 .env.*
 !.env.example
+!deploy/.env.prod.example
 
 # Logs
 *.log

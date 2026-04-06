@@ -9,6 +9,11 @@
 3. 自动构建镜像并推送到 GHCR。
 4. 服务器 Watchtower 自动检测 prod 标签更新并重启容器。
 
+关键约束：
+
+1. `GHCR_OWNER` 必须使用小写。
+2. 前端通过 Nginx 同域名反向代理 `/api/` 到后端容器 `uqbank-backend:8080`。
+
 ## 2. 已落地文件
 
 1. CI 工作流：.github/workflows/release-ghcr.yml
@@ -66,11 +71,39 @@ cd /opt/uqbank
 echo "YOUR_GITHUB_PAT" | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
 ```
 
-### 5.3 初始化并启动
+### 5.3 配置生产环境变量
+
+至少确认以下项：
+
+1. GHCR_OWNER（小写）
+2. BACKEND_TAG=prod
+3. FRONTEND_TAG=prod
+4. DB_URL / DB_USERNAME / DB_PASSWORD
+5. FLYWAY_ENABLED=true
+6. JPA_DDL_AUTO=validate
+7. SQL_INIT_MODE=never
+8. SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS
+
+推荐项：
+
+1. DOCKER_CONFIG_PATH=/root/.docker/config.json
+2. AI_OLLAMA_ENABLED=false
+3. APP_CLEANUP_DROP_LEGACY_QUESTION_OPTIONS=false
+4. TZ=Asia/Shanghai
+
+### 5.4 初始化并启动
 
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env pull
 docker compose -f docker-compose.prod.yml --env-file .env up -d
+```
+
+启动后建议立即验证：
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env ps
+curl -f http://127.0.0.1/healthz
+curl -f http://127.0.0.1/actuator/health
 ```
 
 ## 6. 自动更新机制

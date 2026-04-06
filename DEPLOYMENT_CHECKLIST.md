@@ -14,6 +14,9 @@
 
 后端至少配置以下环境变量：
 
+- `GHCR_OWNER`（必须小写，例如 `shanchuann`）
+- `BACKEND_TAG`（建议生产默认 `prod`）
+- `FRONTEND_TAG`（建议生产默认 `prod`）
 - `DB_URL`
 - `DB_USERNAME`
 - `DB_PASSWORD`
@@ -28,6 +31,9 @@
 建议：
 
 - 生产环境禁止将任何密码写入 `application.properties`。
+- 若使用 Watchtower 拉取私有镜像，配置 `DOCKER_CONFIG_PATH`（默认 `/root/.docker/config.json`）。
+- 生产建议 `AI_OLLAMA_ENABLED=false`，除非已单独部署 Ollama。
+- 生产建议 `APP_CLEANUP_DROP_LEGACY_QUESTION_OPTIONS=false`，避免每次启动执行遗留清理。
 - 若启用 SQL 日志，仅在排障窗口临时开启：`LOG_LEVEL_HIBERNATE_SQL=DEBUG`。
 
 ## 3. 数据库发布步骤
@@ -47,6 +53,8 @@
 ## 4. 后端发布验证
 
 - 启动后端服务并检查健康状态：
+	- `curl http://127.0.0.1:8080/actuator/health`
+	- `curl http://127.0.0.1/actuator/health`（经前端 Nginx 反向代理）
 	- 登录
 	- 获取首页数据
 	- 管理端系统设置读取
@@ -56,6 +64,7 @@
 ## 5. 前端发布验证
 
 - 发布静态资源后清缓存策略生效（含 `index.html` 与 hash 资源）。
+- 验证 `frontend/nginx.conf` 的 `/api/` 反向代理已生效（前端通过同域名调用后端）。
 - 验证关键路由：
 	- 登录/注册/找回密码
 	- 题库管理、组卷、考试
