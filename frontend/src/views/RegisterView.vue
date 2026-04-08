@@ -155,7 +155,7 @@ const passwordHint = computed(() => {
   <div class="register-wrapper">
     <div class="register-container google-card auth-card">
       <div class="logo-area">
-        <span class="google-logo">UQ</span>
+        <span class="app-logo">UQ</span>
       </div>
       <h1 class="page-title">创建账号</h1>
       <p class="subtitle">继续使用题库系统</p>
@@ -275,11 +275,15 @@ const passwordHint = computed(() => {
   margin-bottom: 10px;
 }
 
-.google-logo {
-  font-family: 'Product Sans', 'Google Sans', sans-serif;
-  font-size: 24px;
-  font-weight: bold;
+.app-logo {
+  font-family: inherit;
+  font-size: 32px;
+  font-weight: 700;
   color: var(--line-primary);
+  letter-spacing: -0.05em;
+  border: 2px solid var(--line-primary);
+  padding: 8px 12px;
+  border-radius: 8px;
 }
 
 h1 {
