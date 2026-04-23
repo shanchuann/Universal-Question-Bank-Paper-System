@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +38,6 @@ public class NotificationService {
 
   public List<UserNotificationEntity> listNotifications(
       String userId, boolean unreadOnly, int limit) {
-    cleanupExpiredMessages();
     int safeLimit = Math.max(1, Math.min(limit, 100));
     PageRequest page = PageRequest.of(0, safeLimit);
     if (unreadOnly) {
@@ -48,13 +48,11 @@ public class NotificationService {
   }
 
   public long countUnread(String userId) {
-    cleanupExpiredMessages();
     return userNotificationRepository.countByReceiverIdAndIsReadFalse(userId);
   }
 
   @Transactional
   public boolean markAsRead(String userId, String notificationId) {
-    cleanupExpiredMessages();
     return userNotificationRepository
         .findByIdAndReceiverId(notificationId, userId)
         .map(
@@ -70,7 +68,6 @@ public class NotificationService {
 
   @Transactional
   public int markAllAsRead(String userId) {
-    cleanupExpiredMessages();
     List<UserNotificationEntity> unread =
         userNotificationRepository.findByReceiverIdAndIsReadFalse(userId);
     for (UserNotificationEntity message : unread) {
@@ -85,7 +82,6 @@ public class NotificationService {
   @Transactional
   public UserNotificationEntity sendPrivateMessage(
       String senderId, String receiverId, String title, String content, String requestedType) {
-    cleanupExpiredMessages();
     if (senderId == null || receiverId == null || senderId.equals(receiverId)) {
       throw new RuntimeException("无效的发送对象");
     }
@@ -134,36 +130,50 @@ public class NotificationService {
   }
 
   public List<Map<String, Object>> getConversations(String userId, int limit) {
-    cleanupExpiredMessages();
     int safeLimit = Math.max(1, Math.min(limit, 100));
     OffsetDateTime cutoff = getChatCutoffTime();
 
-    List<UserNotificationEntity> recentMessages =
-        userNotificationRepository.findRecentChatMessagesByUser(
-            userId, CHAT_TYPES, cutoff, PageRequest.of(0, 800));
-
-    Map<String, UserNotificationEntity> latestByPeer = new LinkedHashMap<>();
-    for (UserNotificationEntity msg : recentMessages) {
-      String peerId = userId.equals(msg.getSenderId()) ? msg.getReceiverId() : msg.getSenderId();
-      if (peerId == null || peerId.isBlank()) {
-        continue;
-      }
-      latestByPeer.putIfAbsent(peerId, msg);
+    Set<String> myOrgIds =
+        userOrganizationRepository.findByUserId(userId).stream()
+            .map(UserOrganizationEntity::getOrganizationId)
+            .collect(Collectors.toSet());
+    if (myOrgIds.isEmpty()) {
+      return List.of();
     }
 
-    List<String> peerIds = new ArrayList<>(latestByPeer.keySet());
-    Map<String, UserEntity> userMap =
-        userRepository.findAllById(peerIds).stream()
-            .collect(Collectors.toMap(UserEntity::getId, u -> u));
+    Set<String> candidateUserIds = new HashSet<>();
+    for (String orgId : myOrgIds) {
+      for (UserOrganizationEntity relation :
+          userOrganizationRepository.findByOrganizationId(orgId)) {
+        if (!userId.equals(relation.getUserId())) {
+          candidateUserIds.add(relation.getUserId());
+        }
+      }
+    }
+
+    if (candidateUserIds.isEmpty()) {
+      return List.of();
+    }
+
+    List<UserEntity> peers =
+        userRepository.findAllById(candidateUserIds).stream()
+            .filter(user -> "ACTIVE".equalsIgnoreCase(user.getStatus()))
+            .sorted(
+                Comparator.comparing(
+                        (UserEntity user) -> user.getRole() == null ? "ZZZ" : user.getRole())
+                    .thenComparing(
+                        user -> user.getUsername() == null ? "" : user.getUsername()))
+            .collect(Collectors.toList());
 
     List<Map<String, Object>> result = new ArrayList<>();
-    for (String peerId : peerIds) {
-      UserEntity peer = userMap.get(peerId);
-      if (peer == null || !"ACTIVE".equalsIgnoreCase(peer.getStatus())) {
-        continue;
-      }
+    for (UserEntity peer : peers) {
+      String peerId = peer.getId();
 
-      UserNotificationEntity latest = latestByPeer.get(peerId);
+      List<UserNotificationEntity> lastMsg =
+          userNotificationRepository.findLatestChatMessageBetweenUsers(
+              userId, peerId, CHAT_TYPES, cutoff, PageRequest.of(0, 1));
+      UserNotificationEntity latest = lastMsg.isEmpty() ? null : lastMsg.get(0);
+
       long unread =
           userNotificationRepository
               .countByReceiverIdAndSenderIdAndIsReadFalseAndTypeInAndCreatedAtAfter(
@@ -181,6 +191,18 @@ public class NotificationService {
       result.add(item);
     }
 
+    result.sort(
+        (a, b) -> {
+          OffsetDateTime aTime = (OffsetDateTime) a.get("lastTime");
+          OffsetDateTime bTime = (OffsetDateTime) b.get("lastTime");
+          if (aTime != null && bTime == null) return -1;
+          if (aTime == null && bTime != null) return 1;
+          if (aTime != null && bTime != null) {
+            return bTime.compareTo(aTime);
+          }
+          return ((String) a.get("peerName")).compareTo((String) b.get("peerName"));
+        });
+
     if (result.size() > safeLimit) {
       return result.subList(0, safeLimit);
     }
@@ -189,7 +211,6 @@ public class NotificationService {
 
   public List<UserNotificationEntity> getConversationMessages(
       String userId, String peerId, int limit) {
-    cleanupExpiredMessages();
     int safeLimit = Math.max(1, Math.min(limit, 300));
 
     if (!isUsersShareOrganization(userId, peerId)) {
@@ -203,7 +224,6 @@ public class NotificationService {
 
   @Transactional
   public int markConversationAsRead(String userId, String peerId) {
-    cleanupExpiredMessages();
     OffsetDateTime cutoff = getChatCutoffTime();
     List<UserNotificationEntity> unread =
         userNotificationRepository
@@ -243,7 +263,6 @@ public class NotificationService {
   }
 
   public List<Map<String, Object>> getAvailableRecipients(String userId) {
-    cleanupExpiredMessages();
     Set<String> myOrgIds =
         userOrganizationRepository.findByUserId(userId).stream()
             .map(UserOrganizationEntity::getOrganizationId)
@@ -322,7 +341,9 @@ public class NotificationService {
     return OffsetDateTime.now().minusDays(CHAT_RETENTION_DAYS);
   }
 
-  private void cleanupExpiredMessages() {
+  @Scheduled(cron = "0 0 3 * * ?")
+  @Transactional
+  public void cleanupExpiredMessages() {
     OffsetDateTime cutoff = getChatCutoffTime();
     userNotificationRepository.deleteByCreatedAtBefore(cutoff);
   }

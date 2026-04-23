@@ -59,5 +59,19 @@ public interface UserNotificationRepository extends JpaRepository<UserNotificati
       @Param("cutoff") OffsetDateTime cutoff,
       Pageable pageable);
 
+  @Query(
+      "SELECT n FROM UserNotificationEntity n "
+          + "WHERE n.createdAt >= :cutoff "
+          + "AND n.type IN :types "
+          + "AND ((n.senderId = :userId AND n.receiverId = :peerId) "
+          + "OR (n.senderId = :peerId AND n.receiverId = :userId)) "
+          + "ORDER BY n.createdAt DESC")
+  List<UserNotificationEntity> findLatestChatMessageBetweenUsers(
+      @Param("userId") String userId,
+      @Param("peerId") String peerId,
+      @Param("types") Collection<String> types,
+      @Param("cutoff") OffsetDateTime cutoff,
+      Pageable pageable);
+
   Optional<UserNotificationEntity> findByIdAndReceiverId(String id, String receiverId);
 }
