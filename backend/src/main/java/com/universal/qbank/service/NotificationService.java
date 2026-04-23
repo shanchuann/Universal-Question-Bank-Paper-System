@@ -161,8 +161,7 @@ public class NotificationService {
             .sorted(
                 Comparator.comparing(
                         (UserEntity user) -> user.getRole() == null ? "ZZZ" : user.getRole())
-                    .thenComparing(
-                        user -> user.getUsername() == null ? "" : user.getUsername()))
+                    .thenComparing(user -> user.getUsername() == null ? "" : user.getUsername()))
             .collect(Collectors.toList());
 
     List<Map<String, Object>> result = new ArrayList<>();
