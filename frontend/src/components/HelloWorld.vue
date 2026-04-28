@@ -122,6 +122,17 @@ watch(
         欢迎回来，{{ authState.user.nickname || authState.user.username }}
       </p>
       <p class="hero-subtitle">题目管理、智能组卷、在线考试一站式平台</p>
+
+      <div class="icp-record">
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">
+          <img
+            class="icp-icon"
+            src="https://files.seeusercontent.com/2026/04/28/gEu1/a20583c.png"
+            alt="备案图标"
+          />
+          <span class="icp-text">备案号：陕ICP备2026009958号-1</span>
+        </a>
+      </div>
     </div>
 
     <!-- 学生仪表盘 -->
@@ -414,6 +425,22 @@ watch(
   font-weight: 400;
   max-width: 600px;
   margin: 0 auto;
+}
+
+.icp-record {
+  margin-top: 12px;
+  text-align: center;
+}
+.icp-record .icp-icon {
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+.icp-record .icp-text {
+  font-size: 13px;
+  color: var(--line-text-secondary);
+  vertical-align: middle;
 }
 
 /* Dashboard Grid for Student Stats/Leaderboard */
