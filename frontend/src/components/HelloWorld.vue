@@ -123,16 +123,7 @@ watch(
       </p>
       <p class="hero-subtitle">题目管理、智能组卷、在线考试一站式平台</p>
 
-      <div class="icp-record">
-        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">
-          <img
-            class="icp-icon"
-            src="https://files.seeusercontent.com/2026/04/28/gEu1/a20583c.png"
-            alt="备案图标"
-          />
-          <span class="icp-text">备案号：陕ICP备2026009958号-1</span>
-        </a>
-      </div>
+      <!-- 备案信息已移至全局页脚 -->
     </div>
 
     <!-- 学生仪表盘 -->

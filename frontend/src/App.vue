@@ -407,7 +407,7 @@ watch(
 
       <!-- Mobile menu button (visible on tablet/phone via CSS) -->
       <button
-        v-if="!authEntryRoutes.includes(route.path)"
+        v-if="!authEntryRoutes.includes(route.path) && (route.name !== 'home' || authState.isAuthenticated)"
         class="mobile-menu-button"
         @click="mobileNavOpen = !mobileNavOpen"
         aria-label="打开菜单"
@@ -452,7 +452,7 @@ watch(
   </header>
 
   <!-- Mobile navigation dropdown (for tablet/phone) -->
-  <div class="mobile-nav-dropdown" v-if="mobileNavOpen && !authEntryRoutes.includes(route.path)">
+  <div class="mobile-nav-dropdown" v-if="mobileNavOpen && !authEntryRoutes.includes(route.path) && (route.name !== 'home' || authState.isAuthenticated)">
     <div class="mobile-nav-inner">
       <template v-for="group in navGroups" :key="group.label">
         <template v-if="groupVisible(group)">
@@ -488,7 +488,16 @@ watch(
     <RouterView />
   </main>
 
-  <footer class="app-footer">{{ copyrightText }}</footer>
+  <footer class="app-footer">
+    <div class="footer-inner">
+      <div class="footer-left">{{ copyrightText }}</div>
+      <div class="footer-record">
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">备案号：陕ICP备2026009958号-1</a>
+        <img class="icp-icon" src="https://files.seeusercontent.com/2026/04/28/gEu1/a20583c.png" alt="警徽" />
+        <a href="https://beian.mps.gov.cn/#/query/webSearch?code=61040202000893" rel="noreferrer" target="_blank">陕公网安备61040202000893号</a>
+      </div>
+    </div>
+  </footer>
 
   <!-- 全局 Toast 通知 -->
   <GlobalToast />
@@ -716,10 +725,9 @@ watch(
   }
   .mobile-nav-dropdown {
     display: block;
-    /* 固定在视口右侧，作为更窄侧栏显示，内部可滚动并允许文字换行显示完整 */
-    position: fixed;
+    /* 让下拉面板跟随文档流并根据内容高度扩展 */
+    position: absolute;
     top: 64px;
-    bottom: 0;
     right: 0;
     width: min(300px, calc(100% - 24px));
     max-width: 340px;
@@ -727,8 +735,8 @@ watch(
     border-left: 1px solid var(--line-border);
     box-shadow: -4px 0 16px rgba(15, 23, 42, 0.06);
     z-index: 1100;
-    max-height: calc(100vh - 64px);
-    overflow-y: auto;
+    /* 不强制最大高度，允许面板高度随内容自适应 */
+    overflow-y: visible;
     overflow-x: hidden;
     border-top-left-radius: 8px;
     border-bottom-left-radius: 8px;
@@ -930,7 +938,7 @@ watch(
 .main-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 96px 24px 32px;
+  padding: 96px 24px 96px;
   position: relative;
 }
 
@@ -939,10 +947,50 @@ watch(
 }
 
 .app-footer {
+  background: rgba(255, 255, 255, 0.36);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+  border-top: 1px solid rgba(255,255,255,0.12);
   text-align: center;
-  color: var(--line-text-secondary);
+  color: var(--line-text);
   font-size: 12px;
-  padding: 12px 16px 18px;
+  padding: 12px 16px;
+}
+.app-footer .footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.app-footer .footer-record {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.app-footer a {
+  color: var(--line-text-secondary);
+  text-decoration: none;
+  font-size: 12px;
+}
+.app-footer .icp-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* 页脚在小屏幕时字体减小且记录项保持横排 */
+@media (max-width: 480px) {
+  .app-footer {
+    font-size: 12px;
+    padding: 10px 12px;
+  }
+  .app-footer .footer-record {
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .app-footer .footer-record a {
+    font-size: 12px;
+  }
 }
 
 @media (max-width: 1024px) {
@@ -957,6 +1005,43 @@ watch(
 @media (max-width: 768px) {
   .nav-links {
     display: none;
+  }
+}
+
+/* 小屏幕：保持登录/注册按钮尺寸不变，只缩小文字并保持横向 */
+@media (max-width: 480px) {
+  .user-actions {
+    flex-wrap: nowrap;
+  }
+  .user-actions .line-btn {
+    padding: 10px 20px; /* 保持按钮大小感受 */
+    font-size: 12px; /* 缩小文字 */
+    white-space: nowrap; /* 保持横排 */
+  }
+  .user-actions .line-btn span {
+    display: inline-block;
+  }
+  /* 头像与退出按钮在小屏时保持横向排列，仅缩小尺寸和间距 */
+  .user-actions {
+    gap: 8px;
+    align-items: center;
+    overflow: visible;
+  }
+  .user-profile {
+    gap: 8px;
+    white-space: nowrap;
+    align-items: center;
+  }
+  .avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  .logout-btn {
+    padding: 6px 10px;
+    height: 30px;
+    font-size: 12px;
+    gap: 6px;
   }
 }
 </style>
