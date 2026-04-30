@@ -869,6 +869,16 @@ watch(
   gap: 12px;
 }
 
+/* Ensure user actions keep horizontal layout and only shrink content on small screens */
+.user-actions,
+.user-profile {
+  flex-wrap: nowrap;
+}
+.user-actions > *,
+.user-profile > * {
+  flex: 0 0 auto; /* prevent children from shrinking to a new line */
+}
+
 .avatar {
   width: 36px;
   height: 36px;
@@ -938,7 +948,7 @@ watch(
 .main-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 96px 24px 96px;
+  padding: 96px 24px 120px; /* bottom padding increased to avoid fixed footer overlap */
   position: relative;
 }
 
@@ -947,6 +957,15 @@ watch(
 }
 
 .app-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1200;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.36);
   -webkit-backdrop-filter: blur(10px) saturate(140%);
   backdrop-filter: blur(10px) saturate(140%);
@@ -954,14 +973,14 @@ watch(
   text-align: center;
   color: var(--line-text);
   font-size: 12px;
-  padding: 12px 16px;
+  padding: 8px 16px;
 }
 .app-footer .footer-inner {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .app-footer .footer-record {
   display: inline-flex;
@@ -1021,17 +1040,8 @@ watch(
   .user-actions .line-btn span {
     display: inline-block;
   }
-  /* 头像与退出按钮在小屏时保持横向排列，仅缩小尺寸和间距 */
-  .user-actions {
-    gap: 8px;
-    align-items: center;
-    overflow: visible;
-  }
-  .user-profile {
-    gap: 8px;
-    white-space: nowrap;
-    align-items: center;
-  }
+
+  /* 缩小头像与退出按钮尺寸，但保持横向排列 */
   .avatar {
     width: 28px;
     height: 28px;
@@ -1041,7 +1051,9 @@ watch(
     padding: 6px 10px;
     height: 30px;
     font-size: 12px;
-    gap: 6px;
+  }
+  .user-actions {
+    gap: 8px;
   }
 }
 </style>
